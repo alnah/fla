@@ -1,0 +1,23 @@
+FAIR SOURCE LICENSE
+Version 1.0
+
+Copyright (c) 2025, Alexis Nahan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to use, copy, modify, and distribute the Software, subject to the following conditions:
+
+Limited Use Grant
+You may use the Software for any purpose, excluding commercial purposes, and subject to the User Limit defined below. Commercial use requires a separate commercial license from the copyright holder.
+
+User Limit
+The Software may be used by up to 0 users within your organization. To use the Software beyond this limit, you must purchase a commercial license.
+
+Source Visibility
+The source code of the Software is made available for review, learning, and modification, but remains subject to this license.
+
+No Warranty
+The Software is provided “as is”, without warranty of any kind, express or implied. In no event shall the authors or copyright holders be liable for any claim, damages or other liability.
+
+Termination
+If you violate any terms of this license, your rights under this license will terminate automatically.
+
+For commercial licensing, contact: alexis.nahan@gmail.com
