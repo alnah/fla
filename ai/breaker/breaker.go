@@ -14,7 +14,6 @@ var ErrOpen = errors.New("circuit breaker: circuit is open")
 
 type operation func(ctx context.Context) error
 
-// state is an internal value object representing the breaker state.
 type state struct{ slug string }
 
 func (s state) String() string { return s.slug }
