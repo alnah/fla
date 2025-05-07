@@ -33,15 +33,15 @@ func (m model) String() string { return string(m) }
 
 const (
 	// ModelReasoning selects the compact reasoning-optimized LLM.
-	ModelReasoning = "o4-mini"
+	ModelReasoning model = "o4-mini"
 	// ModelFlagship selects the flagship LLM for highest capability.
-	ModelFlagship = "gpt-4.1"
+	ModelFlagship model = "gpt-4.1"
 	// ModelCostOptimized selects a lower-cost variant of the flagship LLM.
-	ModelCostOptimized = "gpt-4.1-nano"
+	ModelCostOptimized model = "gpt-4.1-nano"
 	// ModelTextToSpeech selects the LLM optimized for generating speech output.
-	ModelTextToSpeech = "gpt-4o-mini-tts"
+	ModelTextToSpeech model = "gpt-4o-mini-tts"
 	// ModelSpeechToText selects the LLM optimized for transcribing audio.
-	ModelSpeechToText = "gpt-4o-transcribe"
+	ModelSpeechToText model = "gpt-4o-transcribe"
 )
 
 // Base centralizes common configuration for OpenAI API calls.
