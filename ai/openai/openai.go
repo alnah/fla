@@ -139,9 +139,7 @@ func (c *Chat) AddMessage(role ai.Role, content string) *Chat {
 }
 
 type chatChoice struct {
-	Index        int         `json:"index"`
-	Message      chatMessage `json:"message"`
-	FinishReason string      `json:"finish_reason"`
+	Message chatMessage `json:"message"`
 }
 
 type chatMessage struct {
@@ -150,21 +148,9 @@ type chatMessage struct {
 	Refusal *string `json:"refusal,omitempty"`
 }
 
-type usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
-}
-
 type completion struct {
-	ID                string       `json:"id"`
-	Object            string       `json:"object"`
-	Created           int64        `json:"created"`
-	Model             string       `json:"model"`
-	Choices           []chatChoice `json:"choices"`
-	Usage             usage        `json:"usage"`
-	ServiceTier       string       `json:"service_tier"`
-	SystemFingerprint string       `json:"system_fingerprint"`
+	ID      string       `json:"id"`
+	Choices []chatChoice `json:"choices"`
 }
 
 // Content extracts the main text of the first choice, or returns empty
