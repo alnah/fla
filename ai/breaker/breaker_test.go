@@ -247,3 +247,15 @@ func TestBreaker_BlocksWhileOpen(t *testing.T) {
 		t.Error("operation should not have been called while open")
 	}
 }
+
+/********* Benchmark *********/
+
+func BenchmarkBreaker_Execute(b *testing.B) {
+	br := New()
+	ctx := context.Background()
+	op := func(ctx context.Context) error { return nil }
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = br.Execute(ctx, op)
+	}
+}
