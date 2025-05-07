@@ -55,9 +55,9 @@ func Chain(rt http.RoundTripper, transports ...transport) http.RoundTripper {
 func AddHeader(key, value string) transport {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
-			// Unique request for this round trip. No need to clone. It's safe.
-			req.Header.Set(key, value)
-			return next.RoundTrip(req)
+			clone := req.Clone(req.Context())
+			clone.Header.Set(key, value)
+			return next.RoundTrip(clone)
 		})
 	}
 }
