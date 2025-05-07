@@ -62,8 +62,10 @@ func AddHeader(key, value string) transport {
 	}
 }
 
-// ClassifyStatus transforms 429 and 5xx responses into HTTPError,
-// extracting any Retry-After hint to guide retry logic.
+// ClassifyStatus transforms HTTP 429 (Too Many Requests),
+// 409 (Conflict), 423 (Locked), and all 5xx responses into HTTPError,
+// extracting any Retry-After hint for downstream retry logic.
+// Treating 409 and 423 like 429 centralizes rate-limit handling.
 func ClassifyStatus(next http.RoundTripper) http.RoundTripper {
 	return roundTripper(func(req *http.Request) (*http.Response, error) {
 		res, err := next.RoundTrip(req)
