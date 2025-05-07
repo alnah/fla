@@ -108,8 +108,8 @@ func WithMaxCompletionTokens(n int) option[*Chat] {
 // WithTemperature adjusts response variability; higher values yield more diverse outputs.
 func WithTemperature(n float32) option[*Chat] { return func(c *Chat) { c.Temperature = n } }
 
-// NewChat constructs a chat client with sensible defaults and applies
-// any provided options to tailor its behavior.
+// NewChat constructs a chat client. Defaults model to cost optimized.
+// Callers can override settings via options to customize transcription.
 func NewChat(opts ...option[*Chat]) *Chat {
 	c := &Chat{
 		Messages: []ai.Message{},
@@ -279,7 +279,7 @@ func WithVoice(v voice) option[*TTS] { return func(t *TTS) { t.Voice = v } }
 // WithInstructions adds custom guidance for pronunciation or pacing.
 func WithInstructions(i string) option[*TTS] { return func(t *TTS) { t.Instructions = i } }
 
-// NewTTS creates a TTS client with a default voice and endpoint.
+// NewTTS creates a TTS client. Defaults model to Text-to-Speech and voice to Fable (female).
 // Callers can override settings via options to customize speech synthesis.
 func NewTTS(opts ...option[*TTS]) *TTS {
 	t := &TTS{
@@ -444,6 +444,7 @@ func (s *STT) Transcript() (transcript, error) {
 
 	bodyBuf := &bytes.Buffer{}
 	multipartWriter := multipart.NewWriter(bodyBuf)
+	defer func() { _ = multipartWriter.Close() }()
 
 	part, err := multipartWriter.CreateFormFile("file", s.FilePath)
 	if err != nil {
@@ -479,7 +480,7 @@ func (s *STT) Transcript() (transcript, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(s.ctx, s.method, s.url, bodyBuf)
+	req, err := http.NewRequestWithContext(s.Base.ctx, s.method, s.url, bodyBuf)
 	if err != nil {
 		return transcript{}, &OpenAITranscriptError{
 			message: fmt.Sprintf("failed to create HTTP request: %v", err),
