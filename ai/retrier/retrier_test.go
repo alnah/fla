@@ -3,7 +3,6 @@ package retrier
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -116,7 +115,6 @@ func TestRetry_NilOperation(t *testing.T) {
 	}
 }
 
-// Test New with invalid options resets to minimums
 func TestNew_InvalidOptions(t *testing.T) {
 	r := New(
 		WithMaxAttempts(0),
@@ -124,10 +122,9 @@ func TestNew_InvalidOptions(t *testing.T) {
 		WithBaseDelay(-1),
 		WithMaxDelay(0),
 		WithJitter(nil),
-		WithRand(nil),
 		WithClock(nil),
 	)
-	// maxAttempts <1 resets to 1 (minimum), not defaultAttempts
+	// maxAttempts <1 resets to 1
 	if r.maxAttempts != 1 {
 		t.Errorf("maxAttempts=%d, want %d", r.maxAttempts, 1)
 	}
@@ -145,9 +142,6 @@ func TestNew_InvalidOptions(t *testing.T) {
 	}
 	if r.clock == nil {
 		t.Errorf("clock should be non-nil")
-	}
-	if r.rand == nil {
-		t.Errorf("rand should be non-nil")
 	}
 }
 
@@ -174,7 +168,6 @@ func TestRetry_OnRetryHook(t *testing.T) {
 		}),
 	)
 	ctx := context.Background()
-	// operation always fails
 	op := func(context.Context) error { return errors.New("E") }
 	err := r.Retry(ctx, op, nil)
 	var re *RetrierError
@@ -185,7 +178,6 @@ func TestRetry_OnRetryHook(t *testing.T) {
 	if len(calls) != r.maxAttempts-1 {
 		t.Errorf("got %d calls, want %d", len(calls), r.maxAttempts-1)
 	}
-	// check delays: 10ms, 20ms
 	expected := []time.Duration{10 * time.Millisecond, 20 * time.Millisecond}
 	for i, c := range calls {
 		if c.attempt != i+1 {
@@ -217,26 +209,29 @@ func TestNextDelay_TableDriven(t *testing.T) {
 	}
 }
 
-func TestJitters(t *testing.T) {
-	seed := int64(42)
-	src := rand.NewSource(seed)
-	r := New(WithRand(src), WithClock(clock.NewFakeClock(time.Now())))
+func TestJitterFunctions(t *testing.T) {
 	base := 100 * time.Millisecond
 
-	// FullJitter ≤ base
-	d1 := FullJitter(base, r.rand)
-	if d1 < 0 || d1 > base {
-		t.Errorf("FullJitter out of range: %v", d1)
-	}
-	// EqualJitter ∈ [base/2, base]
-	d2 := EqualJitter(base, r.rand)
-	if d2 < base/2 || d2 > base {
-		t.Errorf("EqualJitter out of range: %v", d2)
-	}
 	// NoJitter == base
-	d3 := NoJitter(base, r.rand)
-	if d3 != base {
-		t.Errorf("NoJitter=%v, want %v", d3, base)
+	if d := NoJitter(base); d != base {
+		t.Errorf("NoJitter=%v, want %v", d, base)
+	}
+
+	// FullJitter ∈ [0, base]
+	for range 10 {
+		d := FullJitter(base)
+		if d < 0 || d > base {
+			t.Errorf("FullJitter out of range: %v", d)
+		}
+	}
+
+	// EqualJitter ∈ [base/2, base]
+	half := base / 2
+	for range 10 {
+		d := EqualJitter(base)
+		if d < half || d > base {
+			t.Errorf("EqualJitter out of range: %v", d)
+		}
 	}
 }
 
@@ -256,7 +251,6 @@ func TestSleepCtx_CancelMidSleep(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// schedule cancel after 30ms
 	go func() {
-		// advance clock by 30ms to trigger mid-sleep cancellation
 		fc.Sleep(30 * time.Millisecond)
 		cancel()
 	}()
@@ -289,7 +283,7 @@ func TestRetry_Concurrent(t *testing.T) {
 			_ = r.Retry(context.Background(), op, nil)
 		}()
 	}
-	// advance clock enough
+	// advance clock enough for all sleeps
 	fc.Sleep(100 * time.Millisecond)
 	wg.Wait()
 }
