@@ -189,3 +189,14 @@ func TestUseLogger_NilLogger_PassesThrough(t *testing.T) {
 		t.Error("UseLogger(nil) should return the original RoundTripper")
 	}
 }
+
+/********* Benchmark *********/
+
+func BenchmarkChain_NoMiddleware(b *testing.B) {
+	rt := Chain(http.DefaultTransport)
+	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rt.RoundTrip(req)
+	}
+}
