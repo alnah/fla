@@ -16,14 +16,14 @@ import (
 )
 
 // helper to wrap a function
-type roundTripperFunc func(*http.Request) (*http.Response, error)
+type roundTripperTest func(*http.Request) (*http.Response, error)
 
-func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+func (f roundTripperTest) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
 func TestAddHeader(t *testing.T) {
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		if got := req.Header.Get("X-Test"); got != "value" {
 			t.Errorf("expected header X-Test=value, got %q", got)
 		}
@@ -35,7 +35,7 @@ func TestAddHeader(t *testing.T) {
 }
 
 func TestChain_AddsMultipleHeaders(t *testing.T) {
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		if req.Header.Get("A") != "1" || req.Header.Get("B") != "2" {
 			t.Errorf("headers not chained: A=%q, B=%q", req.Header.Get("A"), req.Header.Get("B"))
 		}
@@ -59,7 +59,7 @@ func TestHTTPError_ErrorString(t *testing.T) {
 }
 
 func TestClassifyStatus_PassThrough(t *testing.T) {
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString("ok"))}, nil
 	})
 
@@ -81,7 +81,7 @@ func TestClassifyStatus_ErrorWithRetryAfterSeconds(t *testing.T) {
 	apiErr.Error.Message = "msg"
 	b, _ := json.Marshal(apiErr)
 
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		headers := http.Header{"Retry-After": {"5"}}
 		return &http.Response{StatusCode: 429, Header: headers, Body: io.NopCloser(bytes.NewReader(b))}, nil
 	})
@@ -110,7 +110,7 @@ func TestClassifyStatus_ErrorWithRetryAfterHTTPDate(t *testing.T) {
 	apiErr.Error.Message = "m"
 	b, _ := json.Marshal(apiErr)
 
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		headers := http.Header{"Retry-After": {datestr}}
 		return &http.Response{StatusCode: 500, Header: headers, Body: io.NopCloser(bytes.NewReader(b))}, nil
 	})
@@ -130,7 +130,7 @@ func TestClassifyStatus_ErrorWithRetryAfterHTTPDate(t *testing.T) {
 
 func TestUseCircuitBreaker_TripsAndBlocks(t *testing.T) {
 	// underlying always errors
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return nil, errors.New("fail")
 	})
 	b := breaker.New(
@@ -155,7 +155,7 @@ func TestUseCircuitBreaker_TripsAndBlocks(t *testing.T) {
 func TestUseRetrier_RetriesOnError(t *testing.T) {
 	count := 0
 
-	next := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		count++
 		if count < 3 {
 			return nil, errors.New("retry")
