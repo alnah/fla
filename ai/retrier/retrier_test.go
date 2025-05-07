@@ -293,3 +293,19 @@ func TestRetry_Concurrent(t *testing.T) {
 	fc.Sleep(100 * time.Millisecond)
 	wg.Wait()
 }
+
+/********* Benchmark *********/
+
+func BenchmarkRetrier_Retry_Success(b *testing.B) {
+	r := New(
+		WithBaseDelay(1*time.Nanosecond),
+		WithJitter(NoJitter),
+		WithClock(clock.New()),
+	)
+	ctx := context.Background()
+	op := func(context.Context) error { return nil }
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = r.Retry(ctx, op, nil)
+	}
+}
