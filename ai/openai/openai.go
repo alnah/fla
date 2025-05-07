@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -22,7 +20,7 @@ import (
 )
 
 const (
-	apiKeyFromEnv = "OPENAI_API_KEY"
+	apiKeyFromEnv = "OPENAI_API_KEY" // #nosec G101: this is only the ENV var name, not a secret
 	gateway       = "https://api.openai.com/v1/"
 	pathChat      = "chat/completions"
 	pathTTS       = "audio/speech"
@@ -215,7 +213,7 @@ func (c *Chat) Completion() (completion, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var apiErr ai.APIError
+		var apiErr transport.APIError
 		_ = json.Unmarshal(byt, &apiErr)
 
 		return completion{}, &transport.HTTPError{
@@ -350,7 +348,7 @@ func (t *TTS) Audio() ([]byte, error) {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var apiErr ai.APIError
+		var apiErr transport.APIError
 		_ = json.Unmarshal(byt, &apiErr)
 
 		return nil, &transport.HTTPError{
@@ -522,39 +520,18 @@ func (s *STT) Transcript() (transcript, error) {
 	return body, nil
 }
 
-type errType string
-
 const (
-	errRateLimited errType = "rate_limited"
-	errServer      errType = "server_error"
-	errTimeout     errType = "timeout_error"
-	errUnavailable errType = "unavailable"
+	errRateLimited transport.ErrType = "rate_limited"
+	errServer      transport.ErrType = "server_error"
+	errTimeout     transport.ErrType = "timeout_error"
+	errUnavailable transport.ErrType = "unavailable"
 )
 
-var retryable = map[errType]struct{}{
+var retryable = map[transport.ErrType]struct{}{
 	errRateLimited: {},
 	errServer:      {},
 	errTimeout:     {},
 	errUnavailable: {},
 }
 
-func isRetryable(err error) bool {
-	// HTTP classifier
-	var e *transport.HTTPError
-	if errors.As(err, &e) {
-		_, ok := retryable[errType(e.Type)]
-		return ok
-	}
-
-	// context
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		return false
-	}
-
-	// network
-	var n net.Error
-	if errors.As(err, &n) {
-		return n.Timeout()
-	}
-	return false
-}
+var isRetryable = transport.NewRetryClassifier(retryable)

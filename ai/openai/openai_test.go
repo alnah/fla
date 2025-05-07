@@ -235,7 +235,7 @@ func TestChatCompletion_HTTPClientError(t *testing.T) {
 }
 
 func TestChatCompletion_HTTPErrorStatus(t *testing.T) {
-	apiErr := ai.APIError{}
+	apiErr := transport.APIError{}
 	apiErr.Error.Type = "type"
 	apiErr.Error.Code = "code"
 	apiErr.Error.Message = "msg"

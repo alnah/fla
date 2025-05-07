@@ -19,12 +19,3 @@ type Message struct {
 	Role    Role   `json:"role"`
 	Content string `json:"content"`
 }
-
-// APIError represents a common OpenAPI compliant API error.
-type APIError struct {
-	Error struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    string `json:"code"`
-	} `json:"error"`
-}

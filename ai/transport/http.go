@@ -4,34 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/clog"
 )
-
-// HTTPError represents an HTTP response classified as an error,
-// carrying status, API error details, and any Retry-After hint.
-type HTTPError struct {
-	Status     int           // HTTP status code
-	Type       string        // API error type
-	Code       string        // API error code
-	Message    string        // API error message
-	RetryAfter time.Duration // suggested wait before retrying
-}
-
-func (e *HTTPError) Error() string {
-	return fmt.Sprintf(
-		"HTTPError: status=%d, type=%s, code=%s, message=%s",
-		e.Status, e.Type, e.Code, e.Message,
-	)
-}
 
 type transport func(next http.RoundTripper) http.RoundTripper
 
@@ -77,7 +61,7 @@ func ClassifyStatus(next http.RoundTripper) http.RoundTripper {
 			_ = res.Body.Close()
 			res.Body = io.NopCloser(bytes.NewReader(body)) // allow higher layers to inspect
 
-			var apiErr ai.APIError
+			var apiErr APIError
 			_ = json.Unmarshal(body, &apiErr)
 
 			var ra time.Duration
@@ -170,5 +154,56 @@ func UseLogger(log *clog.Logger) transport {
 
 			return res, nil
 		})
+	}
+}
+
+// APIError represents a common API error compliant with OpenAI, and Anthropic.
+type APIError struct {
+	Error struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+		Code    string `json:"code"`
+	} `json:"error"`
+}
+
+// HTTPError represents an HTTP response classified as an error, carrying status,
+// API error details, and any Retry-After hint.
+type HTTPError struct {
+	Status     int           // HTTP status code
+	Type       string        // API error type
+	Code       string        // API error code
+	Message    string        // API error message
+	RetryAfter time.Duration // suggested wait before retrying
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf(
+		"HTTPError: status=%d, type=%s, code=%s, message=%s",
+		e.Status, e.Type, e.Code, e.Message,
+	)
+}
+
+type ErrType string
+
+func NewRetryClassifier(retryable map[ErrType]struct{}) func(error) bool {
+	return func(err error) bool {
+		// HTTP classifier
+		var e *HTTPError
+		if errors.As(err, &e) {
+			_, ok := retryable[ErrType(e.Type)]
+			return ok
+		}
+
+		// context
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return false
+		}
+
+		// network
+		var n net.Error
+		if errors.As(err, &n) {
+			return n.Timeout()
+		}
+		return false
 	}
 }

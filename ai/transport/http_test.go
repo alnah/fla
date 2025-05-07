@@ -2,25 +2,41 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/clock"
 	"github.com/alnah/fla/ai/retrier"
 )
 
-// helper to wrap a function
+/********* Helpers *********/
+
 type roundTripperTest func(*http.Request) (*http.Response, error)
 
 func (f roundTripperTest) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
+
+type timeoutErr struct{}
+
+func (timeoutErr) Error() string   { return "timeout error" }
+func (timeoutErr) Timeout() bool   { return true }
+func (timeoutErr) Temporary() bool { return false }
+
+type temporaryErr struct{}
+
+func (temporaryErr) Error() string   { return "temporary error" }
+func (temporaryErr) Timeout() bool   { return false }
+func (temporaryErr) Temporary() bool { return true }
+
+/********* Tests *********/
 
 func TestAddHeader(t *testing.T) {
 	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
@@ -75,7 +91,7 @@ func TestClassifyStatus_PassThrough(t *testing.T) {
 }
 
 func TestClassifyStatus_ErrorWithRetryAfterSeconds(t *testing.T) {
-	apiErr := ai.APIError{}
+	apiErr := APIError{}
 	apiErr.Error.Type = "type"
 	apiErr.Error.Code = "code"
 	apiErr.Error.Message = "msg"
@@ -104,7 +120,7 @@ func TestClassifyStatus_ErrorWithRetryAfterSeconds(t *testing.T) {
 func TestClassifyStatus_ErrorWithRetryAfterHTTPDate(t *testing.T) {
 	future := time.Now().Add(3 * time.Second).UTC()
 	datestr := future.Format(http.TimeFormat)
-	apiErr := ai.APIError{}
+	apiErr := APIError{}
 	apiErr.Error.Type = "t"
 	apiErr.Error.Code = "c"
 	apiErr.Error.Message = "m"
@@ -187,6 +203,74 @@ func TestUseLogger_NilLogger_PassesThrough(t *testing.T) {
 	rt := UseLogger(nil)(next)
 	if rt != next {
 		t.Error("UseLogger(nil) should return the original RoundTripper")
+	}
+}
+
+func TestNewRetryClassifier(t *testing.T) {
+	tests := []struct {
+		name      string
+		retryable map[ErrType]struct{}
+		err       error
+		want      bool
+	}{
+		{
+			name:      "HTTPError retryable",
+			retryable: map[ErrType]struct{}{"foo": {}},
+			err:       &HTTPError{Type: "foo"},
+			want:      true,
+		},
+		{
+			name:      "HTTPError not retryable",
+			retryable: map[ErrType]struct{}{"other": {}},
+			err:       &HTTPError{Type: "foo"},
+			want:      false,
+		},
+		{
+			name:      "wrapped HTTPError retryable",
+			retryable: map[ErrType]struct{}{"bar": {}},
+			err:       fmt.Errorf("wrapped: %w", &HTTPError{Type: "bar"}),
+			want:      true,
+		},
+		{
+			name:      "context canceled",
+			retryable: map[ErrType]struct{}{"foo": {}},
+			err:       context.Canceled,
+			want:      false,
+		},
+		{
+			name:      "context deadline",
+			retryable: map[ErrType]struct{}{"foo": {}},
+			err:       context.DeadlineExceeded,
+			want:      false,
+		},
+		{
+			name:      "net timeout error",
+			retryable: map[ErrType]struct{}{"irrelevant": {}},
+			err:       timeoutErr{},
+			want:      true,
+		},
+		{
+			name:      "net non-timeout error",
+			retryable: nil,
+			err:       temporaryErr{},
+			want:      false,
+		},
+		{
+			name:      "other random error",
+			retryable: map[ErrType]struct{}{"foo": {}},
+			err:       errors.New("random"),
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			classifier := NewRetryClassifier(tt.retryable)
+			got := classifier(tt.err)
+			if got != tt.want {
+				t.Errorf("%s: got %v, want %v", tt.name, got, tt.want)
+			}
+		})
 	}
 }
 
