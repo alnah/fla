@@ -90,6 +90,7 @@ type Chat struct {
 	MaxCompletionTokens int          `json:"max_completion_tokens,omitempty"`
 	Temperature         float32      `json:"temperature,omitempty"`
 	*Base
+	systemOnce sync.Once
 }
 
 // GetBase satisfies hasBase interface to use shared options.
@@ -126,6 +127,17 @@ func NewChat(opts ...option[*Chat]) *Chat {
 	return c
 }
 
+// SetSystem guides the model with general instructions.
+func (c *Chat) SetSystem(instructions string) *Chat {
+	c.systemOnce.Do(func() {
+		c.Messages = append(c.Messages, ai.Message{
+			Role:    ai.RoleSystem,
+			Content: instructions,
+		})
+	})
+	return c
+}
+
 // AddMessage appends a new role/content pair to the conversation history.
 // It returns the same chat to enable fluent chaining.
 func (c *Chat) AddMessage(role ai.Role, content string) *Chat {
@@ -134,30 +146,6 @@ func (c *Chat) AddMessage(role ai.Role, content string) *Chat {
 		Content: content,
 	})
 	return c
-}
-
-type chatChoice struct {
-	Message chatMessage `json:"message"`
-}
-
-type chatMessage struct {
-	Role    string  `json:"role"`
-	Content string  `json:"content"`
-	Refusal *string `json:"refusal,omitempty"`
-}
-
-type completion struct {
-	ID      string       `json:"id"`
-	Choices []chatChoice `json:"choices"`
-}
-
-// Content extracts the main text of the first choice, or returns empty
-// if no content is available.
-func (res *completion) Content() string {
-	if len(res.Choices) == 0 || res.Choices[0].Message.Content == "" {
-		return ""
-	}
-	return res.Choices[0].Message.Content
 }
 
 // OpenAICompletionError indicates a request failure due to invalid input
@@ -169,67 +157,61 @@ func (e *OpenAICompletionError) Error() string {
 }
 
 // Completion sends the assembled chat request to the OpenAI API.
-func (c *Chat) Completion() (completion, error) {
+func (c *Chat) Completion() (ai.Completion, error) {
 	if len(c.Messages) == 0 {
-		return completion{}, &OpenAICompletionError{message: "messages required"}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "messages required", nil)
 	}
 
 	byt, err := json.Marshal(c)
 	if err != nil {
-		return completion{}, &OpenAICompletionError{message: fmt.Sprintf("failed to marshal chat: %v", err)}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to marshal payload", err)
 	}
 
-	req, err := http.NewRequestWithContext(c.Base.ctx, c.Base.method, c.Base.url, bytes.NewBuffer(byt))
+	req, err := http.NewRequestWithContext(c.ctx, c.method, c.url, bytes.NewBuffer(byt))
 	if err != nil {
-		return completion{}, &OpenAICompletionError{message: fmt.Sprintf("failed to create request: %v", err)}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to build http request", err)
 	}
 
-	c.Base.transportOnce.Do(func() {
-		orig := c.Base.hc.Transport
+	c.transportOnce.Do(func() {
+		orig := c.hc.Transport
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		c.Base.hc.Transport = transport.Chain(
+		c.hc.Transport = transport.Chain(
 			orig,
 			transport.AddHeader("Content-Type", "application/json"),
 			transport.AddHeader("Authorization", "Bearer "+c.Base.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.ClassifyStatus,
+			transport.ClassifyStatus(ai.ProviderOpenAI),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(c.Base.log),
 		)
 	})
 
-	res, err := c.Base.hc.Do(req)
+	res, err := c.hc.Do(req)
 	if err != nil {
-		return completion{}, &OpenAICompletionError{message: fmt.Sprintf("failed to send HTTP request: %v", err)}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	if err != nil {
-		return completion{}, &OpenAICompletionError{message: fmt.Sprintf("failed to read response body: %v", err)}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var apiErr transport.APIError
-		_ = json.Unmarshal(byt, &apiErr)
-
-		return completion{}, &transport.HTTPError{
-			Status:  res.StatusCode,
-			Type:    apiErr.Error.Type,
-			Code:    apiErr.Error.Code,
-			Message: apiErr.Error.Message,
-		}
+		var err transport.HTTPError
+		_ = json.Unmarshal(byt, &err)
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to perform http request", &err)
 	}
 
-	var body completion
-	if err = json.Unmarshal(byt, &body); err != nil {
-		return completion{}, &OpenAICompletionError{message: fmt.Sprintf("failed to unmarshal response body: %v", err)}
+	var completion ai.Completion
+	if err = json.Unmarshal(byt, &completion); err != nil {
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to unmarshal response body", err)
 	}
 
-	return body, nil
+	return completion, nil
 }
 
 type voice string
@@ -306,57 +288,51 @@ func (e *OpenAIAudioError) Error() string {
 // Audio sends the TTS request and returns the synthesized audio bytes.
 func (t *TTS) Audio() ([]byte, error) {
 	if t.Input == "" {
-		return nil, &OpenAIAudioError{message: "text input required"}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "text input required", nil)
 	}
 
 	byt, err := json.Marshal(t)
 	if err != nil {
-		return nil, &OpenAIAudioError{message: fmt.Sprintf("failed to marshal tts: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to marshal payload", err)
 	}
 
-	req, err := http.NewRequestWithContext(t.Base.ctx, t.Base.method, t.Base.url, bytes.NewBuffer(byt))
+	req, err := http.NewRequestWithContext(t.ctx, t.method, t.url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, &OpenAIAudioError{message: fmt.Sprintf("failed to create request: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to build http request", err)
 	}
 
-	t.Base.transportOnce.Do(func() {
-		orig := t.Base.hc.Transport
+	t.transportOnce.Do(func() {
+		orig := t.hc.Transport
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		t.Base.hc.Transport = transport.Chain(
+		t.hc.Transport = transport.Chain(
 			orig,
 			transport.AddHeader("Content-Type", "application/json"),
-			transport.AddHeader("Authorization", "Bearer "+t.Base.apiKey),
+			transport.AddHeader("xi-api-key", t.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.ClassifyStatus,
+			transport.ClassifyStatus(ai.ProviderOpenAI),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
-			transport.UseLogger(t.Base.log),
+			transport.UseLogger(t.log),
 		)
 	})
 
-	res, err := t.Base.hc.Do(req)
+	res, err := t.hc.Do(req)
 	if err != nil {
-		return nil, &OpenAIAudioError{message: fmt.Sprintf("failed to send HTTP request: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, &OpenAIAudioError{message: fmt.Sprintf("failed to read response body: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var apiErr transport.APIError
-		_ = json.Unmarshal(byt, &apiErr)
-
-		return nil, &transport.HTTPError{
-			Status:  res.StatusCode,
-			Type:    apiErr.Error.Type,
-			Code:    apiErr.Error.Code,
-			Message: apiErr.Error.Message,
-		}
+		var err transport.HTTPError
+		_ = json.Unmarshal(byt, &err)
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "http request failed", &err)
 	}
 
 	return byt, nil
@@ -407,12 +383,6 @@ func (e *OpenAITranscriptError) Error() string {
 	return fmt.Sprintf("OpenAITranscriptError: %s", e.message)
 }
 
-type transcript struct {
-	Text string `json:"text"`
-}
-
-func (t transcript) Content() string { return t.Text }
-
 type fileFmt string
 
 const (
@@ -429,15 +399,15 @@ const (
 
 // Transcript sends the Speech-to-Text request and return the transcription.
 // It assembles the request with a multipart form-data.
-func (s *STT) Transcript() (transcript, error) {
+func (s *STT) Transcript() (ai.Transcription, error) {
 	if s.File == nil {
-		return transcript{}, &OpenAITranscriptError{message: "file required"}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "file required", nil)
 	}
 	if s.FilePath == "" {
-		return transcript{}, &OpenAITranscriptError{message: "filepath required"}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "filepath required", nil)
 	}
 	if s.Language == "" {
-		return transcript{}, &OpenAITranscriptError{message: "source language required"}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "source language required", nil)
 	}
 
 	bodyBuf := &bytes.Buffer{}
@@ -446,43 +416,28 @@ func (s *STT) Transcript() (transcript, error) {
 
 	part, err := multipartWriter.CreateFormFile("file", s.FilePath)
 	if err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to create form file for path %q: %v", s.FilePath, err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, fmt.Sprintf("failed to create form file for path: %q", s.FilePath), err)
 	}
 	if _, err := s.File.Seek(0, io.SeekStart); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to seek file to file for path %q to start: %v", s.FilePath, err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, fmt.Sprintf("failed to seek file for path %q to start", s.FilePath), err)
 	}
 	if _, err := io.Copy(part, s.File); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to copy file contents to multipart writer for path %q: %v", s.FilePath, err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, fmt.Sprintf("failed to copy file contents to multipart writer for path %q", s.FilePath), err)
 	}
 	if err := multipartWriter.WriteField("model", s.Base.Model.String()); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to write 'model' field to multipart body: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to write model field to multipart body", err)
 	}
 
 	if err := multipartWriter.WriteField("language", s.Language); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to write 'language' field to multipart body: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to write language field to multipart body", err)
 	}
-
 	if err := multipartWriter.Close(); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to finalize multipart body writer: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to finalize multipart body writer", err)
 	}
 
 	req, err := http.NewRequestWithContext(s.Base.ctx, s.method, s.url, bodyBuf)
 	if err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to create HTTP request: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to build http request", err)
 	}
 
 	s.Base.transportOnce.Do(func() {
@@ -495,7 +450,7 @@ func (s *STT) Transcript() (transcript, error) {
 			transport.AddHeader("Content-Type", multipartWriter.FormDataContentType()),
 			transport.AddHeader("Authorization", "Bearer "+s.Base.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.ClassifyStatus,
+			transport.ClassifyStatus(ai.ProviderOpenAI),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(s.Base.log),
@@ -504,17 +459,13 @@ func (s *STT) Transcript() (transcript, error) {
 
 	res, err := s.Base.hc.Do(req)
 	if err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to send HTTP request: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	var body transcript
+	var body ai.Transcription
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-		return transcript{}, &OpenAITranscriptError{
-			message: fmt.Sprintf("failed to decode response body: %v", err),
-		}
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to decode response body", err)
 	}
 
 	return body, nil

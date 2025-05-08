@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/ai/transport"
@@ -113,17 +114,17 @@ func (e *ElevenLabsAudioError) Error() string {
 // Audio sends the TTS request and returns the synthesized audio bytes.
 func (t *TTS) Audio() ([]byte, error) {
 	if t.Input == "" {
-		return nil, &ElevenLabsAudioError{message: "text input required"}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "text input required", nil)
 	}
 
 	byt, err := json.Marshal(t)
 	if err != nil {
-		return nil, &ElevenLabsAudioError{message: fmt.Sprintf("failed to marshal tts: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to marshal payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(t.ctx, t.method, t.url+t.voice.String(), bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, &ElevenLabsAudioError{message: fmt.Sprintf("failed to create request: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to build http request", err)
 	}
 
 	t.transportOnce.Do(func() {
@@ -136,7 +137,7 @@ func (t *TTS) Audio() ([]byte, error) {
 			transport.AddHeader("Content-Type", "application/json"),
 			transport.AddHeader("xi-api-key", t.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.ClassifyStatus,
+			transport.ClassifyStatus(ai.ProviderElevenLabs),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(t.log),
@@ -145,33 +146,20 @@ func (t *TTS) Audio() ([]byte, error) {
 
 	res, err := t.hc.Do(req)
 	if err != nil {
-		return nil, &ElevenLabsAudioError{message: fmt.Sprintf("failed to send HTTP request: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, &ElevenLabsAudioError{message: fmt.Sprintf("failed to read response body: %v", err)}
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		type apiErr struct {
-			Error struct {
-				Type    string `json:"status"`
-				Message string `json:"message"`
-			} `json:"detail"`
-		}
-
-		var e apiErr
-		_ = json.Unmarshal(byt, &e)
-
-		return nil, &transport.HTTPError{
-			Status:  res.StatusCode,
-			Type:    e.Error.Type,
-			Message: e.Error.Message,
-		}
+		var err transport.HTTPError
+		_ = json.Unmarshal(byt, &err)
+		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "http request failed", &err)
 	}
-
 	return byt, nil
 }
 

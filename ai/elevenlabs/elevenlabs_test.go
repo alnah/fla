@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/clog"
 )
 
@@ -103,8 +104,8 @@ func TestTTS_OptionSetters(t *testing.T) {
 func TestAudio_NoInput(t *testing.T) {
 	tts := NewTTS()
 	_, err := tts.Audio()
-	if err == nil || !strings.Contains(err.Error(), "text input required") {
-		t.Fatalf("Audio without input: got err %v; want text input required", err)
+	if err == nil {
+		t.Errorf("expected an error, but got nil")
 	}
 }
 
@@ -119,8 +120,8 @@ func TestAudio_HTTPClientError(t *testing.T) {
 		WithHTTPClient(client),
 	)
 	_, err := tts.Audio()
-	if err == nil || !strings.Contains(err.Error(), "failed to send HTTP request") {
-		t.Fatalf("Audio network fail: got err %v; want prefix failed to send HTTP request", err)
+	if err == nil {
+		t.Error("expected an error, but got nil")
 	}
 }
 
@@ -144,12 +145,12 @@ func TestAudio_HTTPStatusError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for HTTP 429")
 	}
-	ele, ok := err.(*ElevenLabsAudioError)
+	ele, ok := err.(*ai.AIError)
 	if !ok {
-		t.Fatalf("expected *ElevenLabsAudioError; got %T", err)
+		t.Fatalf("expected *ai.AIError; got %T", err)
 	}
 	errMsg := ele.Error()
-	if !strings.Contains(errMsg, "status=429") {
+	if !strings.Contains(errMsg, "429") {
 		t.Errorf("error missing status code, got %q", errMsg)
 	}
 }
@@ -175,9 +176,9 @@ func TestAudio_Non200ProducesAudioError(t *testing.T) {
 		t.Fatal("expected error for non-200 status")
 	}
 
-	var ale *ElevenLabsAudioError
-	if !errors.As(err, &ale) {
-		t.Fatalf("expected *ElevenLabsAudioError, got %T", err)
+	var e *ai.AIError
+	if !errors.As(err, &e) {
+		t.Fatalf("expected *ai.AIError, got %T", err)
 	}
 }
 

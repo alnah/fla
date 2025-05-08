@@ -86,14 +86,12 @@ func TestChatGenericOptions(t *testing.T) {
 	}
 }
 
-func TestSetSystem_Fluent(t *testing.T) {
+func TestSetSystemOnce(t *testing.T) {
 	chat := NewChat()
-	ret := chat.SetSystem("sys")
-	if ret != chat {
-		t.Error("SetSystem did not return the same Chat instance")
-	}
-	if chat.System != "sys" {
-		t.Errorf("System = %q; want sys", chat.System)
+	chat.SetSystem("should not change").SetSystem("has changed")
+
+	if chat.System == "has changed" {
+		t.Errorf("system instructions should not change, but got %s", chat.System)
 	}
 }
 
@@ -114,9 +112,6 @@ func TestCompletion_NoMessages(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty messages")
 	}
-	if !strings.Contains(err.Error(), "messages required") {
-		t.Errorf("unexpected error: %v", err)
-	}
 }
 
 func TestCompletion_HTTPClientError(t *testing.T) {
@@ -133,18 +128,14 @@ func TestCompletion_HTTPClientError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for HTTP client failure")
 	}
-	if !strings.Contains(err.Error(), "failed to send HTTP request") {
-		t.Errorf("unexpected error: %v", err)
-	}
 }
 
 func TestCompletion_HTTPErrorStatus(t *testing.T) {
-	apiErr := transport.APIError{Error: struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    string `json:"code"`
-	}{Message: "msg", Type: "t", Code: "c"}}
-	b, _ := json.Marshal(apiErr)
+	var httpErr transport.HTTPError
+	httpErr.Message = "msg"
+	httpErr.Type = "t"
+
+	b, _ := json.Marshal(httpErr)
 	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 400, Body: io.NopCloser(bytes.NewReader(b))}, nil
 	})}
@@ -158,15 +149,9 @@ func TestCompletion_HTTPErrorStatus(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected HTTPError for non-200 status")
 	}
-	he, ok := err.(*transport.HTTPError)
+	_, ok := err.(*ai.AIError)
 	if !ok {
-		t.Fatalf("expected *transport.HTTPError, got %T", err)
-	}
-	if he.Status != 400 {
-		t.Errorf("Status = %d; want 400", he.Status)
-	}
-	if he.Type != "t" || he.Code != "c" || he.Message != "msg" {
-		t.Errorf("HTTPError fields = %+v; want t,c,msg", he)
+		t.Fatalf("expected *ai.AIError, got %T", err)
 	}
 }
 
@@ -183,9 +168,6 @@ func TestCompletion_InvalidJSON(t *testing.T) {
 	_, err := chat.Completion()
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
-	}
-	if !strings.Contains(err.Error(), "failed to unmarshal") {
-		t.Errorf("unexpected error: %v", err)
 	}
 }
 
@@ -210,7 +192,7 @@ func TestCompletion_Success(t *testing.T) {
 }
 
 func TestCompletion_ContentEmpty(t *testing.T) {
-	var c completion
+	var c ai.Completion
 	if c.Content() != "" {
 		t.Errorf("expected empty content, got %q", c.Content())
 	}

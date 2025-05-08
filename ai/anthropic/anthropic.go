@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -79,6 +78,7 @@ type Chat struct {
 	log           *clog.Logger
 	ctx           context.Context
 	transportOnce sync.Once
+	systemOnce    sync.Once
 	version       string
 	apiKey        string
 	method        string
@@ -106,7 +106,9 @@ func NewChat(opts ...option) *Chat {
 
 // SetSystem guides the model with general instructions.
 func (c *Chat) SetSystem(instructions string) *Chat {
-	c.System = instructions
+	c.systemOnce.Do(func() {
+		c.System = instructions
+	})
 	return c
 }
 
@@ -120,51 +122,20 @@ func (c *Chat) AddMessage(role ai.Role, content string) *Chat {
 	return c
 }
 
-type content struct {
-	Text string `json:"text"`
-	Type string `json:"type"`
-}
-
-type completion struct {
-	Result []content `json:"content"`
-	ID     string    `json:"id"`
-}
-
-// Content extracts the main text of the first choice, or returns empty
-// if no content is available.
-func (res *completion) Content() string {
-	if len(res.Result) == 0 || res.Result[0].Text == "" {
-		return ""
-	}
-	return res.Result[0].Text
-}
-
-// AnthropicCompletionError indicates a request failure due to invalid input
-// or an API-side error, preserving the descriptive error message.
-type AnthropicCompletionError struct{ message string }
-
-func (e *AnthropicCompletionError) Error() string {
-	return fmt.Sprintf("AnthropicCompletionError: %s", e.message)
-}
-
 // Completion sends the assembled chat request to the Anthropic API.
-func (c *Chat) Completion() (completion, error) {
+func (c *Chat) Completion() (ai.Completion, error) {
 	if len(c.Messages) == 0 {
-		return completion{}, &AnthropicCompletionError{message: "messages required"}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "messages required", nil)
 	}
 
 	byt, err := json.Marshal(c)
 	if err != nil {
-		return completion{}, &AnthropicCompletionError{
-			message: fmt.Sprintf("failed to marshal chat: %v", err),
-		}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to marshal payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(c.ctx, c.method, c.url, bytes.NewBuffer(byt))
 	if err != nil {
-		return completion{}, &AnthropicCompletionError{
-			message: fmt.Sprintf("failed to create request: %v", err),
-		}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to build http request", err)
 	}
 
 	c.transportOnce.Do(func() {
@@ -178,7 +149,7 @@ func (c *Chat) Completion() (completion, error) {
 			transport.AddHeader("x-api-key", c.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
 			transport.AddHeader("anthropic-version", c.version),
-			transport.ClassifyStatus,
+			transport.ClassifyStatus(ai.ProviderAnthropic),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(c.log),
@@ -187,37 +158,27 @@ func (c *Chat) Completion() (completion, error) {
 
 	res, err := c.hc.Do(req)
 	if err != nil {
-		return completion{}, &AnthropicCompletionError{
-			message: fmt.Sprintf("failed to send HTTP request: %v", err),
-		}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to send http request", err)
 	}
-
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	if err != nil {
-		return completion{}, &AnthropicCompletionError{message: fmt.Sprintf("failed to read response body: %v", err)}
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var apiErr transport.APIError
-		_ = json.Unmarshal(byt, &apiErr)
-
-		return completion{}, &transport.HTTPError{
-			Status:  res.StatusCode,
-			Type:    apiErr.Error.Type,
-			Code:    apiErr.Error.Code,
-			Message: apiErr.Error.Message,
-		}
+		var err transport.HTTPError
+		_ = json.Unmarshal(byt, &err)
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "http request failed", &err)
 	}
 
-	var body completion
-	if err = json.Unmarshal(byt, &body); err != nil {
-		return completion{}, &AnthropicCompletionError{message: fmt.Sprintf("failed to unmarshal response body: %v", err)}
+	var completion ai.Completion
+	if err = json.Unmarshal(byt, &completion); err != nil {
+		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to unmarshal response body", err)
 	}
 
-	return body, nil
-
+	return completion, nil
 }
 
 const (
