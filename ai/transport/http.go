@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/clog"
@@ -46,44 +47,22 @@ func AddHeader(key, value string) transport {
 	}
 }
 
-// ClassifyStatus transforms HTTP 429 (Too Many Requests),
-// 409 (Conflict), 423 (Locked), and all 5xx responses into HTTPError,
-// extracting any Retry-After hint for downstream retry logic.
-// Treating 409 and 423 like 429 centralizes rate-limit handling.
-func ClassifyStatus(next http.RoundTripper) http.RoundTripper {
-	return roundTripper(func(req *http.Request) (*http.Response, error) {
-		res, err := next.RoundTrip(req)
-		if err != nil {
-			return nil, err
-		}
-		if res.StatusCode == 429 || res.StatusCode == 409 || res.StatusCode == 423 || res.StatusCode >= 500 {
-			body, _ := io.ReadAll(res.Body)
-			_ = res.Body.Close()
-			res.Body = io.NopCloser(bytes.NewReader(body)) // allow higher layers to inspect
-
-			var apiErr APIError
-			_ = json.Unmarshal(body, &apiErr)
-
-			var ra time.Duration
-			if h := res.Header.Get("Retry-After"); h != "" {
-				// RFC 9110: either integer seconds or HTTP-date
-				if sec, errConv := strconv.Atoi(h); errConv == nil {
-					ra = time.Duration(sec) * time.Second
-				} else if t, errTime := http.ParseTime(h); errTime == nil {
-					ra = time.Until(t)
-				}
+// ClassifyStatus wraps a RoundTripper, turning 429, 409, 423 or 5xx
+// into an HTTPError built by parseErrorResponse.
+func ClassifyStatus(provider ai.Provider) transport {
+	return func(next http.RoundTripper) http.RoundTripper {
+		return roundTripper(func(req *http.Request) (*http.Response, error) {
+			res, err := next.RoundTrip(req)
+			if err != nil {
+				return nil, err
 			}
-
-			return nil, &HTTPError{
-				Status:     res.StatusCode,
-				Type:       apiErr.Error.Type,
-				Code:       apiErr.Error.Code,
-				Message:    apiErr.Error.Message,
-				RetryAfter: ra,
+			if res.StatusCode == 429 || res.StatusCode == 409 ||
+				res.StatusCode == 423 || res.StatusCode >= 500 {
+				return nil, parseErrorResponse(provider, res)
 			}
-		}
-		return res, nil
-	})
+			return res, nil
+		})
+	}
 }
 
 // UseCircuitBreaker wraps each request in a circuit breaker,
@@ -157,30 +136,74 @@ func UseLogger(log *clog.Logger) transport {
 	}
 }
 
-// APIError represents a common API error compliant with OpenAI, and Anthropic.
-type APIError struct {
-	Error struct {
-		Message string `json:"message"`
-		Type    string `json:"type"`
-		Code    string `json:"code"`
-	} `json:"error"`
-}
-
 // HTTPError represents an HTTP response classified as an error, carrying status,
 // API error details, and any Retry-After hint.
 type HTTPError struct {
-	Status     int           // HTTP status code
-	Type       string        // API error type
-	Code       string        // API error code
-	Message    string        // API error message
-	RetryAfter time.Duration // suggested wait before retrying
+	Provider   ai.Provider   // e.g. ai.ProviderOpenAI, ProviderAnthropic, ProviderElevenLabs
+	StatusCode int           // HTTP status code
+	Type       string        // error type from the payload
+	Message    string        // error message from the payload
+	RetryAfter time.Duration // parsed from Retry-After header, if any
 }
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf(
-		"HTTPError: status=%d, type=%s, code=%s, message=%s",
-		e.Status, e.Type, e.Code, e.Message,
+		"HTTP %d [%s] %s: %s",
+		e.StatusCode, e.Provider, e.Type, e.Message,
 	)
+}
+
+// parseErrorResponse reads and restores the body, then extracts
+// type/message according to the given provider.
+func parseErrorResponse(provider ai.Provider, res *http.Response) *HTTPError {
+	body, _ := io.ReadAll(res.Body)
+	_ = res.Body.Close()
+	res.Body = io.NopCloser(bytes.NewReader(body))
+
+	var typ, msg string
+	switch provider {
+	case ai.ProviderOpenAI, ai.ProviderAnthropic:
+		// {"error": { "type": "...", "message": "..." }}
+		var d struct {
+			Error struct {
+				Type    string `json:"type"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal(body, &d)
+		typ = d.Error.Type
+		msg = d.Error.Message
+
+	case ai.ProviderElevenLabs:
+		// {"detail": { "status": "...", "message": "..." }}
+		var d struct {
+			Detail struct {
+				Status  string `json:"status"`
+				Message string `json:"message"`
+			} `json:"detail"`
+		}
+		_ = json.Unmarshal(body, &d)
+		typ = d.Detail.Status
+		msg = d.Detail.Message
+	}
+
+	// parse Retry-After header (seconds or HTTP-date)
+	var ra time.Duration
+	if h := res.Header.Get("Retry-After"); h != "" {
+		if sec, err := strconv.Atoi(h); err == nil {
+			ra = time.Duration(sec) * time.Second
+		} else if t, err := http.ParseTime(h); err == nil {
+			ra = time.Until(t)
+		}
+	}
+
+	return &HTTPError{
+		Provider:   provider,
+		StatusCode: res.StatusCode,
+		Type:       typ,
+		Message:    msg,
+		RetryAfter: ra,
+	}
 }
 
 type ErrType string
