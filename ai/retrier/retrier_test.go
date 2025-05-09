@@ -246,21 +246,20 @@ func TestRetry_ContextAlreadyCancelled(t *testing.T) {
 }
 
 func TestSleepCtx_CancelMidSleep(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
-	r := New(WithClock(fc))
+	r := New()
 	ctx, cancel := context.WithCancel(context.Background())
 	// schedule cancel after 30ms
 	go func() {
-		fc.Sleep(30 * time.Millisecond)
+		time.Sleep(30 * time.Millisecond)
 		cancel()
 	}()
-	start := fc.Now()
+	start := time.Now()
 	err := r.sleepCtx(ctx, 100*time.Millisecond)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("sleepCtx returned %v, want context.Canceled", err)
 	}
-	if fc.Now().Sub(start) >= 100*time.Millisecond {
-		t.Errorf("sleepCtx did not stop early, waited %v", fc.Now().Sub(start))
+	if dur := time.Since(start); dur >= 100*time.Millisecond {
+		t.Fatalf("sleepCtx dit not stop early, waited %v", dur)
 	}
 }
 
