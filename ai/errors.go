@@ -91,6 +91,8 @@ func NewHTTPError(provider Provider, res *http.Response) *HTTPError {
 
 type ErrType string
 
+func (et ErrType) String() string { return string(et) }
+
 func NewRetryClassifier(retryable map[ErrType]struct{}) func(error) bool {
 	return func(err error) bool {
 		// HTTP classifier
