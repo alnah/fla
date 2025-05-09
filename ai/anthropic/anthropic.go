@@ -163,14 +163,14 @@ func (c *Chat) Completion() (ai.Completion, error) {
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
 		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var err transport.HTTPError
-		_ = json.Unmarshal(byt, &err)
-		return ai.Completion{}, ai.NewChatError(ai.ProviderAnthropic, "http request failed", &err)
+		httpErr := ai.NewHTTPError(ai.ProviderOpenAI, res)
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "http request failed", httpErr)
 	}
 
 	var completion ai.Completion
@@ -182,15 +182,15 @@ func (c *Chat) Completion() (ai.Completion, error) {
 }
 
 const (
-	errRateLimited transport.ErrType = "rate_limit_error"
-	errAPI         transport.ErrType = "api_error"
-	errOverloaded  transport.ErrType = "overloaded_error"
+	errRateLimited ai.ErrType = "rate_limit_error"
+	errAPI         ai.ErrType = "api_error"
+	errOverloaded  ai.ErrType = "overloaded_error"
 )
 
-var retryable = map[transport.ErrType]struct{}{
+var retryable = map[ai.ErrType]struct{}{
 	errRateLimited: {},
 	errAPI:         {},
 	errOverloaded:  {},
 }
 
-var isRetryable = transport.NewRetryClassifier(retryable)
+var isRetryable = ai.NewRetryClassifier(retryable)

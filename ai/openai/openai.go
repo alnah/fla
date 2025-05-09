@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -148,14 +149,6 @@ func (c *Chat) AddMessage(role ai.Role, content string) *Chat {
 	return c
 }
 
-// OpenAICompletionError indicates a request failure due to invalid input
-// or an API-side error, preserving the descriptive error message.
-type OpenAICompletionError struct{ message string }
-
-func (e *OpenAICompletionError) Error() string {
-	return fmt.Sprintf("OpenAICompletionError: %s", e.message)
-}
-
 // Completion sends the assembled chat request to the OpenAI API.
 func (c *Chat) Completion() (ai.Completion, error) {
 	if len(c.Messages) == 0 {
@@ -196,14 +189,14 @@ func (c *Chat) Completion() (ai.Completion, error) {
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
 		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var err transport.HTTPError
-		_ = json.Unmarshal(byt, &err)
-		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "failed to perform http request", &err)
+		httpErr := ai.NewHTTPError(ai.ProviderOpenAI, res)
+		return ai.Completion{}, ai.NewChatError(ai.ProviderOpenAI, "http request failed", httpErr)
 	}
 
 	var completion ai.Completion
@@ -288,17 +281,17 @@ func (e *OpenAIAudioError) Error() string {
 // Audio sends the TTS request and returns the synthesized audio bytes.
 func (t *TTS) Audio() ([]byte, error) {
 	if t.Input == "" {
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "text input required", nil)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "text input required", nil)
 	}
 
 	byt, err := json.Marshal(t)
 	if err != nil {
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to marshal payload", err)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "failed to marshal payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(t.ctx, t.method, t.url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to build http request", err)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "failed to build http request", err)
 	}
 
 	t.transportOnce.Do(func() {
@@ -309,7 +302,7 @@ func (t *TTS) Audio() ([]byte, error) {
 		t.hc.Transport = transport.Chain(
 			orig,
 			transport.AddHeader("Content-Type", "application/json"),
-			transport.AddHeader("xi-api-key", t.apiKey),
+			transport.AddHeader("Authorization", "Bearer "+t.Base.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
 			transport.ClassifyStatus(ai.ProviderOpenAI),
 			transport.UseCircuitBreaker(breaker.New()),
@@ -320,19 +313,19 @@ func (t *TTS) Audio() ([]byte, error) {
 
 	res, err := t.hc.Do(req)
 	if err != nil {
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to send http request", err)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to read response body", err)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var err transport.HTTPError
-		_ = json.Unmarshal(byt, &err)
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "http request failed", &err)
+		httpErr := ai.NewHTTPError(ai.ProviderOpenAI, res)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "http request failed", httpErr)
 	}
 
 	return byt, nil
@@ -463,6 +456,17 @@ func (s *STT) Transcript() (ai.Transcription, error) {
 	}
 	defer func() { _ = res.Body.Close() }()
 
+	byt, err := io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
+	if err != nil {
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to read response body", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		httpErr := ai.NewHTTPError(ai.ProviderOpenAI, res)
+		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "http request failed", httpErr)
+	}
+
 	var body ai.Transcription
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return ai.Transcription{}, ai.NewSTTError(ai.ProviderOpenAI, "failed to decode response body", err)
@@ -472,17 +476,17 @@ func (s *STT) Transcript() (ai.Transcription, error) {
 }
 
 const (
-	errRateLimited transport.ErrType = "rate_limited"
-	errServer      transport.ErrType = "server_error"
-	errTimeout     transport.ErrType = "timeout_error"
-	errUnavailable transport.ErrType = "unavailable"
+	errRateLimited ai.ErrType = "rate_limited"
+	errServer      ai.ErrType = "server_error"
+	errTimeout     ai.ErrType = "timeout_error"
+	errUnavailable ai.ErrType = "unavailable"
 )
 
-var retryable = map[transport.ErrType]struct{}{
+var retryable = map[ai.ErrType]struct{}{
 	errRateLimited: {},
 	errServer:      {},
 	errTimeout:     {},
 	errUnavailable: {},
 }
 
-var isRetryable = transport.NewRetryClassifier(retryable)
+var isRetryable = ai.NewRetryClassifier(retryable)

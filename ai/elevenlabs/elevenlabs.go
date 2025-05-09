@@ -151,26 +151,27 @@ func (t *TTS) Audio() ([]byte, error) {
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
 		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "failed to read response body", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		var err transport.HTTPError
-		_ = json.Unmarshal(byt, &err)
-		return nil, ai.NewTTSError(ai.ProviderElevenLabs, "http request failed", &err)
+		httpErr := ai.NewHTTPError(ai.ProviderOpenAI, res)
+		return nil, ai.NewTTSError(ai.ProviderOpenAI, "http request failed", httpErr)
 	}
+
 	return byt, nil
 }
 
 const (
-	errTooManyConcurrentRequests transport.ErrType = "too_many_concurrent_requests"
-	errSystemBusy                transport.ErrType = "system_busy"
+	errTooManyConcurrentRequests ai.ErrType = "too_many_concurrent_requests"
+	errSystemBusy                ai.ErrType = "system_busy"
 )
 
-var retryable = map[transport.ErrType]struct{}{
+var retryable = map[ai.ErrType]struct{}{
 	errTooManyConcurrentRequests: {},
 	errSystemBusy:                {},
 }
 
-var isRetryable = transport.NewRetryClassifier(retryable)
+var isRetryable = ai.NewRetryClassifier(retryable)
