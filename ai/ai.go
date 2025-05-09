@@ -1,7 +1,5 @@
 package ai
 
-import "fmt"
-
 /********* Enums *********/
 
 // Role helps to distinguish between system-level prompts, user input and assistant responses.
@@ -67,46 +65,6 @@ func (o Operation) IsValid() bool {
 	default:
 		return false
 	}
-}
-
-/********* Errors *********/
-
-// AIError reports an unsucessful AI operation, for a provider, with a useful message,
-// and the wrapped error cause.
-type AIError struct {
-	Operation Operation
-	Provider  Provider
-	Message   string
-	Wrapped   error
-}
-
-func (e *AIError) Error() string {
-	if e.Wrapped != nil {
-		return fmt.Sprintf("%s: %s: %s: %v", e.Operation, e.Provider, e.Message, e.Wrapped)
-	}
-	return fmt.Sprintf("%s[%s] error: %s", e.Operation, e.Provider, e.Message)
-}
-
-func (e *AIError) Unwrap() error { return e.Wrapped }
-
-// NewAIError is a generic constructor for more specific error.
-func NewAIError(op Operation, pvd Provider, msg string, err error) error {
-	return &AIError{Operation: op, Provider: pvd, Message: msg, Wrapped: err}
-}
-
-// /NewChatError returns an unsuccessful chat completion.
-func NewChatError(p Provider, msg string, err error) error {
-	return NewAIError(OpChatCompletion, p, msg, err)
-}
-
-// NewTTSError returns an unsuccessful text-to-speech synthesis.
-func NewTTSError(p Provider, msg string, err error) error {
-	return NewAIError(OpTTSAudio, p, msg, err)
-}
-
-// NewSTTError returns an unsuccessful speech-to-text transcription.
-func NewSTTError(p Provider, msg string, err error) error {
-	return NewAIError(OpSTTTranscription, p, msg, err)
 }
 
 /********* Interfaces *********/
