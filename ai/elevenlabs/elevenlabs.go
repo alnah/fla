@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -103,12 +102,6 @@ func NewTTS(opts ...option) *TTS {
 		o(t)
 	}
 	return t
-}
-
-type ElevenLabsAudioError struct{ message string }
-
-func (e *ElevenLabsAudioError) Error() string {
-	return fmt.Sprintf("ElevenLabsAudioError: %s", e.message)
 }
 
 // Audio sends the TTS request and returns the synthesized audio bytes.

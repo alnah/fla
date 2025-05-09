@@ -272,12 +272,6 @@ func NewTTS(opts ...option[*TTS]) *TTS {
 	return t
 }
 
-type OpenAIAudioError struct{ message string }
-
-func (e *OpenAIAudioError) Error() string {
-	return fmt.Sprintf("OpenAIAudioError: %s", e.message)
-}
-
 // Audio sends the TTS request and returns the synthesized audio bytes.
 func (t *TTS) Audio() ([]byte, error) {
 	if t.Input == "" {
@@ -368,12 +362,6 @@ func NewSTT(opts ...option[*STT]) *STT {
 		o(s)
 	}
 	return s
-}
-
-type OpenAITranscriptError struct{ message string }
-
-func (e *OpenAITranscriptError) Error() string {
-	return fmt.Sprintf("OpenAITranscriptError: %s", e.message)
 }
 
 type fileFmt string
