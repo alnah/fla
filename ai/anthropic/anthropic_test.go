@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/ai/transport"
 	"github.com/alnah/fla/clog"
 )
 
@@ -131,7 +130,7 @@ func TestCompletion_HTTPClientError(t *testing.T) {
 }
 
 func TestCompletion_HTTPErrorStatus(t *testing.T) {
-	var httpErr transport.HTTPError
+	var httpErr ai.HTTPError
 	httpErr.Message = "msg"
 	httpErr.Type = "t"
 

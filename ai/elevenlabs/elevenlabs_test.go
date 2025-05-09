@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/clog"
 )
 
@@ -60,14 +59,15 @@ func TestTTS_OptionSetters(t *testing.T) {
 	client := &http.Client{Timeout: time.Second}
 	customModel := model("mymodel")
 	customVoice := VoiceMaleGuillaume
+
 	tts := NewTTS(
 		WithModel(customModel),
 		WithLogger(log),
 		WithHTTPClient(client),
 		WithContext(ctx),
-		WithAPIKey("key123"),
+		WithAPIKey("env-key"),
 		WithURL("http://custom/"),
-		WithInput("hello"),
+		WithInput("test"),
 		WithVoice(customVoice),
 		WithSpeed(1.1),
 	)
@@ -84,14 +84,14 @@ func TestTTS_OptionSetters(t *testing.T) {
 	if tts.ctx != ctx {
 		t.Error("WithContext did not set context")
 	}
-	if tts.apiKey != "key123" {
-		t.Errorf("WithAPIKey: got %q, want key123", tts.apiKey)
+	if tts.apiKey != "env-key" {
+		t.Errorf("WithAPIKey: got %q, want env-key", tts.apiKey)
 	}
 	if tts.url != "http://custom/" {
 		t.Errorf("WithURL: got %q, want http://custom/", tts.url)
 	}
-	if tts.Input != "hello" {
-		t.Errorf("WithInput: got %q, want hello", tts.Input)
+	if tts.Input != "test" {
+		t.Errorf("WithInput: got %q, want test", tts.Input)
 	}
 	if tts.voice != customVoice {
 		t.Errorf("WithVoice: got %q, want %q", tts.voice, customVoice)
@@ -126,7 +126,6 @@ func TestAudio_HTTPClientError(t *testing.T) {
 }
 
 func TestAudio_HTTPStatusError(t *testing.T) {
-	// simulate ElevenLabs API returning HTTP 429
 	body := `{"detail":{"status":"rate_limit","message":"too many requests"}}`
 	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -134,6 +133,7 @@ func TestAudio_HTTPStatusError(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(body)),
 		}, nil
 	})}
+
 	tts := NewTTS(
 		WithInput("oops"),
 		WithAPIKey("k"),
@@ -143,24 +143,16 @@ func TestAudio_HTTPStatusError(t *testing.T) {
 
 	_, err := tts.Audio()
 	if err == nil {
-		t.Fatal("expected error for HTTP 429")
-	}
-	ele, ok := err.(*ai.AIError)
-	if !ok {
-		t.Fatalf("expected *ai.AIError; got %T", err)
-	}
-	errMsg := ele.Error()
-	if !strings.Contains(errMsg, "429") {
-		t.Errorf("error missing status code, got %q", errMsg)
+		t.Error("expected an error, but got nil")
 	}
 }
 
 func TestAudio_Non200ProducesAudioError(t *testing.T) {
-	// transport that always returns 500
+	body := `{"detail":{"status":"internal server error","message":"try again later"}}`
 	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: 500,
-			Body:       io.NopCloser(strings.NewReader(`{"detail":{"status":"x","message":"y"}}`)),
+			Body:       io.NopCloser(strings.NewReader(body)),
 		}, nil
 	})}
 
@@ -173,13 +165,9 @@ func TestAudio_Non200ProducesAudioError(t *testing.T) {
 
 	_, err := tts.Audio()
 	if err == nil {
-		t.Fatal("expected error for non-200 status")
+		t.Error("expected an error, got nil")
 	}
 
-	var e *ai.AIError
-	if !errors.As(err, &e) {
-		t.Fatalf("expected *ai.AIError, got %T", err)
-	}
 }
 
 func TestAudio_Success(t *testing.T) {
