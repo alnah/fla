@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestLoggerDebugOutput(t *testing.T) {
+func TestLogger_Debug_Output(t *testing.T) {
 	var buf bytes.Buffer
 
 	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
@@ -25,12 +25,12 @@ func TestLoggerDebugOutput(t *testing.T) {
 	}
 }
 
-func TestLoggerNew_WritesToStdout(t *testing.T) {
+func TestLoggerNew_WritesTo_Stdout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	// Save original stdout
+	// save original stdout
 	origStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -38,7 +38,7 @@ func TestLoggerNew_WritesToStdout(t *testing.T) {
 	logger := New()
 	logger.Info("hello", "foo", "bar")
 
-	// Close the writer and restore stdout
+	// close the writer and restore stdout
 	w.Close()
 	os.Stdout = origStdout
 
