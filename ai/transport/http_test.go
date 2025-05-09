@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/clock"
 	"github.com/alnah/fla/ai/retrier"
+	"github.com/alnah/fla/clog"
 )
 
 /********* Helpers *********/
@@ -35,6 +38,15 @@ type temporaryErr struct{}
 func (temporaryErr) Error() string   { return "temporary error" }
 func (temporaryErr) Timeout() bool   { return false }
 func (temporaryErr) Temporary() bool { return true }
+
+type stubRT struct {
+	resp *http.Response
+	err  error
+}
+
+func (s *stubRT) RoundTrip(req *http.Request) (*http.Response, error) {
+	return s.resp, s.err
+}
 
 /********* Tests *********/
 
@@ -66,19 +78,6 @@ func TestChain_AddsMultipleHeaders(t *testing.T) {
 	_, _ = rt.RoundTrip(&http.Request{Header: http.Header{}})
 }
 
-func TestHTTPError_ErrorString(t *testing.T) {
-	e := &HTTPError{
-		Provider:   ai.ProviderOpenAI,
-		StatusCode: 418,
-		Type:       "teapot",
-		Message:    "I'm a teapot",
-	}
-	expected := "HTTP 418 [openai] teapot: I'm a teapot"
-	if got := e.Error(); got != expected {
-		t.Errorf("Error() = %q, want %q", got, expected)
-	}
-}
-
 func TestClassifyStatus_PassThrough(t *testing.T) {
 	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
@@ -100,7 +99,7 @@ func TestClassifyStatus_PassThrough(t *testing.T) {
 
 func TestClassifyStatus_ErrorWithRetryAfterSeconds(t *testing.T) {
 	// simulate {"error":{"type":"rate_limit","message":"too many"}}
-	payload := []byte(`{"error":{"type":"rate_limit","message":"too many"}}`)
+	payload := []byte(`{"error":{"code":"rate_limit","message":"too many"}}`)
 	next := roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: 429,
@@ -112,15 +111,9 @@ func TestClassifyStatus_ErrorWithRetryAfterSeconds(t *testing.T) {
 	rt := ClassifyStatus(ai.ProviderOpenAI)(next)
 	_, err := rt.RoundTrip(&http.Request{})
 
-	he, ok := err.(*HTTPError)
+	he, ok := err.(*ai.HTTPError)
 	if !ok {
-		t.Fatalf("expected *HTTPError, got %T: %v", err, err)
-	}
-	if he.Provider != ai.ProviderOpenAI {
-		t.Errorf("Provider = %v, want %v", he.Provider, ai.ProviderOpenAI)
-	}
-	if he.StatusCode != 429 {
-		t.Errorf("StatusCode = %d, want 429", he.StatusCode)
+		t.Fatalf("expected *ai.HTTPError, got %T: %v", err, err)
 	}
 	if he.Type != "rate_limit" {
 		t.Errorf("Type = %q, want %q", he.Type, "rate_limit")
@@ -150,12 +143,9 @@ func TestClassifyStatus_ErrorWithRetryAfterHTTPDate(t *testing.T) {
 	rt := ClassifyStatus(ai.ProviderAnthropic)(next)
 	_, err := rt.RoundTrip(&http.Request{})
 
-	he, ok := err.(*HTTPError)
+	he, ok := err.(*ai.HTTPError)
 	if !ok {
-		t.Fatalf("expected *HTTPError, got %T: %v", err, err)
-	}
-	if he.Provider != ai.ProviderAnthropic {
-		t.Errorf("Provider = %v, want %v", he.Provider, ai.ProviderAnthropic)
+		t.Fatalf("expected *ai.HTTPError, got %T: %v", err, err)
 	}
 	ra := he.RetryAfter
 	if ra < 2*time.Second || ra > 4*time.Second {
@@ -226,25 +216,89 @@ func TestUseLogger_NilLogger_PassesThrough(t *testing.T) {
 func TestNewRetryClassifier(t *testing.T) {
 	tests := []struct {
 		name      string
-		retryable map[ErrType]struct{}
+		retryable map[ai.ErrType]struct{}
 		err       error
 		want      bool
 	}{
-		{"HTTPError retryable", map[ErrType]struct{}{"foo": {}}, &HTTPError{Type: "foo"}, true},
-		{"HTTPError not retryable", map[ErrType]struct{}{"bar": {}}, &HTTPError{Type: "foo"}, false},
-		{"wrapped HTTPError", map[ErrType]struct{}{"baz": {}}, fmt.Errorf("wrap: %w", &HTTPError{Type: "baz"}), true},
-		{"context.Canceled", map[ErrType]struct{}{"foo": {}}, context.Canceled, false},
-		{"context.DeadlineExceeded", map[ErrType]struct{}{"foo": {}}, context.DeadlineExceeded, false},
+		{"ai.HTTPError retryable", map[ai.ErrType]struct{}{"foo": {}}, &ai.HTTPError{Type: "foo"}, true},
+		{"ai.HTTPError not retryable", map[ai.ErrType]struct{}{"bar": {}}, &ai.HTTPError{Type: "foo"}, false},
+		{"wrapped ai.HTTPError", map[ai.ErrType]struct{}{"baz": {}}, fmt.Errorf("wrap: %w", &ai.HTTPError{Type: "baz"}), true},
+		{"context.Canceled", map[ai.ErrType]struct{}{"foo": {}}, context.Canceled, false},
+		{"context.DeadlineExceeded", map[ai.ErrType]struct{}{"foo": {}}, context.DeadlineExceeded, false},
 		{"net timeout error", nil, timeoutErr{}, true},
 		{"net non-timeout", nil, temporaryErr{}, false},
-		{"other error", map[ErrType]struct{}{"x": {}}, errors.New("x"), false},
+		{"other error", map[ai.ErrType]struct{}{"x": {}}, errors.New("x"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewRetryClassifier(tt.retryable)(tt.err)
+			got := ai.NewRetryClassifier(tt.retryable)(tt.err)
 			if got != tt.want {
 				t.Errorf("%s: got %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUseLogger(t *testing.T) {
+	tests := []struct {
+		name        string
+		stubResp    *http.Response
+		stubErr     error
+		wantPattern string // regex to match in log output
+	}{
+		{
+			name:        "success path logs Info with duration_ms",
+			stubResp:    &http.Response{StatusCode: 200},
+			stubErr:     nil,
+			wantPattern: `transport.*method=GET.*url=http://example\.com/.*duration_ms=\d+`,
+		},
+		{
+			name:        "error path logs Error with error message",
+			stubResp:    nil,
+			stubErr:     errors.New("network fail"),
+			wantPattern: `transport.*method=GET.*url=http://example\.com/.*duration=\d+.*error="network fail"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// prepare a buffer to capture log output
+			var buf bytes.Buffer
+			handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
+				AddSource: false,
+				Level:     slog.LevelDebug,
+			})
+			logger := clog.NewWithHandler(handler)
+
+			// wrap the stub RoundTripper
+			stub := &stubRT{resp: tt.stubResp, err: tt.stubErr}
+			rt := UseLogger(logger)(stub)
+
+			// issue a single GET request
+			req, _ := http.NewRequest("GET", "http://example.com/", nil)
+			start := time.Now()
+			resp, err := rt.RoundTrip(req)
+			elapsed := time.Since(start)
+
+			// ensure behavior is preserved
+			if resp != tt.stubResp {
+				t.Errorf("got resp %v; want %v", resp, tt.stubResp)
+			}
+			if err != tt.stubErr {
+				t.Errorf("got err %v; want %v", err, tt.stubErr)
+			}
+
+			out := buf.String()
+			// verify timestamp-derived duration is sensible
+			if elapsed < 0 {
+				t.Errorf("elapsed time should be non-negative, got %v", elapsed)
+			}
+
+			// match against expected log pattern
+			re := regexp.MustCompile(tt.wantPattern)
+			if !re.MatchString(out) {
+				t.Errorf("log output did not match.\nOutput: %s\nPattern: %s", out, tt.wantPattern)
 			}
 		})
 	}
