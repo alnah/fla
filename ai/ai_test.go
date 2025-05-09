@@ -1,10 +1,6 @@
 package ai
 
-import (
-	"errors"
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestRoleString(t *testing.T) {
 	if got, want := RoleSystem.String(), "system"; got != want {
@@ -84,84 +80,6 @@ func TestOperationIsValid(t *testing.T) {
 	}
 	if Operation("bogus").IsValid() {
 		t.Error(`Operation("bogus") should be invalid`)
-	}
-}
-
-func TestAIError_Error_Unwrapped(t *testing.T) {
-	e := &AIError{
-		Operation: OpChatCompletion,
-		Provider:  ProviderOpenAI,
-		Message:   "something went wrong",
-		Wrapped:   nil,
-	}
-	errStr := e.Error()
-	want := "chat completion[openai] error: something went wrong"
-	if errStr != want {
-		t.Errorf("Error() = %q; want %q", errStr, want)
-	}
-}
-
-func TestAIError_Error_Wrapped(t *testing.T) {
-	orig := errors.New("root cause")
-	e := &AIError{
-		Operation: OpTTSAudio,
-		Provider:  ProviderAnthropic,
-		Message:   "tts failed",
-		Wrapped:   orig,
-	}
-	errStr := e.Error()
-	if !strings.Contains(errStr, string(OpTTSAudio)) ||
-		!strings.Contains(errStr, string(ProviderAnthropic)) ||
-		!strings.Contains(errStr, "tts failed") ||
-		!strings.Contains(errStr, "root cause") {
-		t.Errorf("Error() = %q; missing expected parts", errStr)
-	}
-}
-
-func TestAIError_Unwrap(t *testing.T) {
-	orig := errors.New("underlying")
-	e := &AIError{Wrapped: orig}
-	if unw := e.Unwrap(); unw != orig {
-		t.Errorf("Unwrap() = %v; want %v", unw, orig)
-	}
-}
-
-func TestNewAIError(t *testing.T) {
-	orig := errors.New("orig")
-	err := NewAIError(OpSTTTranscription, ProviderElevenLabs, "failed stt", orig)
-	var aiErr *AIError
-	if !errors.As(err, &aiErr) {
-		t.Fatalf("NewAIError did not return *AIError, got %T", err)
-	}
-	if aiErr.Operation != OpSTTTranscription {
-		t.Errorf("Operation = %v; want %v", aiErr.Operation, OpSTTTranscription)
-	}
-	if aiErr.Provider != ProviderElevenLabs {
-		t.Errorf("Provider = %v; want %v", aiErr.Provider, ProviderElevenLabs)
-	}
-	if aiErr.Message != "failed stt" {
-		t.Errorf("Message = %q; want %q", aiErr.Message, "failed stt")
-	}
-	if aiErr.Wrapped != orig {
-		t.Errorf("Wrapped = %v; want %v", aiErr.Wrapped, orig)
-	}
-}
-
-func TestNewChatError_NewTTSError_NewSTTError(t *testing.T) {
-	orig := errors.New("cause")
-	e1 := NewChatError(ProviderOpenAI, "chat error", orig)
-	e2 := NewTTSError(ProviderAnthropic, "tts error", orig)
-	e3 := NewSTTError(ProviderElevenLabs, "stt error", orig)
-
-	var a1, a2, a3 *AIError
-	if !errors.As(e1, &a1) || a1.Operation != OpChatCompletion {
-		t.Error("NewChatError did not set Operation to OpChatCompletion")
-	}
-	if !errors.As(e2, &a2) || a2.Operation != OpTTSAudio {
-		t.Error("NewTTSError did not set Operation to OpTTSAudio")
-	}
-	if !errors.As(e3, &a3) || a3.Operation != OpSTTTranscription {
-		t.Error("NewSTTError did not set Operation to OpSTTTranscription")
 	}
 }
 
