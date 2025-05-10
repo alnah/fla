@@ -29,24 +29,17 @@ var missingKeyFS embed.FS
 
 /********* Helpers *********/
 
-func assertNoErrorLoadingEmbedFS(t testing.TB, err error) {
+func assertNoError(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
-		t.Fatalf("loading embed filesystem: didn't want error, got %v", err)
+		t.Fatalf("want no error, got %v", err)
 	}
 }
 
-func assertNoErrorLoadingPromptData(t testing.TB, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatalf("loading prompt data: didn't want error, got: %v", err)
-	}
-}
-
-func assertPromptData(t testing.TB, got, want string) {
+func assertValue(t testing.TB, got, want string) {
 	t.Helper()
 	if got != want {
-		t.Fatalf("loading prompt data: got %q, want %q", got, want)
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
 
@@ -61,12 +54,11 @@ func assertError(t testing.TB, err error) {
 
 func TestPromptLoading_Success(t *testing.T) {
 	rt, err := registry(okFS)
-	assertNoErrorLoadingEmbedFS(t, err)
+	assertNoError(t, err)
 
 	data, err := rt.Prompt(FR, A1, promptID("test"), map[string]any{"input": "is success"})
-	assertNoErrorLoadingPromptData(t, err)
-
-	assertPromptData(t, data, "Test is success")
+	assertNoError(t, err)
+	assertValue(t, data, "Test is success")
 }
 
 func TestPromptRuntime_ErrorFormat(t *testing.T) {
@@ -90,7 +82,7 @@ func TestPromptRuntime_ErrorFormat(t *testing.T) {
 
 func TestPromptLoading_MissingKey(t *testing.T) {
 	rt, err := registry(missingKeyFS)
-	assertNoErrorLoadingEmbedFS(t, err)
+	assertNoError(t, err)
 
 	_, err = rt.Prompt(FR, A1, promptID("missing_key"), map[string]any{"missing": "key"})
 	assertError(t, err)
@@ -116,7 +108,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 			want:     "Version 2 ok",
 		},
 		{
-			name:     "FallackToInferiorLevelForSameLanguage",
+			name:     "FallbackPrevLevelSameLang",
 			embedFS:  fallbackFS,
 			lang:     FR,
 			level:    C1,
@@ -136,18 +128,18 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		rt, err := registry(tc.embedFS)
-		assertNoErrorLoadingEmbedFS(t, err)
+		assertNoError(t, err)
 
 		data, err := rt.Prompt(tc.lang, tc.level, tc.promptID, map[string]any{"input": tc.input})
-		assertNoErrorLoadingPromptData(t, err)
-		assertPromptData(t, data, tc.want)
+		assertNoError(t, err)
+		assertValue(t, data, tc.want)
 
 	}
 }
 
 func TestPromptLoading_NotFound(t *testing.T) {
 	rt, err := registry(fallbackFS)
-	assertNoErrorLoadingEmbedFS(t, err)
+	assertNoError(t, err)
 
 	_, err = rt.Prompt(PT, C2, promptID("not_found"), map[string]any{"input": "irrelevant"})
 	assertError(t, err)

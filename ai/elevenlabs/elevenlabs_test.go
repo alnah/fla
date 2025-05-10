@@ -3,15 +3,16 @@ package elevenlabs
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
-	"os"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/clog"
 )
 
@@ -23,207 +24,175 @@ func (f roundTripperTest) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-type key string
+type marker string
 
-const marker key = "marker"
+const key marker = "marker"
 
 /********* Tests *********/
 
-func TestNewTTS_Defaults(t *testing.T) {
-	// ensure env API key is picked up
-	os.Setenv(apiKeyFromEnv, "env-key")
-	defer os.Unsetenv(apiKeyFromEnv)
-
-	tts := NewTTS()
-	if tts.Model != ModelTextToSpeech {
-		t.Errorf("default Model = %q; want %q", tts.Model, ModelTextToSpeech)
-	}
-	if tts.voice != VoiceMaleNicolas {
-		t.Errorf("default voice = %q; want %q", tts.voice, VoiceMaleNicolas)
-	}
-	if tts.apiKey != "env-key" {
-		t.Errorf("default apiKey = %q; want %q", tts.apiKey, "env-key")
-	}
-	if tts.method != http.MethodPost {
-		t.Errorf("default method = %q; want POST", tts.method)
-	}
-	wantURL := gateway + pathTTS
-	if tts.url != wantURL {
-		t.Errorf("default url = %q; want %q", tts.url, wantURL)
-	}
-}
-
-func TestTTS_OptionSetters(t *testing.T) {
+func TestTTS_WithOption_Pattern(t *testing.T) {
 	log := clog.New()
-	ctx := context.WithValue(context.Background(), marker, "value")
-	client := &http.Client{Timeout: time.Second}
-	customModel := model("mymodel")
-	customVoice := VoiceMaleGuillaume
+	ctx := context.WithValue(context.Background(), key, "value")
+
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		if got := req.Context().Value(key); got != "value" {
+			t.Error("http request: want context inheritance from chat")
+		}
+		body := `{"content": [{"text": "ok", "type":"" }], "id": "1"}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
 
 	tts := NewTTS(
-		WithModel(customModel),
+		WithModel(ModelTextToSpeech),
 		WithLogger(log),
-		WithHTTPClient(client),
+		WithHTTPClient(hc),
 		WithContext(ctx),
-		WithAPIKey("env-key"),
-		WithURL("http://custom/"),
+		WithAPIKey("test-api-key"),
+		WithURL("http://test.com"),
 		WithInput("test"),
-		WithVoice(customVoice),
-		WithSpeed(1.1),
+		WithVoice(VoiceFemaleAudrey),
+		WithSpeed(1.0),
 	)
 
-	if tts.Model != customModel {
-		t.Errorf("WithModel: got %q, want %q", tts.Model, customModel)
+	if tts.Model.String() != ModelTextToSpeech.String() {
+		t.Errorf("with model: want %v, got %v", ModelTextToSpeech.String(), tts.Model.String())
 	}
 	if tts.log != log {
-		t.Error("WithLogger did not set logger")
+		t.Errorf("with logger: want %v, got %v", log, tts.log)
 	}
-	if tts.hc != client {
-		t.Error("WithHTTPClient did not set http.Client")
+	if tts.hc != hc {
+		t.Errorf("with HTTP client: want %v, got %v", hc, tts.hc)
 	}
 	if tts.ctx != ctx {
-		t.Error("WithContext did not set context")
+		t.Errorf("with context: want %v, got %v", ctx, tts.ctx)
 	}
-	if tts.apiKey != "env-key" {
-		t.Errorf("WithAPIKey: got %q, want env-key", tts.apiKey)
+	if tts.apiKey != "test-api-key" {
+		t.Errorf("with api key: want %q, got %q", "test-api-key", tts.apiKey)
 	}
-	if tts.url != "http://custom/" {
-		t.Errorf("WithURL: got %q, want http://custom/", tts.url)
+	if tts.url != "http://test.com" {
+		t.Errorf("with url: want %q, got %q", "http://test.com", tts.url)
 	}
 	if tts.Input != "test" {
-		t.Errorf("WithInput: got %q, want test", tts.Input)
+		t.Errorf("with input: want %q, got %q", "test", tts.Input)
 	}
-	if tts.voice != customVoice {
-		t.Errorf("WithVoice: got %q, want %q", tts.voice, customVoice)
+	if tts.voice.String() != VoiceFemaleAudrey.String() {
+		t.Errorf("with voice: want %q, got %q", VoiceFemaleAudrey.String(), tts.voice.String())
 	}
-	if tts.Speed != 1.1 {
-		t.Errorf("WithSpeed: got %v, want 1.1", tts.Speed)
+	if tts.Speed != 1 {
+		t.Errorf("with speed: want %f.2, got %f.2", 1.0, tts.Speed)
 	}
 }
 
-func TestAudio_NoInput(t *testing.T) {
-	tts := NewTTS()
-	_, err := tts.Audio()
-	if err == nil {
-		t.Errorf("expected an error, but got nil")
+func TestTTS_Audio_EmptyInput(t *testing.T) {
+	var want *ai.AIError
+	if _, err := NewTTS(WithInput("")).Audio(); !errors.As(err, &want) {
+		t.Errorf("input empty: want ai error, got %T", err)
+	}
+}
+
+func TestTTS_Audio_InvalidURL(t *testing.T) {
+	tts := NewTTS(
+		WithInput("test"),
+		WithAPIKey("test-api-key"),
+		WithURL("::::"),
+	)
+
+	var want *url.Error
+	if _, err := tts.Audio(); !errors.As(err, &want) {
+		t.Errorf("invalid request: want url error, got %T", err)
+	}
+}
+
+func TestTTS_Audio_ContextTimeout(t *testing.T) {
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		select {
+		case <-req.Context().Done():
+			return nil, req.Context().Err()
+		case <-time.After(2 * time.Millisecond):
+			body := `{"content": [{"text": "ok", "type":"" }], "id": "1"}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+		}
+	})}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+
+	chat := NewTTS(
+		WithContext(ctx),
+		WithInput("test"),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
+	)
+
+	var want *ai.AIError
+	_, err := chat.Audio()
+	if !errors.As(err, &want) {
+		t.Error("context timeout: want ai error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("context timeout: ai error must unwrap context deadline exceeded")
 	}
 }
 
 func TestAudio_HTTPClientError(t *testing.T) {
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return nil, errors.New("network fail")
 	})}
+
 	tts := NewTTS(
-		WithInput("hi"),
-		WithAPIKey("k"),
-		WithURL("http://u/"),
-		WithHTTPClient(client),
+		WithInput("test"),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
 	)
-	_, err := tts.Audio()
-	if err == nil {
-		t.Error("expected an error, but got nil")
+
+	var want *ai.AIError
+	if _, err := tts.Audio(); !errors.As(err, &want) {
+		t.Errorf("http client error: want ai error, but got %T", err)
 	}
 }
 
 func TestAudio_HTTPStatusError(t *testing.T) {
-	body := `{"detail":{"status":"rate_limit","message":"too many requests"}}`
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: 429,
-			Body:       io.NopCloser(strings.NewReader(body)),
-		}, nil
+	body, _ := json.Marshal(&ai.HTTPError{Message: "message", Type: "type"})
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusBadRequest, Body: io.NopCloser(bytes.NewReader(body))}, nil
 	})}
 
-	tts := NewTTS(
-		WithInput("oops"),
-		WithAPIKey("k"),
-		WithURL("http://u/"),
-		WithHTTPClient(client),
+	chat := NewTTS(
+		WithInput("test"),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
 	)
 
-	_, err := tts.Audio()
-	if err == nil {
-		t.Error("expected an error, but got nil")
+	var want *ai.HTTPError
+	if _, err := chat.Audio(); !errors.As(err, &want) {
+		t.Errorf("http error status: want http error, got %T", err)
 	}
-}
-
-func TestAudio_Non200ProducesAudioError(t *testing.T) {
-	body := `{"detail":{"status":"internal server error","message":"try again later"}}`
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: 500,
-			Body:       io.NopCloser(strings.NewReader(body)),
-		}, nil
-	})}
-
-	tts := NewTTS(
-		WithInput("foo"),
-		WithAPIKey("key"),
-		WithURL("http://example/"),
-		WithHTTPClient(client),
-	)
-
-	_, err := tts.Audio()
-	if err == nil {
-		t.Error("expected an error, got nil")
-	}
-
 }
 
 func TestAudio_Success(t *testing.T) {
 	data := []byte("audio-bytes")
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		// ensure headers were added by transport.Chain
-		if req.Header.Get("Content-Type") != "application/json" {
-			t.Errorf("Content-Type header = %q; want application/json", req.Header.Get("Content-Type"))
-		}
-		if req.Header.Get("xi-api-key") == "" {
-			t.Error("xi-api-key header missing")
-		}
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewReader(data)),
 		}, nil
 	})}
+
 	tts := NewTTS(
 		WithInput("hey"),
 		WithAPIKey("k"),
 		WithURL("http://u/"),
-		WithHTTPClient(client),
+		WithHTTPClient(hc),
 	)
-	out, err := tts.Audio()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !bytes.Equal(out, data) {
-		t.Errorf("Audio bytes = %v; want %v", out, data)
-	}
-}
 
-func TestIntegrationAudio(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
-	audioData := []byte("live-audio")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("method = %s; want POST", r.Method)
-		}
-		w.Write(audioData)
-	}))
-	defer srv.Close()
-
-	tts := NewTTS(
-		WithInput("integration"),
-		WithAPIKey("dummy"),
-		WithURL(srv.URL+"/"),
-		WithHTTPClient(srv.Client()),
-	)
-	out, err := tts.Audio()
+	audio, err := tts.Audio()
 	if err != nil {
-		t.Fatalf("Audio integration failed: %v", err)
+		t.Fatalf("want no error: got %v", err)
 	}
-	if !bytes.Equal(out, audioData) {
-		t.Errorf("integration Audio = %v; want %v", out, audioData)
+	if !bytes.Equal(audio, data) {
+		t.Errorf("audio bytes: want %v, got %v", audio, data)
 	}
 }

@@ -7,8 +7,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/clog"
@@ -25,174 +27,224 @@ type marker string
 
 const key marker = "marker"
 
-func TestChatGenericOptions(t *testing.T) {
+func TestChat_WithOption_Pattern(t *testing.T) {
 	log := clog.New()
 	ctx := context.WithValue(context.Background(), key, "value")
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		// verify context propagation
-		if req.Context().Value(key) != "value" {
-			t.Error("HTTP request did not inherit context from Chat")
+	msg := []ai.Message{{Role: ai.RoleUser, Content: "test"}}
+
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		if got := req.Context().Value(key); got != "value" {
+			t.Error("http request: want context inheritance from chat")
 		}
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(strings.NewReader(`{"content":[{"text":"ok","type":""}],"id":"1"}`)),
-		}, nil
+		body := `{"content": [{"text": "ok", "type":"" }], "id": "1"}`
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
 	})}
-	msgs := []ai.Message{{Role: ai.RoleUser, Content: "hello"}}
 
 	chat := NewChat(
 		WithModel(ModelReasoning),
 		WithLogger(log),
-		WithHTTPClient(client),
+		WithHTTPClient(hc),
 		WithContext(ctx),
-		WithAPIKey("testkey"),
-		WithURL("http://example.com"),
-		WithMessages(msgs),
+		WithAPIKey("test-api-key"),
+		WithURL("http://test.com"),
+		WithMessages(msg),
 		WithMaxTokens(1234),
-		WithSystem("systemmsg"),
+		WithSystem("system-msg"),
 		WithTemperature(0.5),
 	)
 
-	if chat.Model != ModelReasoning {
-		t.Errorf("WithModel: got %v, want %v", chat.Model, ModelReasoning)
+	if chat.Model.String() != ModelReasoning.String() {
+		t.Errorf("with model: want %v, got %v", ModelReasoning.String(), chat.Model.String())
 	}
 	if chat.log != log {
-		t.Error("WithLogger did not set logger")
+		t.Errorf("with logger: want %v, got %v", log, chat.log)
 	}
-	if chat.hc != client {
-		t.Error("WithHTTPClient did not set HTTP client")
+	if chat.hc != hc {
+		t.Errorf("with HTTP client: want %v, got %v", hc, chat.hc)
 	}
 	if chat.ctx != ctx {
-		t.Error("WithContext did not set context")
+		t.Errorf("with context: want %v, got %v", ctx, chat.ctx)
 	}
-	if chat.apiKey != "testkey" {
-		t.Errorf("WithAPIKey: got %q, want testkey", chat.apiKey)
+	if chat.apiKey != "test-api-key" {
+		t.Errorf("with api key: want %q, got %q", "test-api-key", chat.apiKey)
 	}
-	if chat.url != "http://example.com" {
-		t.Errorf("WithURL: got %q, want http://example.com", chat.url)
+	if chat.url != "http://test.com" {
+		t.Errorf("with url: want %q, got %q", "http://test.com", chat.url)
 	}
 	if chat.MaxTokens != 1234 {
-		t.Errorf("WithMaxTokens: got %d, want 1234", chat.MaxTokens)
+		t.Errorf("with max tokens: want %d, got %d", 1234, chat.MaxTokens)
 	}
-	if chat.System != "systemmsg" {
-		t.Errorf("WithSystem: got %q, want systemmsg", chat.System)
+	if chat.System != "system-msg" {
+		t.Errorf("with system: want %q, got %q", "systemmsg", chat.System)
 	}
 	if chat.Temperature != 0.5 {
-		t.Errorf("WithTemperature: got %v, want 0.5", chat.Temperature)
+		t.Errorf("with temperature: want %v, got %v", 0.5, chat.Temperature)
 	}
-	if len(chat.Messages) != 1 || chat.Messages[0] != msgs[0] {
-		t.Errorf("WithMessages: got %+v, want %+v", chat.Messages, msgs)
-	}
-}
-
-func TestSetSystemOnce(t *testing.T) {
-	chat := NewChat()
-	chat.SetSystem("should not change").SetSystem("has changed")
-
-	if chat.System == "has changed" {
-		t.Errorf("system instructions should not change, but got %s", chat.System)
+	if len(chat.Messages) != 1 || chat.Messages[0] != msg[0] {
+		t.Errorf("with messages: want %+v, got %+v", msg, chat.Messages)
 	}
 }
 
-func TestAddMessage_Fluent(t *testing.T) {
-	chat := NewChat()
-	chat.AddMessage(ai.RoleUser, "one").AddMessage(ai.RoleAssistant, "two")
-	if len(chat.Messages) != 2 {
-		t.Fatalf("AddMessage appended %d messages; want 2", len(chat.Messages))
-	}
-	if chat.Messages[0].Content != "one" || chat.Messages[1].Content != "two" {
-		t.Errorf("Messages = %+v; want [one, two]", chat.Messages)
+func TestChat_SetSystem_OnlyOnce(t *testing.T) {
+	chat := NewChat().
+		SetSystem("want no change").
+		SetSystem("got change")
+
+	if chat.System == "got change" {
+		t.Error("chat system: want no change, got change")
 	}
 }
 
-func TestCompletion_NoMessages(t *testing.T) {
-	chat := NewChat()
-	_, err := chat.Completion()
-	if err == nil {
-		t.Fatal("expected error for empty messages")
+func TestChat_SetSystemAndAddMessage_FluentPattern(t *testing.T) {
+	chat := NewChat().
+		SetSystem("system-msg").
+		AddMessage(ai.RoleUser, "user-msg").
+		AddMessage(ai.RoleAssistant, "assistant-msg")
+
+	if chat.System != "system-msg" {
+		t.Errorf("chat system: want \"system-msg\", got %q", chat.System)
+	}
+	if got := len(chat.Messages); got != 2 {
+		t.Errorf("chat messages length: want %d, got %d", 2, got)
+	}
+	got1, got2, want1, want2 := chat.Messages[0].Content, chat.Messages[1].Content, "user-msg", "assistant-msg"
+	if got1 != want1 || got2 != want2 {
+		t.Errorf("messages: want [%s, %s], got [%s, %s]", want1, want2, got1, got2)
 	}
 }
 
-func TestCompletion_HTTPClientError(t *testing.T) {
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return nil, errors.New("network fail")
-	})}
+func TestChat_Completion_EmptyMessages(t *testing.T) {
+	var want *ai.AIError
+	if _, err := NewChat().Completion(); !errors.As(err, &want) {
+		t.Errorf("empty messages: want ai error, got %T", err)
+	}
+}
+
+func TestChat_Completion_InvalidURL(t *testing.T) {
 	chat := NewChat(
-		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "hi"}}),
-		WithAPIKey("k"),
-		WithURL("u"),
-		WithHTTPClient(client),
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test"),
+		WithURL("::::"),
 	)
-	_, err := chat.Completion()
-	if err == nil {
-		t.Fatal("expected error for HTTP client failure")
+
+	var want *url.Error
+	if _, err := chat.Completion(); !errors.As(err, &want) {
+		t.Errorf("invalid request: want error as url error, got %T", err)
 	}
 }
 
-func TestCompletion_HTTPErrorStatus(t *testing.T) {
-	var httpErr ai.HTTPError
-	httpErr.Message = "msg"
-	httpErr.Type = "t"
-
-	b, _ := json.Marshal(httpErr)
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 400, Body: io.NopCloser(bytes.NewReader(b))}, nil
+func TestChat_Completion_InvalidJSONResponse(t *testing.T) {
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`[invalid}]`))}, nil
 	})}
+
 	chat := NewChat(
-		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "hi"}}),
-		WithAPIKey("k"),
-		WithURL("u"),
-		WithHTTPClient(client),
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
 	)
-	_, err := chat.Completion()
-	if err == nil {
-		t.Fatal("expected HTTPError for non-200 status")
-	}
-	_, ok := err.(*ai.AIError)
-	if !ok {
-		t.Fatalf("expected *ai.AIError, got %T", err)
+
+	var want *json.SyntaxError
+	if _, err := chat.Completion(); !errors.As(err, &want) {
+		t.Errorf("invalid json: want error as json syntax error, got %T", err)
 	}
 }
 
-func TestCompletion_InvalidJSON(t *testing.T) {
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("invalid"))}, nil
+func TestChat_Completion_ContextTimeout(t *testing.T) {
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		select {
+		case <-req.Context().Done():
+			return nil, req.Context().Err()
+		case <-time.After(2 * time.Millisecond):
+			body := `{"content": [{"text": "ok", "type":"" }], "id": "1"}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+		}
 	})}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+
 	chat := NewChat(
-		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "x"}}),
-		WithAPIKey("k"),
-		WithURL("u"),
-		WithHTTPClient(client),
+		WithContext(ctx),
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
 	)
+
+	var want *ai.AIError
 	_, err := chat.Completion()
-	if err == nil {
-		t.Fatal("expected error for invalid JSON")
+	if !errors.As(err, &want) {
+		t.Error("context timeout: want ai error, got nil")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("context timeout: ai error must unwrap context deadline exceeded")
 	}
 }
 
-func TestCompletion_Success(t *testing.T) {
-	resp := `{"content":[{"text":"hello","type":""}],"id":"id123"}`
-	client := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(resp))}, nil
+func TestChat_Completion_HTTPClientError(t *testing.T) {
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		return nil, errors.New("network failed")
 	})}
+
 	chat := NewChat(
-		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "x"}}),
-		WithAPIKey("k"),
-		WithURL("u"),
-		WithHTTPClient(client),
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
 	)
-	out, err := chat.Completion()
+
+	var want *ai.AIError
+	if _, err := chat.Completion(); !errors.As(err, &want) {
+		t.Fatalf("http client failed: want ai error, got %T", err)
+	}
+}
+
+func TestChat_Completion_HTTPErrorStatus(t *testing.T) {
+	body, _ := json.Marshal(&ai.HTTPError{Message: "message", Type: "type"})
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusBadRequest, Body: io.NopCloser(bytes.NewReader(body))}, nil
+	})}
+
+	chat := NewChat(
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
+	)
+
+	var want *ai.HTTPError
+	if _, err := chat.Completion(); !errors.As(err, &want) {
+		t.Errorf("http error status: want http error, got %T", err)
+	}
+}
+
+func TestChat_Completion_Success(t *testing.T) {
+	body := `{"content": [{"text":"hello", "type":""}], "id": "123"}`
+	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+
+	chat := NewChat(
+		WithMessages([]ai.Message{{Role: ai.RoleUser, Content: "test"}}),
+		WithAPIKey("test-api-key"),
+		WithURL("https://test.com"),
+		WithHTTPClient(hc),
+	)
+
+	completion, err := chat.Completion()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("want no error, got %v", err)
 	}
-	if got := out.Content(); got != "hello" {
-		t.Errorf("Content = %q; want hello", got)
+	if got := completion.Content(); got != "hello" {
+		t.Errorf("completion content: \"hello\", got %q", got)
 	}
 }
 
-func TestCompletion_ContentEmpty(t *testing.T) {
-	var c ai.Completion
-	if c.Content() != "" {
-		t.Errorf("expected empty content, got %q", c.Content())
+func TestChat_Completion_ContentEmpty(t *testing.T) {
+	var completion ai.Completion
+	if completion.Content() != "" {
+		t.Errorf("want empty content, got %q", completion.Content())
 	}
 }
