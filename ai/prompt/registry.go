@@ -10,7 +10,7 @@ import (
 	"text/template"
 )
 
-//go:embed */*/*.md
+//go:embed registry/*/*/*.md
 var promptFS embed.FS
 
 // CEFR levels (plus "_" = any‐level)
