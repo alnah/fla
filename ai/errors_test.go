@@ -22,6 +22,20 @@ func (f fakeNetErr) Error() string   { return "fake network error" }
 func (f fakeNetErr) Timeout() bool   { return f.timeout }
 func (f fakeNetErr) Temporary() bool { return f.temporary }
 
+func assertNoError(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("want no error, got %v", err)
+	}
+}
+
+func assertValue(t testing.TB, name string, got, want any) {
+	t.Helper()
+	if got != want {
+		t.Errorf("%s: want %q, got %q", name, want, got)
+	}
+}
+
 /********* Unit Tests *********/
 
 func TestHTTPError(t *testing.T) {
@@ -74,29 +88,16 @@ func TestHTTPError(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			res, err := http.Get(srv.URL)
-			if err != nil {
-				t.Fatalf("http get: got %v, want no error", err)
-			}
+			assertNoError(t, err)
 
 			httpErr := NewHTTPError(tc.provider, res)
-
-			if got, want := httpErr.Status, tc.wantStatus; got != want {
-				t.Errorf("status: got %q, want %q", got, want)
-			}
-			if got, want := httpErr.Type, tc.wantType; got != want {
-				t.Errorf("type: got %q, want %q", got, want)
-			}
-			if got, want := httpErr.Message, tc.wantMessage; got != want {
-				t.Errorf("message: got %q, want %q", got, want)
-			}
-			if got, want := httpErr.RetryAfter, tc.wantRetryAfter; got != want {
-				t.Errorf("retryafter: got %v, want %v", got, want)
-			}
+			assertValue(t, "status", httpErr.Status, tc.wantStatus)
+			assertValue(t, "type", httpErr.Type, tc.wantType)
+			assertValue(t, "message", httpErr.Message, tc.wantMessage)
+			assertValue(t, "retry after", httpErr.RetryAfter.String(), tc.wantRetryAfter.String())
 
 			wantErr := fmt.Sprintf("status=%s, type=%s, message=%s", tc.wantStatus, tc.wantType, tc.wantMessage)
-			if got := httpErr.Error(); got != wantErr {
-				t.Errorf("error string: got %q, want %q", got, wantErr)
-			}
+			assertValue(t, "error string", httpErr.Error(), wantErr)
 		})
 	}
 }
@@ -158,18 +159,12 @@ func TestNewRetryClassifier(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Helper()
-			got := classify(tc.err)
-			if got != tc.want {
-				t.Errorf("classify: got %v, want %v", got, tc.want)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { assertValue(t, "classify", classify(tc.err), tc.want) })
 	}
 }
 
-func TestAIErrorErrorString(t *testing.T) {
-	op := Operation("operaton")
+func TestAIErrorString(t *testing.T) {
+	op := Operation("operation")
 	pvd := Provider("provider")
 
 	tests := []struct {
@@ -180,27 +175,20 @@ func TestAIErrorErrorString(t *testing.T) {
 		{
 			name: "no wrapped error",
 			err:  &AIError{Operation: op, Provider: pvd, Message: "something went wrong"},
-			want: "operaton provider error: something went wrong",
+			want: "operation provider error: something went wrong",
 		},
 		{
 			name: "wrapped same msg",
 			err:  &AIError{Operation: op, Provider: pvd, Message: "inner msg", Wrapped: errors.New("inner msg")},
-			want: "operaton provider: inner msg",
+			want: "operation provider: inner msg",
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Helper()
-			if got := tc.err.Error(); got != tc.want {
-				t.Errorf("error string: got %q, want %q", got, tc.want)
-			}
-		})
+		t.Run(tc.name, func(t *testing.T) { assertValue(t, "error string", tc.err.Error(), tc.want) })
 	}
 
 	t.Run("wrapped different msg", func(t *testing.T) {
-		t.Helper()
-
 		ae := &AIError{
 			Operation: op,
 			Provider:  pvd,
@@ -209,7 +197,7 @@ func TestAIErrorErrorString(t *testing.T) {
 		}
 
 		got := ae.Error()
-		prefix := "operaton provider: outer msg: "
+		prefix := "operation provider: outer msg: "
 		if !strings.HasPrefix(got, prefix) {
 			t.Errorf("error string prefix: got %q, want prefix %q", got, prefix)
 		}
@@ -299,22 +287,14 @@ func TestNewAIErrorUnwrapAndConstructors(t *testing.T) {
 				err = NewSTTError(tc.pvd, tc.msg, tc.wrapped)
 			}
 
-			ae, ok := err.(*AIError)
+			aiErr, ok := err.(*AIError)
 			if !ok {
 				t.Fatalf("type: got %T, want *AIError", err)
 			}
-			if got, want := ae.Operation, tc.wantOp; got != want {
-				t.Errorf("operation: got %q, want %q", got, want)
-			}
-			if got, want := ae.Provider, tc.wantPvd; got != want {
-				t.Errorf("provider: got %q, want %q", got, want)
-			}
-			if got, want := ae.Message, tc.wantMsg; got != want {
-				t.Errorf("message: got %q, want %q", got, want)
-			}
-			if got, want := errors.Unwrap(err), tc.wantUnwrap; got != want {
-				t.Errorf("unwrap: got %v, want %v", got, want)
-			}
+			assertValue(t, "operation", aiErr.Operation, tc.wantOp)
+			assertValue(t, "provider", aiErr.Provider, tc.wantPvd)
+			assertValue(t, "message", aiErr.Message, tc.wantMsg)
+			assertValue(t, "unwrap", errors.Unwrap(err), tc.wantUnwrap)
 			if !errors.Is(err, tc.wantUnwrap) {
 				t.Errorf("errors.is: %v should be recognized", tc.wantUnwrap)
 			}
