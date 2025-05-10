@@ -139,12 +139,6 @@ func (e *AIError) Error() string {
 func (e *AIError) Unwrap() error { return e.Wrapped }
 
 func NewAIError(op Operation, pvd Provider, msg string, err error) error {
-	var httpErr *HTTPError
-
-	if errors.As(err, &httpErr) {
-		return &AIError{Operation: op, Provider: pvd, Message: msg, Wrapped: httpErr}
-	}
-
 	return &AIError{Operation: op, Provider: pvd, Message: msg, Wrapped: err}
 }
 
