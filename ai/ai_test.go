@@ -29,6 +29,15 @@ func buildAssertIsValid[T enumlike](name string) func(t testing.TB, enum T) {
 	}
 }
 
+func buildAssertIsInvalid[T enumlike](name string) func(t testing.TB, enum T) {
+	return func(t testing.TB, enum T) {
+		t.Helper()
+		if enum.IsValid() {
+			t.Errorf("%s %s should be invalid", name, enum.String())
+		}
+	}
+}
+
 /********* Unit tests *********/
 
 func TestRoleString(t *testing.T) {
@@ -43,6 +52,9 @@ func TestRoleIsValid(t *testing.T) {
 	assertIsValid(t, RoleSystem)
 	assertIsValid(t, RoleUser)
 	assertIsValid(t, RoleAssistant)
+
+	assertIsInvalid := buildAssertIsInvalid[Role]("role")
+	assertIsInvalid(t, Role("invalid"))
 }
 
 func TestProviderString(t *testing.T) {
@@ -57,6 +69,9 @@ func TestProviderIsValid(t *testing.T) {
 	assertIsValid(t, ProviderOpenAI)
 	assertIsValid(t, ProviderAnthropic)
 	assertIsValid(t, ProviderElevenLabs)
+
+	assertIsInvalid := buildAssertIsInvalid[Provider]("provider")
+	assertIsInvalid(t, Provider("invalid"))
 }
 
 func TestOperationString(t *testing.T) {
@@ -71,6 +86,9 @@ func TestOperationIsValid(t *testing.T) {
 	assertIsValid(t, OpChatCompletion)
 	assertIsValid(t, OpTTSAudio)
 	assertIsValid(t, OpSTTTranscription)
+
+	assertIsInvalid := buildAssertIsInvalid[Operation]("operation")
+	assertIsInvalid(t, Operation("invalid"))
 }
 
 func TestCompletionContent(t *testing.T) {
