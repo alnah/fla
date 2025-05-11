@@ -87,9 +87,9 @@ func WithURL[T hasBase](s string) option[T] { return func(t T) { (t).GetBase().u
 
 // Chat manages a conversation request to the OpenAI API.
 type Chat struct {
-	Messages            []ai.Message `json:"messages"`
-	MaxCompletionTokens int          `json:"max_completion_tokens,omitempty"`
-	Temperature         float32      `json:"temperature,omitempty"`
+	Messages    []ai.Message `json:"messages"`
+	MaxTokens   int          `json:"max_completion_tokens,omitempty"`
+	Temperature float32      `json:"temperature,omitempty"`
 	*Base
 	systemOnce sync.Once
 }
@@ -100,9 +100,9 @@ func (c *Chat) GetBase() *Base { return c.Base }
 // WithMessages initializes the chat history to send in the request.
 func WithMessages(m []ai.Message) option[*Chat] { return func(c *Chat) { c.Messages = m } }
 
-// WithMaxCompletionTokens limits how many tokens the model may generate.
-func WithMaxCompletionTokens(n int) option[*Chat] {
-	return func(c *Chat) { c.MaxCompletionTokens = n }
+// WithMaxTokens limits how many tokens the model may generate.
+func WithMaxTokens(n int) option[*Chat] {
+	return func(c *Chat) { c.MaxTokens = n }
 }
 
 // WithTemperature adjusts response variability; higher values yield more diverse outputs.
@@ -208,6 +208,8 @@ func (c *Chat) Completion() (ai.Completion, error) {
 }
 
 type voice string
+
+func (v voice) String() string { return string(v) }
 
 const (
 	// Warm, and friendly.
@@ -365,6 +367,8 @@ func NewSTT(opts ...option[*STT]) *STT {
 }
 
 type fileFmt string
+
+func (ff fileFmt) Stirng() string { return string(ff) }
 
 const (
 	FileFmtFLAC fileFmt = "flac"
