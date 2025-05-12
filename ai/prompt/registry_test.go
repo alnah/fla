@@ -4,6 +4,8 @@ package prompt
 import (
 	"embed"
 	"testing"
+
+	"github.com/alnah/fla/locale"
 )
 
 //go:embed test/ok/*/*/*.md
@@ -56,7 +58,7 @@ func TestPromptLoading_Success(t *testing.T) {
 	rt, err := registry(okFS)
 	assertNoError(t, err)
 
-	data, err := rt.Prompt(FR, A1, promptID("test"), map[string]any{"input": "is success"})
+	data, err := rt.Prompt(locale.FR, A1, promptID("test"), map[string]any{"input": "is success"})
 	assertNoError(t, err)
 	assertValue(t, data, "Test is success")
 }
@@ -84,7 +86,7 @@ func TestPromptLoading_MissingKey(t *testing.T) {
 	rt, err := registry(missingKeyFS)
 	assertNoError(t, err)
 
-	_, err = rt.Prompt(FR, A1, promptID("missing_key"), map[string]any{"missing": "key"})
+	_, err = rt.Prompt(locale.FR, A1, promptID("missing_key"), map[string]any{"missing": "key"})
 	assertError(t, err)
 }
 
@@ -92,7 +94,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 	testCases := []struct {
 		name     string
 		embedFS  embed.FS
-		lang     language
+		lang     locale.Lang
 		level    level
 		promptID promptID
 		input    string
@@ -101,7 +103,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "OverrideVersion",
 			embedFS:  fallbackFS,
-			lang:     PT,
+			lang:     locale.PT,
 			level:    A1,
 			promptID: promptID("version"),
 			input:    "ok",
@@ -110,7 +112,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "FallbackPrevLevelSameLang",
 			embedFS:  fallbackFS,
-			lang:     FR,
+			lang:     locale.FR,
 			level:    C1,
 			promptID: promptID("fallback"),
 			input:    "b2 ok",
@@ -119,7 +121,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "WildcardAnyLevel",
 			embedFS:  fallbackFS,
-			lang:     FR,
+			lang:     locale.FR,
 			level:    AnyLevel,
 			promptID: promptID("wildcard"),
 			input:    "ok",
@@ -141,6 +143,6 @@ func TestPromptLoading_NotFound(t *testing.T) {
 	rt, err := registry(fallbackFS)
 	assertNoError(t, err)
 
-	_, err = rt.Prompt(PT, C2, promptID("not_found"), map[string]any{"input": "irrelevant"})
+	_, err = rt.Prompt(locale.PT, C2, promptID("not_found"), map[string]any{"input": "irrelevant"})
 	assertError(t, err)
 }

@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"strings"
 	"text/template"
+
+	"github.com/alnah/fla/locale"
 )
 
 //go:embed registry/*/*/*.md
@@ -40,24 +42,6 @@ func (l level) IsValid(path string) error {
 	}
 }
 
-// Supported languages
-type language string
-
-const (
-	FR language = "fr"
-	PT language = "pt"
-)
-
-func (l language) String() string { return string(l) }
-func (l language) IsValid(path string) error {
-	switch l {
-	case FR, PT:
-		return nil
-	default:
-		return fmt.Errorf("invalid lang %q in %s", l, path)
-	}
-}
-
 // Prompt identifier
 type promptID string
 
@@ -68,12 +52,12 @@ const (
 )
 
 type meta struct {
-	ID      promptID `json:"id"`
-	Lang    language `json:"lang"`
-	Level   level    `json:"level"`
-	Version int      `json:"version"`
-	Tags    []string `json:"tags"`
-	Vars    []string `json:"vars"`
+	ID      promptID    `json:"id"`
+	Lang    locale.Lang `json:"lang"`
+	Level   level       `json:"level"`
+	Version int         `json:"version"`
+	Tags    []string    `json:"tags"`
+	Vars    []string    `json:"vars"`
 }
 
 type prompt struct {
@@ -115,7 +99,7 @@ func registry(fsys fs.FS) (*runtime, error) {
 		if err := m.Level.IsValid(path); err != nil {
 			return err
 		}
-		if err := m.Lang.IsValid(path); err != nil {
+		if err := m.Lang.Validate(); err != nil {
 			return err
 		}
 
@@ -142,7 +126,7 @@ func registry(fsys fs.FS) (*runtime, error) {
 //  2. same-lang fallback on next-lower CEFR level
 //  3. same-lang wildcard-level ("_")
 //  4. error otherwise
-func (r *runtime) Prompt(lg language, lvl level, id promptID, data map[string]any) (string, error) {
+func (r *runtime) Prompt(lg locale.Lang, lvl level, id promptID, data map[string]any) (string, error) {
 	lang := lg.String()
 	idStr := id.String()
 	levelStr := lvl.String()
