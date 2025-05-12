@@ -14,10 +14,10 @@ import (
 	"time"
 
 	ai "github.com/alnah/fla/aiclient"
-	"github.com/alnah/fla/aiclient/breaker"
-	"github.com/alnah/fla/aiclient/retrier"
-	"github.com/alnah/fla/aiclient/tripper"
+	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/retrier"
+	"github.com/alnah/fla/tripper"
 )
 
 const (
