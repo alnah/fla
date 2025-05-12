@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	apiKeyFromEnv    = "ANTHROPIC_API_KEY" // #nosec G101: this is only the ENV var name, not a secret
+	apiKeyFromEnv    = ai.EnvAPIKeyAnthropic
 	gateway          = "https://api.anthropic.com/v1/"
 	pathMessages     = "messages"
 	anthropicVersion = "2023-06-01"

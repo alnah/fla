@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	apiKeyFromEnv = "ELEVENLABS_API_KEY" // #nosec G101: this is only the ENV var name, not a secret
+	apiKeyFromEnv = ai.EnvAPIKeyElevenLabs
 	gateway       = "https://api.elevenlabs.io/v1/"
 	pathTTS       = "text-to-speech/"
 )

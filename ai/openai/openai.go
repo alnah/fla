@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	apiKeyFromEnv = "OPENAI_API_KEY" // #nosec G101: this is only the ENV var name, not a secret
+	apiKeyFromEnv = ai.EnvAPIKeyOpenAI
 	gateway       = "https://api.openai.com/v1/"
 	pathChat      = "chat/completions"
 	pathTTS       = "audio/speech"

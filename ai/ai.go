@@ -1,5 +1,12 @@
 package ai
 
+/********* Env *********/
+const (
+	EnvAPIKeyOpenAI     string = "OPENAI_API_KEY"     // #nosec G101: this is only the ENV var name, not a secret
+	EnvAPIKeyAnthropic  string = "ANTHROPIC_API_KEY"  // #nosec G101
+	EnvAPIKeyElevenLabs string = "ELEVENLABS_API_KEY" // #nosec G101
+)
+
 /********* Enums *********/
 
 // Role helps to distinguish between system-level prompts, user input and assistant responses.
