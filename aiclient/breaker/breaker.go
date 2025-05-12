@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alnah/fla/aiclient/clock"
+	"github.com/alnah/fla/clock"
 )
 
 // ErrOpen is returned by Execute when the breaker is open and the operation is blocked.

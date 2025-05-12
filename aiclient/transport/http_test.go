@@ -14,8 +14,8 @@ import (
 
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/aiclient/breaker"
-	"github.com/alnah/fla/aiclient/clock"
 	"github.com/alnah/fla/aiclient/retrier"
+	"github.com/alnah/fla/clock"
 	"github.com/alnah/fla/logger"
 )
 

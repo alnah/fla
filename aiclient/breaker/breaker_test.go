@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alnah/fla/aiclient/clock"
+	"github.com/alnah/fla/clock"
 )
 
 /********* Unit Test *********/
