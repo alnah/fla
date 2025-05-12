@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 // roundTripperTest allows injecting custom RoundTrip behavior.
@@ -28,7 +28,7 @@ type marker string
 const key marker = "marker"
 
 func TestChat_WithOption_Pattern(t *testing.T) {
-	log := clog.New()
+	log := logger.New()
 	ctx := context.WithValue(context.Background(), key, "value")
 	msg := []ai.Message{{Role: ai.RoleUser, Content: "test"}}
 

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 /********* Helpers *********/
@@ -31,7 +31,7 @@ const key marker = "marker"
 /********* Tests *********/
 
 func TestTTS_WithOption_Pattern(t *testing.T) {
-	log := clog.New()
+	log := logger.New()
 	ctx := context.WithValue(context.Background(), key, "value")
 
 	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {

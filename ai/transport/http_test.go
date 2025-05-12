@@ -16,7 +16,7 @@ import (
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/clock"
 	"github.com/alnah/fla/ai/retrier"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 /********* Helpers *********/
@@ -233,7 +233,7 @@ func TestChain_UseLogger(t *testing.T) {
 				AddSource: false,
 				Level:     slog.LevelDebug,
 			})
-			logger := clog.NewWithHandler(handler)
+			logger := logger.NewWithHandler(handler)
 
 			// wrap the stub RoundTripper
 			stub := &stubRoundTripper{resp: tt.stubResp, err: tt.stubErr}

@@ -8,7 +8,7 @@ import (
 	"github.com/alnah/fla/ai"
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 type transport func(next http.RoundTripper) http.RoundTripper
@@ -94,7 +94,7 @@ func UseRetrier(r *retrier.Retrier, isRetryable func(error) bool) transport {
 
 // UseLogger records timing and outcome of each HTTP request,
 // aiding in metrics and debugging without altering business logic.
-func UseLogger(log *clog.Logger) transport {
+func UseLogger(log *logger.Logger) transport {
 	if log == nil {
 		return func(next http.RoundTripper) http.RoundTripper { return next }
 	}

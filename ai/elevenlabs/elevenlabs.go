@@ -14,7 +14,7 @@ import (
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/ai/transport"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 const (
@@ -49,7 +49,7 @@ type option func(*TTS)
 func WithModel(m model) option { return func(t *TTS) { (t).Model = m } }
 
 // WithLogger attaches structured logging of request/response events.
-func WithLogger(log *clog.Logger) option { return func(t *TTS) { (t).log = log } }
+func WithLogger(log *logger.Logger) option { return func(t *TTS) { (t).log = log } }
 
 // WithHTTPClient overrides the default HTTP client for custom transport configurations.
 func WithHTTPClient(hc *http.Client) option { return func(t *TTS) { (t).hc = hc } }
@@ -78,7 +78,7 @@ type TTS struct {
 	Model         model   `json:"model_id"`
 	voice         voiceID
 	hc            *http.Client
-	log           *clog.Logger
+	log           *logger.Logger
 	ctx           context.Context
 	transportOnce sync.Once
 	apiKey        string

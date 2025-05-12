@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 /********* Helpers *********/
@@ -32,7 +32,7 @@ const key marker = "marker"
 /********* Chat Completion Unit Tests *********/
 
 func TestChat_WithOption_Pattern(t *testing.T) {
-	log := clog.New()
+	log := logger.New()
 	ctx := context.WithValue(context.Background(), key, "value")
 	msg := []ai.Message{{Role: ai.RoleUser, Content: "test"}}
 
@@ -249,7 +249,7 @@ func TestChat_Completion_ContentEmpty(t *testing.T) {
 /********* TTS Audio Unit Tests *********/
 
 func TestTTS_WithOption_Pattern(t *testing.T) {
-	log := clog.New()
+	log := logger.New()
 	ctx := context.WithValue(context.Background(), key, "value")
 
 	hc := &http.Client{Transport: roundTripperTest(func(req *http.Request) (*http.Response, error) {
@@ -414,7 +414,7 @@ func TestAudio_Success(t *testing.T) {
 /********* STT Transcription Unit Test *********/
 
 func TestSTT_WithOption_Pattern(t *testing.T) {
-	log := clog.New()
+	log := logger.New()
 	ctx := context.WithValue(context.Background(), key, "value")
 	f, err := os.CreateTemp("", "stt-test-*.wav")
 	if err != nil {

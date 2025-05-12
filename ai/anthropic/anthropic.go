@@ -14,7 +14,7 @@ import (
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/ai/transport"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 const (
@@ -41,7 +41,7 @@ type option func(*Chat)
 func WithModel(m model) option { return func(c *Chat) { c.Model = m } }
 
 // WithLogger attaches structured logging of request/response events.
-func WithLogger(log *clog.Logger) option { return func(c *Chat) { c.log = log } }
+func WithLogger(log *logger.Logger) option { return func(c *Chat) { c.log = log } }
 
 // WithHTTPClient overrides the default HTTP client for custom transport configuration.
 func WithHTTPClient(hc *http.Client) option { return func(c *Chat) { c.hc = hc } }
@@ -75,7 +75,7 @@ type Chat struct {
 	System        string       `json:"system,omitempty"`
 	Temperature   float32      `json:"temperature,omitempty"`
 	hc            *http.Client
-	log           *clog.Logger
+	log           *logger.Logger
 	ctx           context.Context
 	transportOnce sync.Once
 	systemOnce    sync.Once

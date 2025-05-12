@@ -1,4 +1,4 @@
-package clog
+package logger
 
 import (
 	"log/slog"

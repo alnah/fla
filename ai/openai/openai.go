@@ -17,7 +17,7 @@ import (
 	"github.com/alnah/fla/ai/breaker"
 	"github.com/alnah/fla/ai/retrier"
 	"github.com/alnah/fla/ai/transport"
-	"github.com/alnah/fla/clog"
+	"github.com/alnah/fla/logger"
 )
 
 const (
@@ -49,7 +49,7 @@ const (
 type Base struct {
 	Model         model `json:"model"`
 	hc            *http.Client
-	log           *clog.Logger
+	log           *logger.Logger
 	ctx           context.Context
 	transportOnce sync.Once
 	apiKey        string
@@ -65,7 +65,7 @@ type option[T hasBase] func(T)
 func WithModel[T hasBase](m model) option[T] { return func(t T) { (t).GetBase().Model = m } }
 
 // WithLogger attaches structured logging of request/response events.
-func WithLogger[T hasBase](log *clog.Logger) option[T] {
+func WithLogger[T hasBase](log *logger.Logger) option[T] {
 	return func(t T) { (t).GetBase().log = log }
 }
 
