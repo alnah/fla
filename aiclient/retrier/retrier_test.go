@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alnah/fla/ai/clock"
+	"github.com/alnah/fla/aiclient/clock"
 )
 
 func TestRetrier_SucceedsFirstTry(t *testing.T) {

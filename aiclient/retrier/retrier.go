@@ -11,7 +11,7 @@ import (
 
 	crand "crypto/rand"
 
-	"github.com/alnah/fla/ai/clock"
+	"github.com/alnah/fla/aiclient/clock"
 )
 
 // RetrierError is returned when an operation fails after exhausting all retry attempts.

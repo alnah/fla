@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/ai/breaker"
-	"github.com/alnah/fla/ai/retrier"
-	"github.com/alnah/fla/ai/transport"
+	ai "github.com/alnah/fla/aiclient"
+	"github.com/alnah/fla/aiclient/breaker"
+	"github.com/alnah/fla/aiclient/retrier"
+	"github.com/alnah/fla/aiclient/transport"
 	"github.com/alnah/fla/logger"
 )
 

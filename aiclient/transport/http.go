@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/ai/breaker"
-	"github.com/alnah/fla/ai/retrier"
+	ai "github.com/alnah/fla/aiclient"
+	"github.com/alnah/fla/aiclient/breaker"
+	"github.com/alnah/fla/aiclient/retrier"
 	"github.com/alnah/fla/logger"
 )
 

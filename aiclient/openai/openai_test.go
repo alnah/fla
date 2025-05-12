@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alnah/fla/ai"
+	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/logger"
 )
 

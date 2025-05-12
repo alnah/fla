@@ -5,8 +5,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/alnah/fla/ai"
-	"github.com/alnah/fla/ai/openai"
+	ai "github.com/alnah/fla/aiclient"
+	"github.com/alnah/fla/aiclient/openai"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
 )
