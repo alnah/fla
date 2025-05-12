@@ -130,7 +130,7 @@ func (t *TTS) Audio() ([]byte, error) {
 			transport.AddHeader("Content-Type", "application/json"),
 			transport.AddHeader("xi-api-key", t.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.ClassifyStatus(ai.ProviderElevenLabs),
+			transport.UseStatusClassifier(ai.ProviderElevenLabs),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(t.log),

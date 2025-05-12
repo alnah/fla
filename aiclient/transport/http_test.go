@@ -79,7 +79,7 @@ func TestChain_ClassifyStatus_PassThrough(t *testing.T) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString("ok"))}, nil
 	})
 
-	rt := ClassifyStatus(ai.ProviderAnthropic)(next)
+	rt := UseStatusClassifier(ai.ProviderAnthropic)(next)
 	res, err := rt.RoundTrip(&http.Request{})
 	if err != nil {
 		t.Fatalf("want no error, got %v", err)
@@ -101,7 +101,7 @@ func TestChain_ClassifyStatus_ErrorWithRetryAfter_Seconds(t *testing.T) {
 		}, nil
 	})
 
-	rt := ClassifyStatus(ai.ProviderOpenAI)(next)
+	rt := UseStatusClassifier(ai.ProviderOpenAI)(next)
 	_, err := rt.RoundTrip(&http.Request{})
 
 	httpErr, ok := err.(*ai.HTTPError)
@@ -132,7 +132,7 @@ func TestChain_ClassifyStatus_ErrorWithRetryAfter_HTTPDatetime(t *testing.T) {
 		}, nil
 	})
 
-	rt := ClassifyStatus(ai.ProviderAnthropic)(next)
+	rt := UseStatusClassifier(ai.ProviderAnthropic)(next)
 	_, err := rt.RoundTrip(&http.Request{})
 
 	httpErr, ok := err.(*ai.HTTPError)

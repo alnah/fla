@@ -149,7 +149,7 @@ func (c *Chat) Completion() (ai.Completion, error) {
 			transport.AddHeader("x-api-key", c.apiKey),
 			transport.AddHeader("User-Agent", "Fla/1.0"),
 			transport.AddHeader("anthropic-version", c.version),
-			transport.ClassifyStatus(ai.ProviderAnthropic),
+			transport.UseStatusClassifier(ai.ProviderAnthropic),
 			transport.UseCircuitBreaker(breaker.New()),
 			transport.UseRetrier(retrier.New(), isRetryable),
 			transport.UseLogger(c.log),

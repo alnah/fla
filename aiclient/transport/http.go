@@ -40,9 +40,9 @@ func AddHeader(key, value string) tripperware {
 	}
 }
 
-// ClassifyStatus wraps a RoundTripper, turning 429, 409, 423 or 5xx
+// UseStatusClassifier wraps a RoundTripper, turning 429, 409, 423 or 5xx
 // into an HTTPError built by parseErrorResponse.
-func ClassifyStatus(provider ai.Provider) tripperware {
+func UseStatusClassifier(provider ai.Provider) tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
 			res, err := next.RoundTrip(req)
