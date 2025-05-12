@@ -62,7 +62,7 @@ type Config struct {
 	AI       AI          `json:"ai"`
 	Input    string      `json:"input"`
 	Output   string      `json:"output"`
-	log      *logger.Logger
+	Log      *logger.Logger
 	mu       sync.RWMutex
 	path     string
 }
@@ -207,7 +207,7 @@ func (c *Config) EnsureDirs() error {
 	}
 	for name, p := range dirs {
 		if err := os.MkdirAll(*p, PermUserRWX); err != nil {
-			c.log.Info("creating dir", "name", name, "path", *p)
+			c.Log.Info("creating dir", "name", name, "path", *p)
 		}
 		// verify directory is writable
 		testFile := filepath.Join(*p, ".permtest")
@@ -282,7 +282,7 @@ func appDir() (string, error) {
 }
 
 func applyDefaults(l *logger.Logger, p string, cfg *Config) error {
-	cfg.log = l
+	cfg.Log = l
 	cfg.path = p
 
 	appDir, err := appDir()
