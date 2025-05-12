@@ -49,8 +49,10 @@ func UseStatusClassifier(provider ai.Provider) tripperware {
 			if err != nil {
 				return nil, err
 			}
-			if res.StatusCode == 429 || res.StatusCode == 409 ||
-				res.StatusCode == 423 || res.StatusCode >= 500 {
+			if res.StatusCode == http.StatusTooManyRequests ||
+				res.StatusCode == http.StatusConflict ||
+				res.StatusCode == http.StatusLocked ||
+				res.StatusCode >= http.StatusInternalServerError {
 				return nil, ai.NewHTTPError(provider, res)
 			}
 			return res, nil
