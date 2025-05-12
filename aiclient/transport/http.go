@@ -11,7 +11,7 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-type transport func(next http.RoundTripper) http.RoundTripper
+type tripperware func(next http.RoundTripper) http.RoundTripper
 
 type roundTripper func(*http.Request) (*http.Response, error)
 
@@ -21,7 +21,7 @@ func (f roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // Chain composes multiple transport middlewares around a base RoundTripper.
 // This makes it easy to build reusable pipelines of behavior.
-func Chain(rt http.RoundTripper, transports ...transport) http.RoundTripper {
+func Chain(rt http.RoundTripper, transports ...tripperware) http.RoundTripper {
 	for _, m := range transports {
 		rt = m(rt)
 	}
@@ -30,7 +30,7 @@ func Chain(rt http.RoundTripper, transports ...transport) http.RoundTripper {
 
 // AddHeader ensures every outgoing request carries the specified header.
 // Useful for injecting authentication, content-type, or custom metadata.
-func AddHeader(key, value string) transport {
+func AddHeader(key, value string) tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
 			clone := req.Clone(req.Context())
@@ -42,7 +42,7 @@ func AddHeader(key, value string) transport {
 
 // ClassifyStatus wraps a RoundTripper, turning 429, 409, 423 or 5xx
 // into an HTTPError built by parseErrorResponse.
-func ClassifyStatus(provider ai.Provider) transport {
+func ClassifyStatus(provider ai.Provider) tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
 			res, err := next.RoundTrip(req)
@@ -60,7 +60,7 @@ func ClassifyStatus(provider ai.Provider) transport {
 
 // UseCircuitBreaker wraps each request in a circuit breaker,
 // preventing calls when the downstream service is consistently failing.
-func UseCircuitBreaker(b *breaker.Breaker) transport {
+func UseCircuitBreaker(b *breaker.Breaker) tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
 			var res *http.Response
@@ -77,7 +77,7 @@ func UseCircuitBreaker(b *breaker.Breaker) transport {
 
 // UseRetrier applies a retry policy around each request,
 // using the provided Retrier to handle transient errors according to rules.
-func UseRetrier(r *retrier.Retrier, isRetryable func(error) bool) transport {
+func UseRetrier(r *retrier.Retrier, isRetryable func(error) bool) tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return roundTripper(func(req *http.Request) (*http.Response, error) {
 			var res *http.Response
@@ -94,7 +94,7 @@ func UseRetrier(r *retrier.Retrier, isRetryable func(error) bool) transport {
 
 // UseLogger records timing and outcome of each HTTP request,
 // aiding in metrics and debugging without altering business logic.
-func UseLogger(log *logger.Logger) transport {
+func UseLogger(log *logger.Logger) tripperware {
 	if log == nil {
 		return func(next http.RoundTripper) http.RoundTripper { return next }
 	}
