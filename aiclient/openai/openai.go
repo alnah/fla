@@ -16,7 +16,7 @@ import (
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/aiclient/breaker"
 	"github.com/alnah/fla/aiclient/retrier"
-	"github.com/alnah/fla/aiclient/transport"
+	"github.com/alnah/fla/aiclient/tripper"
 	"github.com/alnah/fla/logger"
 )
 
@@ -170,15 +170,15 @@ func (c *Chat) Completion() (ai.Completion, error) {
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		c.hc.Transport = transport.Chain(
+		c.hc.Transport = tripper.Chain(
 			orig,
-			transport.AddHeader("Content-Type", "application/json"),
-			transport.AddHeader("Authorization", "Bearer "+c.Base.apiKey),
-			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.UseStatusClassifier(ai.ProviderOpenAI),
-			transport.UseCircuitBreaker(breaker.New()),
-			transport.UseRetrier(retrier.New(), isRetryable),
-			transport.UseLogger(c.Base.log),
+			tripper.AddHeader("Content-Type", "application/json"),
+			tripper.AddHeader("Authorization", "Bearer "+c.Base.apiKey),
+			tripper.AddHeader("User-Agent", "Fla/1.0"),
+			tripper.UseStatusClassifier(ai.ProviderOpenAI),
+			tripper.UseCircuitBreaker(breaker.New()),
+			tripper.UseRetrier(retrier.New(), isRetryable),
+			tripper.UseLogger(c.Base.log),
 		)
 	})
 
@@ -295,15 +295,15 @@ func (t *TTS) Audio() ([]byte, error) {
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		t.hc.Transport = transport.Chain(
+		t.hc.Transport = tripper.Chain(
 			orig,
-			transport.AddHeader("Content-Type", "application/json"),
-			transport.AddHeader("Authorization", "Bearer "+t.Base.apiKey),
-			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.UseStatusClassifier(ai.ProviderOpenAI),
-			transport.UseCircuitBreaker(breaker.New()),
-			transport.UseRetrier(retrier.New(), isRetryable),
-			transport.UseLogger(t.log),
+			tripper.AddHeader("Content-Type", "application/json"),
+			tripper.AddHeader("Authorization", "Bearer "+t.Base.apiKey),
+			tripper.AddHeader("User-Agent", "Fla/1.0"),
+			tripper.UseStatusClassifier(ai.ProviderOpenAI),
+			tripper.UseCircuitBreaker(breaker.New()),
+			tripper.UseRetrier(retrier.New(), isRetryable),
+			tripper.UseLogger(t.log),
 		)
 	})
 
@@ -430,15 +430,15 @@ func (s *STT) Transcript() (ai.Transcription, error) {
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		s.Base.hc.Transport = transport.Chain(
+		s.Base.hc.Transport = tripper.Chain(
 			orig,
-			transport.AddHeader("Content-Type", multipartWriter.FormDataContentType()),
-			transport.AddHeader("Authorization", "Bearer "+s.Base.apiKey),
-			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.UseStatusClassifier(ai.ProviderOpenAI),
-			transport.UseCircuitBreaker(breaker.New()),
-			transport.UseRetrier(retrier.New(), isRetryable),
-			transport.UseLogger(s.Base.log),
+			tripper.AddHeader("Content-Type", multipartWriter.FormDataContentType()),
+			tripper.AddHeader("Authorization", "Bearer "+s.Base.apiKey),
+			tripper.AddHeader("User-Agent", "Fla/1.0"),
+			tripper.UseStatusClassifier(ai.ProviderOpenAI),
+			tripper.UseCircuitBreaker(breaker.New()),
+			tripper.UseRetrier(retrier.New(), isRetryable),
+			tripper.UseLogger(s.Base.log),
 		)
 	})
 

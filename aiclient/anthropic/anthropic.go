@@ -13,7 +13,7 @@ import (
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/aiclient/breaker"
 	"github.com/alnah/fla/aiclient/retrier"
-	"github.com/alnah/fla/aiclient/transport"
+	"github.com/alnah/fla/aiclient/tripper"
 	"github.com/alnah/fla/logger"
 )
 
@@ -143,16 +143,16 @@ func (c *Chat) Completion() (ai.Completion, error) {
 		if orig == nil {
 			orig = http.DefaultTransport
 		}
-		c.hc.Transport = transport.Chain(
+		c.hc.Transport = tripper.Chain(
 			orig,
-			transport.AddHeader("Content-Type", "application/json"),
-			transport.AddHeader("x-api-key", c.apiKey),
-			transport.AddHeader("User-Agent", "Fla/1.0"),
-			transport.AddHeader("anthropic-version", c.version),
-			transport.UseStatusClassifier(ai.ProviderAnthropic),
-			transport.UseCircuitBreaker(breaker.New()),
-			transport.UseRetrier(retrier.New(), isRetryable),
-			transport.UseLogger(c.log),
+			tripper.AddHeader("Content-Type", "application/json"),
+			tripper.AddHeader("x-api-key", c.apiKey),
+			tripper.AddHeader("User-Agent", "Fla/1.0"),
+			tripper.AddHeader("anthropic-version", c.version),
+			tripper.UseStatusClassifier(ai.ProviderAnthropic),
+			tripper.UseCircuitBreaker(breaker.New()),
+			tripper.UseRetrier(retrier.New(), isRetryable),
+			tripper.UseLogger(c.log),
 		)
 	})
 
