@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	"github.com/alnah/fla/ai"
+	"github.com/alnah/fla/ai/openai"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
 )
@@ -39,15 +41,15 @@ func main() {
 	cfg.BindFlags()
 	flag.Parse()
 	if err := cfg.Validate(); err != nil {
-		log.Error("validating config", "error", err.Error())
+		cfg.Log.Error("validating config", "error", err.Error())
 		return
 	}
 	if err := cfg.EnsureDirs(); err != nil {
-		log.Error("ensuring application directories", "error", err.Error())
+		cfg.Log.Error("ensuring application directories", "error", err.Error())
 	}
 
 	/********* Log config *********/
-	log.Info("config",
+	cfg.Log.Info("config",
 		"language", cfg.Language,
 		"input", cfg.Input,
 		"output", cfg.Output,
@@ -55,4 +57,18 @@ func main() {
 		"ai_audio_timeout", cfg.AI.Timeout.Audio,
 		"ai_transcription_timeout", cfg.AI.Timeout.Transcription,
 	)
+
+	/******** Demo *********/
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.AI.Timeout.Completion)
+	defer cancel()
+
+	completion, err := openai.NewChat(openai.WithContext[*openai.Chat](ctx), openai.WithLogger[*openai.Chat](cfg.Log)).
+		SetSystem("Tu es un professeur de français.").
+		AddMessage(ai.RoleUser, "Tu dois écrire un texte de niveau B1 FLE. Retourne uniquement le texte.").
+		Completion()
+	if err != nil {
+		cfg.Log.Error("completion failed", "error", err.Error())
+		return
+	}
+	cfg.Log.Info("completion succeed", "content", completion.Content())
 }
