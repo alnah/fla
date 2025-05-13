@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
 
 	ai "github.com/alnah/fla/aiclient"
-	"github.com/alnah/fla/aiclient/openai"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
 )
@@ -14,18 +12,6 @@ import (
 func main() {
 	/********* Setup logger *********/
 	log := logger.New()
-
-	/********* Validate env *********/
-	required := []string{
-		ai.EnvAPIKeyOpenAI,
-		ai.EnvAPIKeyAnthropic,
-		ai.EnvAPIKeyElevenLabs,
-	}
-	for _, key := range required {
-		if os.Getenv(key) == "" {
-			log.Warn("missing environment variable", "key", key)
-		}
-	}
 
 	/********* Setup config *********/
 	path, err := config.Path()
@@ -62,13 +48,28 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.AI.Timeout.Completion)
 	defer cancel()
 
-	completion, err := openai.NewChat(openai.WithContext[*openai.Chat](ctx), openai.WithLogger[*openai.Chat](cfg.Log)).
-		SetSystem("Tu es un professeur de français.").
-		AddMessage(ai.RoleUser, "Tu dois écrire un texte de niveau B1 FLE. Retourne uniquement le texte.").
-		Completion()
+	chat, err := ai.NewChatClient(
+		ai.WithProvider(ai.ProviderAnthropic),
+		ai.WithURL(ai.URLChatCompletionAnthropic),
+		ai.WithAPIKey(ai.EnvAnthropicAPIKey),
+		ai.WithModel(ai.AIModelCostOptimizedAnthropic),
+		ai.WithContext(ctx),
+		ai.WithLogger(log),
+		ai.WithMessages(ai.Messages{
+			ai.Message{
+				Role:    ai.RoleUser,
+				Content: "Comment vas-tu ?",
+			},
+		}),
+	)
 	if err != nil {
-		cfg.Log.Error("completion failed", "error", err.Error())
+		log.Error("new chat client failed", "error", err.Error())
 		return
 	}
-	cfg.Log.Info("completion succeed", "content", completion.Content())
+	completion, err := chat.Do()
+	if err != nil {
+		log.Error("completion failed", "error", err.Error())
+		return
+	}
+	log.Info("completion succeed", "content", completion.String())
 }
