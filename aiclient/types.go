@@ -59,6 +59,9 @@ func (u URL) IsValid() bool {
 	}
 }
 func (u URL) Validate() error {
+	if u.String() == "" {
+		return fmt.Errorf("invalid url: can't be empty")
+	}
 	if !u.IsValid() {
 		return fmt.Errorf("invalid url: %s, please use correct gateway and endpoint", u)
 	}
@@ -77,8 +80,11 @@ func (e APIKey) String() string { return string(e) }
 func (e APIKey) GetEnv() string { return os.Getenv(e.String()) }
 func (e APIKey) IsValid() bool  { return e.GetEnv() != "" }
 func (e APIKey) Validate() error {
+	if e.String() == "" {
+		return fmt.Errorf("invalid api key: can't be empty")
+	}
 	if !e.IsValid() {
-		return fmt.Errorf("invalid api key: please export %q", e.String())
+		return fmt.Errorf("invalid api key: please export %q env var", e.String())
 	}
 	return nil
 }
@@ -110,6 +116,9 @@ func (a AIModel) IsValid() bool {
 	}
 }
 func (a AIModel) Validate() error {
+	if a.String() == "" {
+		return fmt.Errorf("invalid ai model: can't be empty")
+	}
 	if !a.IsValid() {
 		available := strings.Join([]string{
 			AIModelReasoningOpenAI.String(),
@@ -121,7 +130,7 @@ func (a AIModel) Validate() error {
 			AIModelCostOptimizedAnthropic.String(),
 			AIModelTTSElevenLabs.String(),
 		}, ", ")
-		return fmt.Errorf("invalid AI model: %s, available models: %s", a.String(), available)
+		return fmt.Errorf("invalid ai model: %s, available models: %s", a.String(), available)
 	}
 	return nil
 }
