@@ -38,13 +38,13 @@ func (c *ChatClient) validate() error {
 		return errors.New("context must be provided")
 	}
 	if c.UseOpenAI == c.UseAnthropic {
-		return errors.New("must configure exactly one provider: OpenAI or Anthropic")
+		return errors.New("must configure exactly one provider: openai or anthropic")
 	}
 	if c.UseOpenAI && c.provider != ProviderOpenAI {
-		return fmt.Errorf("URL indicates OpenAI but provider is %s", c.provider)
+		return fmt.Errorf("url indicates OpenAI but provider is %s", c.provider)
 	}
 	if c.UseAnthropic && c.provider != ProviderAnthropic {
-		return fmt.Errorf("URL indicates Anthropic but provider is %s", c.provider)
+		return fmt.Errorf("url indicates Anthropic but provider is %s", c.provider)
 	}
 	switch {
 	case c.UseOpenAI:
@@ -56,7 +56,7 @@ func (c *ChatClient) validate() error {
 			AIModelTranscriptionOpenAI:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by OpenAI", c.Model)
+			return fmt.Errorf("model %s not supported by openai", c.Model)
 		}
 
 	case c.UseAnthropic:
@@ -65,13 +65,13 @@ func (c *ChatClient) validate() error {
 			AIModelCostOptimizedAnthropic:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by Anthropic", c.Model)
+			return fmt.Errorf("model %s not supported by anthropic", c.Model)
 		}
 	}
 	if c.UseAnthropic {
 		for _, m := range c.Messages {
 			if m.Role == RoleSystem {
-				return errors.New("system messages must be passed via c.System, not in c.Messages, when using Anthropic")
+				return errors.New("system messages must be passed via c.System, not in c.Messages, when using anthropic")
 			}
 		}
 	}
