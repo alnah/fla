@@ -24,46 +24,55 @@ type ChatClient struct {
 	Messages    Messages
 	MaxTokens   MaxTokens
 
+	// infra fields
+	ctx        context.Context
+	logger     *logger.Logger
+	httpClient *http.Client
+	httpMethod HTTPMethod
+	provider   Provider
+	url        URL
+	apiKey     APIKey
+
 	// internal fields
 	UseOpenAI    bool // internal
 	UseAnthropic bool // internal
 
-	// infra fields
-	ctx        context.Context
-	hc         *http.Client
-	logger     *logger.Logger
-	provider   Provider
-	url        URL
-	apiKey     APIKey
-	httpMethod HTTPMethod
 }
 
 // NewChatClient builds a ChatClient with default transport chain.
 func NewChatClient(options ...Option) (*ChatClient, error) {
-	client := &ChatClient{
+	c := &ChatClient{
 		ctx:        context.Background(),
-		hc:         &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		httpMethod: http.MethodPost,
 		logger:     logger.New(),
 		MaxTokens:  8192,
 	}
 
 	for _, opt := range options {
-		opt(client)
+		opt(c)
 	}
 
-	client.determineProvider()
-	if err := client.Validate(); err != nil {
+	if err := c.applyDefaults().determineProvider().validate(); err != nil {
 		return nil, fmt.Errorf("failed to build chat client: %w", err)
 	}
 
-	client.hc.Transport = client.configureTransportChain()
-	return client, nil
+	c.httpClient.Transport = c.configureTransportChain()
+	return c, nil
 }
 
-func (c *ChatClient) determineProvider() {
+func (c *ChatClient) applyDefaults() *ChatClient {
+	c.ctx = context.Background()
+	c.logger = logger.New()
+	c.httpClient = &http.Client{Timeout: 30 * time.Second}
+	c.httpMethod = http.MethodPost
+	return c
+}
+
+func (c *ChatClient) determineProvider() *ChatClient {
 	c.UseOpenAI = strings.Contains(c.url.String(), ProviderOpenAI.String())
 	c.UseAnthropic = strings.Contains(c.url.String(), ProviderAnthropic.String())
+	return c
 }
 
 func (c *ChatClient) Do() (ChatCompletion, error) {
@@ -77,7 +86,7 @@ func (c *ChatClient) Do() (ChatCompletion, error) {
 		return ChatCompletion{}, NewChatClientError(c.provider, "failed to build http request", err)
 	}
 
-	res, err := c.hc.Do(req)
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return ChatCompletion{}, NewChatClientError(c.provider, "failed to send http request", err)
 	}

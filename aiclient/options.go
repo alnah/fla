@@ -17,6 +17,6 @@ func WithTemperature(t Temperature) Option  { return func(cc *ChatClient) { cc.T
 func WithMessages(ms Messages) Option       { return func(cc *ChatClient) { cc.Messages = ms } }
 func WithMaxTokens(mt MaxTokens) Option     { return func(cc *ChatClient) { cc.MaxTokens = mt } }
 func WithContext(c context.Context) Option  { return func(cc *ChatClient) { cc.ctx = c } }
-func WithHTTPClient(hc *http.Client) Option { return func(cc *ChatClient) { cc.hc = hc } }
+func WithHTTPClient(hc *http.Client) Option { return func(cc *ChatClient) { cc.httpClient = hc } }
 func WithLogger(l *logger.Logger) Option    { return func(cc *ChatClient) { cc.logger = l } }
 func WithHTTPMethod(hm HTTPMethod) Option   { return func(cc *ChatClient) { cc.httpMethod = hm } }

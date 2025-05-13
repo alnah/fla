@@ -2,8 +2,8 @@ package aiclient
 
 import "errors"
 
-// Validate ensures required fields are set.
-func (c *ChatClient) Validate() error {
+// validate ensures required fields are set.
+func (c *ChatClient) validate() error {
 	if err := c.Model.Validate(); err != nil {
 		return err
 	}
