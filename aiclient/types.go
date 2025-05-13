@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -27,10 +28,11 @@ func (p Provider) IsValid() bool {
 }
 func (p Provider) Validate() error {
 	if p.String() == "" {
-		return fmt.Errorf("invalid provider: empty")
+		return fmt.Errorf("invalid provider: can't be empty")
 	}
 	if !p.IsValid() {
-		return fmt.Errorf("invalid provider: %s", p)
+		providers := strings.Join([]string{ProviderOpenAI.String(), ProviderAnthropic.String()}, ", ")
+		return fmt.Errorf("invalid provider: %s, available providers: %s", p.String(), providers)
 	}
 	return nil
 }
@@ -58,7 +60,7 @@ func (u URL) IsValid() bool {
 }
 func (u URL) Validate() error {
 	if !u.IsValid() {
-		return fmt.Errorf("invalid url: %s", u)
+		return fmt.Errorf("invalid url: %s, please use correct gateway and endpoint", u)
 	}
 	return nil
 }
@@ -109,7 +111,17 @@ func (a AIModel) IsValid() bool {
 }
 func (a AIModel) Validate() error {
 	if !a.IsValid() {
-		return fmt.Errorf("invalid AI model: %s", a)
+		available := strings.Join([]string{
+			AIModelReasoningOpenAI.String(),
+			AIModelFlagshipOpenAI.String(),
+			AIModelCostOptimizedOpenAI.String(),
+			AIModelTTSOpenAI.String(),
+			AIModelTranscriptionOpenAI.String(),
+			AIModelReasoningAnthropic.String(),
+			AIModelCostOptimizedAnthropic.String(),
+			AIModelTTSElevenLabs.String(),
+		}, ", ")
+		return fmt.Errorf("invalid AI model: %s, available models: %s", a.String(), available)
 	}
 	return nil
 }
@@ -165,7 +177,12 @@ func (r Role) IsValid() bool {
 }
 func (r Role) Validate() error {
 	if !r.IsValid() {
-		return fmt.Errorf("invalid role: %s", r)
+		available := strings.Join([]string{
+			RoleSystem.String(),
+			RoleUser.String(),
+			RoleAssistant.String(),
+		}, ", ")
+		return fmt.Errorf("invalid role: %s, available roles: %s", r.String(), available)
 	}
 	return nil
 }
@@ -180,7 +197,7 @@ func (m Message) IsValid() bool {
 }
 func (m Message) Validate() error {
 	if m.Content == "" {
-		return fmt.Errorf("invalid message: message content is empty")
+		return fmt.Errorf("invalid message: can't be empty")
 	}
 	if !m.Role.IsValid() {
 		return m.Role.Validate()
