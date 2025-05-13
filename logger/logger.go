@@ -3,7 +3,21 @@ package logger
 import (
 	"log/slog"
 	"os"
+	"sync"
 )
+
+var (
+	defaultLogger *Logger
+	once          sync.Once
+)
+
+// Default returns a singleton Logger.
+func Default() *Logger {
+	once.Do(func() {
+		defaultLogger = New()
+	})
+	return defaultLogger
+}
 
 // Logger wraps slog.Logger to offer structured, leveled logging.
 type Logger struct{ *slog.Logger }
