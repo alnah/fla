@@ -27,11 +27,12 @@ func main() {
 	cfg.BindFlags()
 	flag.Parse()
 	if err := cfg.Validate(); err != nil {
-		cfg.Log.Error("validating config", "error", err.Error())
+		log.Error("validating config", "error", err.Error())
 		return
 	}
-	if err := cfg.EnsureDirs(); err != nil {
-		cfg.Log.Error("ensuring application directories", "error", err.Error())
+	if err := cfg.EnsureIODirs(); err != nil {
+		log.Error("ensuring application directories", "error", err.Error())
+		return
 	}
 
 	/********* Log config *********/
