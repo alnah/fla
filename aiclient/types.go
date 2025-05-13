@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 )
 
 const (
@@ -15,8 +16,7 @@ const (
 
 type Provider string
 
-func (p Provider) String() string               { return string(p) }
-func (p Provider) MarshalJSON() ([]byte, error) { return json.Marshal(p.String()) }
+func (p Provider) String() string { return string(p) }
 func (p Provider) IsValid() bool {
 	switch p {
 	case ProviderOpenAI, ProviderAnthropic, ProviderElevenLabs:
@@ -26,15 +26,18 @@ func (p Provider) IsValid() bool {
 	}
 }
 func (p Provider) Validate() error {
+	if p.String() == "" {
+		return fmt.Errorf("invalid provider: empty")
+	}
 	if !p.IsValid() {
-		return fmt.Errorf("invalid provider: %s", p.String())
+		return fmt.Errorf("invalid provider: %s", p)
 	}
 	return nil
 }
 
 const (
 	URLChatCompletionOpenAI    URL = "https://api.openai.com/v1/chat/completions"
-	URLChatCompletionAnthropic URL = "https://api.anthropic.com/v1/complete"
+	URLChatCompletionAnthropic URL = "https://api.anthropic.com/v1/messages"
 	URLSpeechAudioOpenAI       URL = "https://api.openai.com/v1/audio/speech"
 	URLSpeechAudioElevenLabs   URL = "https://api.elevenlabs.io/v1/text-to-speech"
 	URLTranscriptionOpenAI     URL = "https://api.openai.com/v1/audio/transcriptions"
@@ -45,14 +48,9 @@ type URL string
 func (u URL) String() string { return string(u) }
 func (u URL) IsValid() bool {
 	switch u {
-	// chat completion
-	case URLChatCompletionOpenAI, URLChatCompletionAnthropic:
-		return true
-	// speech audio
-	case URLSpeechAudioOpenAI, URLSpeechAudioElevenLabs:
-		return true
-	// transcription
-	case URLTranscriptionOpenAI:
+	case URLChatCompletionOpenAI, URLChatCompletionAnthropic,
+		URLSpeechAudioOpenAI, URLSpeechAudioElevenLabs,
+		URLTranscriptionOpenAI:
 		return true
 	default:
 		return false
@@ -60,18 +58,25 @@ func (u URL) IsValid() bool {
 }
 func (u URL) Validate() error {
 	if !u.IsValid() {
-		return fmt.Errorf("invalid url: %s", u.String())
+		return fmt.Errorf("invalid url: %s", u)
 	}
 	return nil
 }
 
+const (
+	EnvOpenAIAPIKey     APIKey = "OPENAI_API_KEY"     // #nosec G101
+	EnvAnthropicAPIKey  APIKey = "ANTHROPIC_API_KEY"  // #nosec G101
+	EnvElevenLabsAPIKey APIKey = "ELEVENLABS_API_KEY" // #nosec G101
+)
+
 type APIKey string
 
-func (a APIKey) String() string { return string(a) }
-func (a APIKey) IsValid() bool  { return a.String() != "" }
-func (a APIKey) Validate() error {
-	if !a.IsValid() {
-		return fmt.Errorf("invalid api key: empty")
+func (e APIKey) String() string { return string(e) }
+func (e APIKey) GetEnv() string { return os.Getenv(e.String()) }
+func (e APIKey) IsValid() bool  { return e.GetEnv() != "" }
+func (e APIKey) Validate() error {
+	if !e.IsValid() {
+		return fmt.Errorf("invalid api key: please export %q", e.String())
 	}
 	return nil
 }
@@ -89,21 +94,14 @@ const (
 
 type AIModel string
 
-func (a AIModel) String() string { return string(a) }
-func (a AIModel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(a.String())
-}
+func (a AIModel) String() string               { return string(a) }
+func (a AIModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
 func (a AIModel) IsValid() bool {
 	switch a {
-	// OpenAI
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI,
-		AIModelTTSOpenAI, AIModelTranscriptionOpenAI:
-		return true
-	// Anthropic
-	case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
-		return true
-	// ElevenLabs
-	case AIModelTTSElevenLabs:
+		AIModelTTSOpenAI, AIModelTranscriptionOpenAI,
+		AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic,
+		AIModelTTSElevenLabs:
 		return true
 	default:
 		return false
@@ -111,47 +109,52 @@ func (a AIModel) IsValid() bool {
 }
 func (a AIModel) Validate() error {
 	if !a.IsValid() {
-		return fmt.Errorf("invalid AI model: %s", a.String())
+		return fmt.Errorf("invalid AI model: %s", a)
 	}
 	return nil
 }
 
+// Temperature controls randomness in model outputs.
 type Temperature float32
 
 func (t Temperature) Float32() float32             { return float32(t) }
 func (t Temperature) MarshalJSON() ([]byte, error) { return json.Marshal(t.Float32()) }
+
 func (t Temperature) IsValid(m AIModel) bool {
 	switch m {
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
-		if t >= 0 || t <= 2 {
-			return true
-		}
+		return t >= 0 && t <= 2
 	case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
-		if t >= 0 || t <= 1 {
-			return true
-		}
+		return t >= 0 && t <= 1
+	default:
+		return false
 	}
-	return false
 }
 
 func (t Temperature) Validate(m AIModel) error {
-	isValid := t.IsValid(m)
-	switch m {
-	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
-		if !isValid {
-			fmt.Errorf("invalid temperature: must be 0 <= t <= 2")
-		}
-	case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
-		if !isValid {
-			fmt.Errorf("invalid temperature: must be 0 <= t <= 1")
+	if !t.IsValid(m) {
+		switch m {
+		case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
+			return fmt.Errorf("invalid temperature for %s: must be 0 <= t <= 2", m)
+		case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
+			return fmt.Errorf("invalid temperature for %s: must be 0 <= t <= 1", m)
+		default:
+			return fmt.Errorf("temperature validation not supported for model %s", m)
 		}
 	}
 	return nil
 }
 
+const (
+	RoleSystem    Role = "system"
+	RoleUser      Role = "user"
+	RoleAssistant Role = "assistant"
+)
+
 type Role string
 
-func (r Role) String() string { return string(r) }
+func (r Role) String() string               { return string(r) }
+func (r Role) MarshalJSON() ([]byte, error) { return json.Marshal(r.String()) }
 func (r Role) IsValid() bool {
 	switch r {
 	case RoleSystem, RoleUser, RoleAssistant:
@@ -162,19 +165,10 @@ func (r Role) IsValid() bool {
 }
 func (r Role) Validate() error {
 	if !r.IsValid() {
-		return fmt.Errorf("role invalid: %s", r.String())
+		return fmt.Errorf("invalid role: %s", r)
 	}
 	return nil
 }
-func (r Role) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.String())
-}
-
-const (
-	RoleSystem    Role = "system"
-	RoleUser      Role = "user"
-	RoleAssistant Role = "assistant"
-)
 
 type Message struct {
 	Role    Role   `json:"role"`
@@ -209,10 +203,10 @@ type MaxTokens int
 
 func (mt MaxTokens) Int() int                     { return int(mt) }
 func (mt MaxTokens) MarshalJSON() ([]byte, error) { return json.Marshal(mt.Int()) }
-func (mt MaxTokens) IsValid() bool                { return mt.Int() >= 0 }
+func (mt MaxTokens) IsValid() bool                { return mt.Int() >= 1 }
 func (mt MaxTokens) Validate() error {
 	if !mt.IsValid() {
-		fmt.Errorf("invalid max tokens: must be mt > 0")
+		return fmt.Errorf("invalid max tokens: must be >= 1")
 	}
 	return nil
 }
@@ -227,3 +221,13 @@ func (hm HTTPMethod) Validate() error {
 	}
 	return nil
 }
+
+const (
+	OpChatCompletion   Operation = "chat completion"
+	OpTTSAudio         Operation = "text-to-speech audio"
+	OpSTTTranscription Operation = "speech-to-text transcription"
+)
+
+type Operation string
+
+func (o Operation) String() string { return string(o) }
