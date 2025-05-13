@@ -90,3 +90,27 @@ func TestChatClient_New_WithOptions(t *testing.T) {
 		t.Errorf("http method: want %v, got %v", httpMethod, chat.httpMethod)
 	}
 }
+
+func TestChatClient_New_ApplyDefaults(t *testing.T) {
+	chat, err := NewChatClient(
+		WithContext(context.Background()),
+		WithProvider(ProviderOpenAI),
+		WithURL(URLChatCompletionOpenAI),
+		WithAPIKey(EnvOpenAIAPIKey),
+		WithModel(AIModelCostOptimizedOpenAI),
+	)
+	if err != nil {
+		t.Fatalf("want no error, got %v", err)
+	}
+	testCases := map[string]any{
+		"logger":      chat.logger,
+		"http client": chat.httpClient,
+		"http method": chat.httpMethod,
+		"max tokens":  chat.MaxTokens,
+	}
+	for field, value := range testCases {
+		if value == nil {
+			t.Errorf("%s: should be set", field)
+		}
+	}
+}
