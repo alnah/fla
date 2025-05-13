@@ -41,14 +41,7 @@ type ChatClient struct {
 
 // NewChatClient builds a ChatClient with default transport chain.
 func NewChatClient(options ...Option) (*ChatClient, error) {
-	c := &ChatClient{
-		ctx:        context.Background(),
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		httpMethod: http.MethodPost,
-		logger:     logger.New(),
-		MaxTokens:  8192,
-	}
-
+	c := &ChatClient{}
 	for _, opt := range options {
 		opt(c)
 	}
@@ -62,10 +55,21 @@ func NewChatClient(options ...Option) (*ChatClient, error) {
 }
 
 func (c *ChatClient) applyDefaults() *ChatClient {
-	c.ctx = context.Background()
-	c.logger = logger.New()
-	c.httpClient = &http.Client{Timeout: 30 * time.Second}
-	c.httpMethod = http.MethodPost
+	if c.ctx != nil {
+		c.ctx = context.Background()
+	}
+	if c.logger == nil {
+		c.logger = logger.New()
+	}
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{Timeout: 30 * time.Second}
+	}
+	if c.httpMethod == "" {
+		c.httpMethod = HTTPMethod(http.MethodPost)
+	}
+	if c.MaxTokens == 0 {
+		c.MaxTokens = MaxTokens(8192)
+	}
 	return c
 }
 
