@@ -3,17 +3,11 @@ package tripper
 import (
 	"context"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/retrier"
-)
-
-var (
-	defaultTripper *Tripper
-	once           sync.Once
 )
 
 type Tripperware func(next http.RoundTripper) http.RoundTripper
