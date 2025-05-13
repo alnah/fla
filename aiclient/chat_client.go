@@ -55,9 +55,6 @@ func NewChatClient(options ...Option) (*ChatClient, error) {
 }
 
 func (c *ChatClient) applyDefaults() *ChatClient {
-	if c.ctx != nil {
-		c.ctx = context.Background()
-	}
 	if c.logger == nil {
 		c.logger = logger.New()
 	}
