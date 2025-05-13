@@ -9,6 +9,19 @@ import (
 	"net/http"
 )
 
+func BuildProviderError(provider Provider, res *http.Response) error {
+	switch provider {
+	case ProviderOpenAI:
+		return BuildOpenAIError(res)
+	case ProviderAnthropic:
+		return BuildAnthropicError(res)
+	case ProviderElevenLabs:
+		return BuildElevenLabsError(res)
+	default:
+		return fmt.Errorf("%s error: status %d", provider.String(), res.StatusCode)
+	}
+}
+
 type OpenAIError struct {
 	StatusCode int
 	Message    string
@@ -22,7 +35,7 @@ func (e *OpenAIError) Error() string {
 }
 
 func BuildOpenAIError(res *http.Response) error {
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// openai error shape
 	var payload struct {
@@ -60,7 +73,7 @@ func (e *AnthropicError) Error() string {
 }
 
 func BuildAnthropicError(res *http.Response) error {
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// anthropic error shape
 	var payload struct {
@@ -94,7 +107,7 @@ func (e *ElevenLabsError) Error() string {
 }
 
 func BuildElevenLabsError(res *http.Response) error {
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// eleven labs error shape
 	var payload struct {
@@ -119,9 +132,9 @@ func BuildElevenLabsError(res *http.Response) error {
 
 func IsRetryable(err error) bool {
 	var (
-		openaiError     OpenAIError
-		anthropicError  AnthropicError
-		elevenlabsError ElevenLabsError
+		openaiError     *OpenAIError
+		anthropicError  *AnthropicError
+		elevenlabsError *ElevenLabsError
 		netError        net.Error
 	)
 
