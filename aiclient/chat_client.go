@@ -44,7 +44,7 @@ func NewChatClient(options ...Option) (*ChatClient, error) {
 		ctx:        context.Background(),
 		hc:         &http.Client{Timeout: 30 * time.Second},
 		httpMethod: http.MethodPost,
-		logger:     logger.Default(),
+		logger:     logger.New(),
 		MaxTokens:  8192,
 	}
 
