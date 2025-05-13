@@ -279,13 +279,19 @@ func readFileSecure(path string) ([]byte, error) {
 		return nil, fmt.Errorf("invalid path: %s", fullPath)
 	}
 
-	// resolve symlinks
-	finalPath, err := filepath.EvalSymlinks(absFile)
+	// eval symlinks on the directory
+	dir := filepath.Dir(path)
+	realDir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
-		return nil, fmt.Errorf("eval symlinks: %w", err)
+		return nil, fmt.Errorf("resolving config directory %q: %w", dir, err)
 	}
 
-	return os.ReadFile(finalPath)
+	// sanitize the path
+	file := filepath.Base(path)
+
+	// read the file under the real directory
+
+	return os.ReadFile(filepath.Join(realDir, file))
 }
 
 // readFile loads the file at path under its directory, creating a default "{}" if missing.
