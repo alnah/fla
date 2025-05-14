@@ -181,7 +181,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		wantError   bool
 	}{
 		{
-			name: "AllRequiredFieldsSet",
+			name: "AllRequiredFieldsPass",
 			chatBuilder: func() (*ChatClient, error) {
 				return NewChatClient(
 					WithContext(context.Background()),
@@ -189,6 +189,25 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithURL(URLChatCompletionOpenAI),
 					WithAPIKey(EnvOpenAIAPIKey),
 					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: false,
+		},
+		{
+			name: "AllRerequiredAndOptionalFieldsPass",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+					WithTemperature(Temperature(1)),
+					WithMessages(Messages{Message{Role: RoleUser, Content: "test"}}),
+					WithMaxTokens(MaxTokens(4096)),
+					WithHTTPClient(http.DefaultClient),
+					WithHTTPMethod(HTTPMethod(http.MethodPost)),
+					WithLogger(logger.New()),
 				)
 			},
 			wantError: false,
@@ -249,6 +268,71 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithProvider(ProviderOpenAI),
 					WithURL(URLChatCompletionOpenAI),
 					WithAPIKey(EnvOpenAIAPIKey),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "InvalidProvider",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(Provider("invalid")),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "InvalidURL",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URL("invalid")),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "InvalidAPIKey",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(APIKey("NON_EXISTING_API_KEY")),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "InvalidModel",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModel("invalid")),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "InvalidHTTPMethod",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithHTTPMethod(HTTPMethod("INVALID")), // should fail
 				)
 			},
 			wantError: true,
@@ -441,7 +525,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithModel(AIModelCostOptimizedOpenAI),
 				)
 				// tweak to test validation after defaults applied
-				// because set provider flag respect the validation rule
+				// because set provider flag respects the validation rule
 				chat.UseAnthropic = true
 				chat.UseAnthropic = true
 				return chat, chat.validate()
@@ -547,7 +631,6 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			wantError: true,
 		},
 	}
-	// SystemOnce
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.chatBuilder()
