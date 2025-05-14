@@ -41,7 +41,6 @@ func (c *ChatClient) ParseResponse(byt []byte) (ChatCompletion, error) {
 		type anthropicPayload struct {
 			Content []struct {
 				Text string `json:"text"`
-				Type string `json:"type"`
 			} `json:"content"`
 		}
 		var payload anthropicPayload
