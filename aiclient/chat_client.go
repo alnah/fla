@@ -64,7 +64,7 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 	if c.httpMethod == "" {
 		c.httpMethod = HTTPMethod(http.MethodPost)
 	}
-	if c.MaxTokens == 0 {
+	if c.MaxTokens < 1 {
 		c.MaxTokens = MaxTokens(8192)
 	}
 	return c
