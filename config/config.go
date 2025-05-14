@@ -63,29 +63,37 @@ type Config struct {
 	AI       AI          `json:"ai"`
 	Input    string      `json:"input"`
 	Output   string      `json:"output"`
-	Log      *logger.Logger
+	log      *logger.Logger
 	mu       sync.RWMutex
-	path     string
+	dirpath  string
+	filename string
+}
+
+type ConfigPath struct {
+	DirPath  string
+	FileName string
 }
 
 // Path returns the fully resolved JSON-config filepath for the current user,
 // honoring XDG on Unix and APPDATA on Windows. Fallback to ~/.config/fla.
-func Path() (string, error) {
+// Returns the dirpath, and the filename.
+func Path() (ConfigPath, error) {
+	// unix
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, AppName, filename()), nil
+		return ConfigPath{DirPath: filepath.Join(xdg, AppName), FileName: filename()}, nil
 	}
 	// windows
 	if runtime.GOOS == "windows" {
 		if appdata := os.Getenv("APPDATA"); appdata != "" {
-			return filepath.Join(appdata, AppName, filename()), nil
+			return ConfigPath{DirPath: filepath.Join(appdata, appdata), FileName: filename()}, nil
 		}
 	}
 	// fallback to ~/.config
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("finding home: %w", err)
+		return ConfigPath{}, fmt.Errorf("finding home: %w", err)
 	}
-	return filepath.Join(home, ".config", AppName, filename()), nil
+	return ConfigPath{DirPath: filepath.Join(home, ".config", AppName), FileName: filename()}, nil
 }
 
 func env() string {
@@ -109,30 +117,30 @@ func filename() string {
 }
 
 // Load loads the JSON config (file → defaults → env).
-func Load(log *logger.Logger, path string) (*Config, error) {
+func Load(log *logger.Logger, dirpath, filename string) (*Config, error) {
 	var (
 		cfg *Config
 		err error
 	)
 
-	if err = ensureConfigDir(filepath.Dir(path)); err != nil {
-		log.Info("creating config directory", "config_directory", filepath.Dir(path), "error", err.Error())
+	if err = ensureConfigDir(filepath.Dir(dirpath)); err != nil {
+		log.Info("creating config directory", "config_directory", filepath.Dir(dirpath), "error", err.Error())
 		return nil, fmt.Errorf("ensure config dir: %w", err)
 	}
 
-	byt, err := readFile(log, path)
+	byt, err := readFile(log, dirpath, filename)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err = parseJSON(log, byt, path)
+	cfg, err = parseJSON(log, byt, dirpath, filename)
 	if err != nil {
 		return nil, err
 	}
-	if err := applyDefaults(log, path, cfg); err != nil {
+	if err := cfg.applyDefaults(log, dirpath, filename); err != nil {
 		return nil, err
 	}
-	if err := applyEnvOverrides(cfg); err != nil {
+	if err := cfg.applyEnvOverrides(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -216,7 +224,7 @@ func (c *Config) EnsureIODirs() error {
 	}
 	for name, p := range dirs {
 		if err := os.MkdirAll(*p, PermUserRWX); err != nil {
-			c.Log.Info("creating dir", "name", name, "path", *p)
+			c.log.Info("creating dir", "name", name, "path", *p)
 		}
 		// verify directory is writable
 		testFile := filepath.Join(*p, ".permtest")
@@ -240,12 +248,12 @@ func (c *Config) Save() error {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
 
-	tmp := c.path + ".tmp"
+	tmp := filepath.Join(c.dirpath, c.filename, ".tmp")
 	if err := os.WriteFile(tmp, data, PermUserRW); err != nil {
 		return fmt.Errorf("writing temp config: %w", err)
 	}
 
-	if err := os.Rename(tmp, c.path); err != nil {
+	if err := os.Rename(tmp, filepath.Join(c.dirpath, c.filename)); err != nil {
 		return fmt.Errorf("replacing config file: %w", err)
 	}
 
@@ -257,82 +265,64 @@ func ensureConfigDir(dir string) error {
 }
 
 // readFileSecure fixes potential file inclusion via variable for gosec G304 (CWE-22).
-func readFileSecure(path string) ([]byte, error) {
-	// define base directory
-	baseDir := filepath.Dir(path)
-
-	// clean and join
-	cleanPath := filepath.Clean(path)
-	fullPath := filepath.Join(baseDir, cleanPath)
-
-	// derify no traversal outside baseDir
-	absBase, err := filepath.Abs(baseDir)
-	if err != nil {
-		return nil, fmt.Errorf("absolute base directory: %w", err)
-	}
-	absFile, err := filepath.Abs(fullPath)
-	if err != nil {
-		return nil, fmt.Errorf("absolute full path: %w", err)
-	}
-	rel, err := filepath.Rel(absBase, absFile)
-	if err != nil || strings.HasPrefix(rel, "..") {
-		return nil, fmt.Errorf("invalid path: %s", fullPath)
+func readFileSecure(dirpath, filename string) ([]byte, error) {
+	// 1 — filename must not contain any separators
+	if filename != filepath.Base(filename) {
+		return nil, fmt.Errorf("invalid filename %q", filename)
 	}
 
-	// eval symlinks on the directory
-	dir := filepath.Dir(path)
-	realDir, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return nil, fmt.Errorf("resolving config directory %q: %w", dir, err)
+	base := filepath.Clean(dirpath)                         // canonical base
+	target := filepath.Clean(filepath.Join(base, filename)) // canonical file
+
+	// 2 — confinement: final path must stay under base dir
+	if !strings.HasPrefix(target, base+string(os.PathSeparator)) {
+		return nil, fmt.Errorf("path %q escapes base dir %q", target, base)
 	}
 
-	// sanitize the path
-	file := filepath.Base(path)
-
-	// read the file under the real directory
-
-	return os.ReadFile(filepath.Join(realDir, file))
+	// 3 — safe read
+	return os.ReadFile(target) // gosec: OK after the two guarantees above
 }
 
 // readFile loads the file at path under its directory, creating a default "{}" if missing.
 // It wraps all reads in securePath to mitigate gosec G304 (CWE-22).
-func readFile(log *logger.Logger, path string) ([]byte, error) {
-	data, err := readFileSecure(path)
+func readFile(log *logger.Logger, dirpath, filename string) ([]byte, error) {
+	data, err := readFileSecure(dirpath, filename)
 	if err == nil {
 		return data, nil
 	}
 
 	// if file not found, create a default "{}" and read again
 	if errors.Is(err, os.ErrNotExist) {
-		log.Info("config not found, creating default", "path", path)
+		log.Info("config not found, creating default", "filepath", filepath.Join(dirpath, filename))
 
 		// ensure directory exists
-		if mkErr := os.MkdirAll(filepath.Dir(path), PermUserRWX); mkErr != nil {
+		if mkErr := os.MkdirAll(filepath.Dir(dirpath), PermUserRWX); mkErr != nil {
 			return nil, fmt.Errorf("making config dir: %w", mkErr)
 		}
 		// write default JSON
-		if wErr := os.WriteFile(path, []byte("{}"), PermUserRW); wErr != nil {
+		if wErr := os.WriteFile(filepath.Join(dirpath, filename), []byte("{}"), PermUserRW); wErr != nil {
 			return nil, fmt.Errorf("creating default config: %w", wErr)
 		}
 
-		return readFileSecure(path)
+		return readFileSecure(dirpath, filename)
 	}
 
 	// any other error
-	log.Error("failed reading config", "path", path, "error", err)
-	return nil, fmt.Errorf("reading config %q: %w", path, err)
+	log.Error("failed reading config", "filepath", filepath.Join(dirpath, filename), "error", err)
+	return nil, fmt.Errorf("reading config %q: %w", filepath.Join(dirpath, filename), err)
 }
 
-func parseJSON(log *logger.Logger, byt []byte, path string) (*Config, error) {
+func parseJSON(log *logger.Logger, byt []byte, dirpath, filename string) (*Config, error) {
 	var cfg Config
 	dec := json.NewDecoder(bytes.NewReader(byt))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("decoding json in %s: %w", path, err)
+		return nil, fmt.Errorf("decoding json in %s: %w", filepath.Join(dirpath, filename), err)
 	}
 
-	cfg.Log = log
-	cfg.path = path
+	cfg.log = log
+	cfg.dirpath = dirpath
+	cfg.filename = filename
 	return &cfg, nil
 }
 
@@ -344,9 +334,10 @@ func appDir() (string, error) {
 	return filepath.Join(home, AppName), nil
 }
 
-func applyDefaults(l *logger.Logger, p string, cfg *Config) error {
-	cfg.Log = l
-	cfg.path = p
+func (c *Config) applyDefaults(log *logger.Logger, dirpath, filename string) error {
+	c.log = log
+	c.dirpath = dirpath
+	c.filename = filename
 
 	appDir, err := appDir()
 	if err != nil {
@@ -354,48 +345,48 @@ func applyDefaults(l *logger.Logger, p string, cfg *Config) error {
 	}
 
 	// apply default language
-	if cfg.Language == "" {
-		cfg.Language = locale.FR
+	if c.Language == "" {
+		c.Language = locale.FR
 	}
 
 	// apply default input/ouput dirs
-	if cfg.Input == "" {
-		cfg.Input = filepath.Join(appDir, "input")
+	if c.Input == "" {
+		c.Input = filepath.Join(appDir, "input")
 	}
-	if cfg.Output == "" {
-		cfg.Output = filepath.Join(appDir, "output")
+	if c.Output == "" {
+		c.Output = filepath.Join(appDir, "output")
 	}
 
 	// apply default ai timeouts
-	if cfg.AI.Timeout.Completion == 0 {
-		cfg.AI.Timeout.Completion = 30 * time.Second
+	if c.AI.Timeout.Completion == 0 {
+		c.AI.Timeout.Completion = 30 * time.Second
 	}
-	if cfg.AI.Timeout.Audio == 0 {
-		cfg.AI.Timeout.Audio = 5 * time.Minute
+	if c.AI.Timeout.Audio == 0 {
+		c.AI.Timeout.Audio = 5 * time.Minute
 	}
-	if cfg.AI.Timeout.Transcription == 0 {
-		cfg.AI.Timeout.Transcription = 30 * time.Second
+	if c.AI.Timeout.Transcription == 0 {
+		c.AI.Timeout.Transcription = 30 * time.Second
 	}
 
 	return nil
 }
 
-func applyEnvOverrides(cfg *Config) error {
+func (c *Config) applyEnvOverrides() error {
 	// language
 	if v, ok := os.LookupEnv(EnvLang); ok {
 		var l locale.Lang
 		if err := l.Set(v); err != nil {
 			return fmt.Errorf("parsing %s=%q: %w", EnvLang, v, err)
 		}
-		cfg.Language = l
+		c.Language = l
 	}
 
 	// input/output dirs
 	if v, ok := os.LookupEnv(EnvInput); ok {
-		cfg.Input = v
+		c.Input = v
 	}
 	if v, ok := os.LookupEnv(EnvOutput); ok {
-		cfg.Output = v
+		c.Output = v
 	}
 
 	// ai timeouts
@@ -404,21 +395,21 @@ func applyEnvOverrides(cfg *Config) error {
 		if err != nil {
 			return fmt.Errorf("parsing FLA_TIMEOUT_COMPLETION=%q: %w", v, err)
 		}
-		cfg.AI.Timeout.Completion = d
+		c.AI.Timeout.Completion = d
 	}
 	if v, ok := os.LookupEnv(EnvTimeoutAudio); ok {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			return fmt.Errorf("parsing FLA_TIMEOUT_AUDIO=%q: %w", v, err)
 		}
-		cfg.AI.Timeout.Audio = d
+		c.AI.Timeout.Audio = d
 	}
 	if v, ok := os.LookupEnv(EnvTimeoutTranscription); ok {
 		d, err := time.ParseDuration(v)
 		if err != nil {
 			return fmt.Errorf("parsing FLA_TIMEOUT_TRANSCRIPTION=%q: %w", v, err)
 		}
-		cfg.AI.Timeout.Transcription = d
+		c.AI.Timeout.Transcription = d
 	}
 
 	return nil
