@@ -9,7 +9,7 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-func TestChatClient_New_WithOptions(t *testing.T) {
+func TestChatClientNew_WithOptions(t *testing.T) {
 	temperature := Temperature(1)
 	messages := Messages{
 		Message{
@@ -91,7 +91,7 @@ func TestChatClient_New_WithOptions(t *testing.T) {
 	}
 }
 
-func TestChatClient_New_ApplyDefaults(t *testing.T) {
+func TestChatClientNew_Apply_Defaults(t *testing.T) {
 	chat, err := NewChatClient(
 		WithContext(context.Background()),
 		WithProvider(ProviderOpenAI),
@@ -110,7 +110,66 @@ func TestChatClient_New_ApplyDefaults(t *testing.T) {
 	}
 	for field, value := range testCases {
 		if value == nil {
-			t.Errorf("%s: should be set", field)
+			t.Errorf("%s: want it set", field)
+		}
+	}
+}
+
+func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
+	testCases := []struct {
+		name          string
+		provider      Provider
+		url           URL
+		apiKey        APIKey
+		model         AIModel
+		flagOpenAI    bool
+		flagAnthropic bool
+	}{
+		{
+			name:          "OpenAI",
+			provider:      ProviderOpenAI,
+			url:           URLChatCompletionOpenAI,
+			apiKey:        EnvOpenAIAPIKey,
+			model:         AIModelCostOptimizedOpenAI,
+			flagOpenAI:    true,
+			flagAnthropic: false,
+		},
+		{
+			name:          "Anthropic",
+			provider:      ProviderAnthropic,
+			url:           URLChatCompletionAnthropic,
+			apiKey:        EnvAnthropicAPIKey,
+			model:         AIModelCostOptimizedAnthropic,
+			flagOpenAI:    false,
+			flagAnthropic: true,
+		},
+	}
+	for _, tc := range testCases {
+		chat, err := NewChatClient(
+			WithContext(context.Background()),
+			WithProvider(tc.provider),
+			WithURL(tc.url),
+			WithAPIKey(tc.apiKey),
+			WithModel(tc.model),
+		)
+		if err != nil {
+			t.Fatalf("want no error, got %v", err)
+		}
+		switch tc.provider {
+		case ProviderOpenAI:
+			if chat.UseOpenAI != tc.flagOpenAI {
+				t.Errorf("openai provider: want flag")
+			}
+			if chat.UseAnthropic != tc.flagAnthropic {
+				t.Errorf("anthropic provider: want no flag")
+			}
+		case ProviderAnthropic:
+			if chat.UseOpenAI != tc.flagOpenAI {
+				t.Errorf("openai provider: want no flag")
+			}
+			if chat.UseAnthropic != tc.flagAnthropic {
+				t.Errorf("anthropic provider: want flag")
+			}
 		}
 	}
 }
