@@ -1,7 +1,10 @@
 package aiclient
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -476,8 +479,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithAPIKey(EnvOpenAIAPIKey),
 					WithModel(AIModelCostOptimizedOpenAI),
 				)
-				// tweak to test validation after defaults applied
-				// because defaults set context to respect the validation rule
+				// override context
 				chat.ctx = nil
 				return chat, chat.validate()
 			},
@@ -493,8 +495,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithAPIKey(EnvOpenAIAPIKey),
 					WithModel(AIModelCostOptimizedOpenAI),
 				)
-				// tweak to test validation after defaults applied
-				// because defaults set logger to respect the validation rule
+				// override logger
 				chat.logger = nil
 				return chat, chat.validate()
 			},
@@ -510,8 +511,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithAPIKey(EnvOpenAIAPIKey),
 					WithModel(AIModelCostOptimizedOpenAI),
 				)
-				// tweak to test validation after defaults applied
-				// because defaults set http client to respect the validation rule
+				// override http client
 				chat.httpClient = nil
 				return chat, chat.validate()
 			},
@@ -527,10 +527,9 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithAPIKey(EnvOpenAIAPIKey),
 					WithModel(AIModelCostOptimizedOpenAI),
 				)
-				// tweak to test validation after defaults applied
-				// because set provider flag respects the validation rule
+				// override provider flags to create conflict
 				chat.UseAnthropic = true
-				chat.UseAnthropic = true
+				chat.UseOpenAI = true
 				return chat, chat.validate()
 			},
 			wantError: true,
@@ -647,9 +646,264 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 	}
 }
 
-func TestChatClient_Do_Success(t *testing.T) {
-	_ = []struct {
-		name        string
-		chatBuilder func() (*ChatClient, error)
-	}{}
+type tripperware func(req *http.Request) (*http.Response, error)
+
+func (t tripperware) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t(req)
+}
+
+func TestChatClient_Do(t *testing.T) {
+	testCases := []struct {
+		name            string
+		chatBuilder     func() (*ChatClient, error)
+		statusCode      int
+		body            *bytes.Buffer
+		want            string
+		roundTripperErr error
+		wantErr         bool
+	}{
+		{
+			name: "SuccessAnthropic",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"choices":[{"message":{"content":"test"}}]}`),
+			want:       "test",
+			wantErr:    false,
+		},
+		{
+			name: "SuccessOpenAI",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"content":[{"text": "test"}]}`),
+			want:       "test",
+			wantErr:    false,
+		},
+		{
+			name: "NoContentFinalCompletion",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"choices":[{"message":{"content":""}}]}`), // empty content
+			want:       "",                                                                // empty string
+			wantErr:    false,
+		},
+		{
+			name: "MalformedURL",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// override chat.url with malformed url
+				chat.url = "::::"
+				return chat, nil
+			},
+			body:    bytes.NewBufferString(""),
+			wantErr: true,
+		},
+		{
+			name: "NetworkFailed",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			body:            bytes.NewBufferString(""),
+			roundTripperErr: errors.New("network error"),
+			wantErr:         true,
+		},
+		{
+			name: "StatusNotOKOpenAI",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 401,
+			body: bytes.NewBufferString(
+				`{"error": {"message": "incorrect api key provided", "type": "invalid_api_key"}}`,
+			),
+			wantErr: true,
+		},
+		{
+			name: "StatusNotOKAnthropic",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			statusCode: 401,
+			body: bytes.NewBufferString(
+				`{"error": {"message": "incorrect api key provided", "type": "invalid_api_key"}}`,
+			),
+			wantErr: true,
+		},
+		{
+			name: "MalformedResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			body:    bytes.NewBufferString("{]]invalid[[}"),
+			wantErr: true,
+		},
+		{
+			name: "NoChoicesOpenAIPayload",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"choices":[]}`),
+			wantErr:    true,
+		},
+		{
+			name: "NoContentAnthropicResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"content":[]}`),
+			wantErr:    true,
+		},
+		{
+			name: "MalformedOpenAIStatusOKResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"malformed:""}`),
+			wantErr:    true,
+		},
+		{
+			name: "MalformedAnthropicStatusOKResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			statusCode: 200,
+			body:       bytes.NewBufferString(`{"malformed:""}`),
+			wantErr:    true,
+		},
+		{
+			name: "MalformedOpenAIStatusNotOKResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			statusCode: 401,
+			body:       bytes.NewBufferString(`{"malformed:""}`),
+			wantErr:    true,
+		},
+		{
+			name: "MalformedAnthropicStatusNotOKResponseBody",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			statusCode: 401,
+			body:       bytes.NewBufferString(`{"malformed:""}`),
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			chat, _ := tc.chatBuilder()
+			// mock response
+			chat.httpClient.Transport = tripperware(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: tc.statusCode, Body: io.NopCloser(tc.body)}, tc.roundTripperErr
+			})
+
+			completion, err := chat.Do()
+			switch {
+			case tc.wantErr:
+				if err == nil {
+					t.Fatal("want error, got nil")
+				}
+			default:
+				if err != nil {
+					t.Fatalf("want no error, got %v", err)
+				}
+				if completion.String() != tc.want {
+					t.Errorf("want %q, got %q", tc.want, completion.String())
+				}
+			}
+		})
+	}
 }
