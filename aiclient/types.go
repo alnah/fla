@@ -371,9 +371,14 @@ type Instructions string
 
 func (i Instructions) String() string               { return string(i) }
 func (i Instructions) MarshalJSON() ([]byte, error) { return json.Marshal(i) }
-func (i Instructions) IsValid() bool                { return i.String() != "" }
-func (i Instructions) Validate() error {
-	if !i.IsValid() {
+func (i Instructions) IsValid(p Provider) bool {
+	if p == ProviderOpenAI && i.String() != "" {
+		return false
+	}
+	return true
+}
+func (i Instructions) Validate(p Provider) error {
+	if !i.IsValid(p) {
 		return errors.New("invalid instructions: can't be empty")
 	}
 	return nil
@@ -383,14 +388,15 @@ type Speed float32
 
 func (s Speed) Float32() float32             { return float32(s) }
 func (s Speed) MarshalJSON() ([]byte, error) { return json.Marshal(s.Float32()) }
-func (s Speed) IsValid() bool {
-	if s.Float32() < 0.7 || s.Float32() > 1.2 {
+func (s Speed) IsValid(p Provider) bool {
+	if p == ProviderElevenLabs && (s.Float32() < 0.7 || s.Float32() > 1.2) {
 		return false
 	}
 	return true
 }
-func (s Speed) Validate() error {
-	if !s.IsValid() {
+
+func (s Speed) Validate(p Provider) error {
+	if !s.IsValid(p) {
 		return fmt.Errorf("invalid speed: must be 0.7 <= s <= 1.2")
 	}
 	return nil
