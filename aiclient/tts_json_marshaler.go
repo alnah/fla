@@ -1,5 +1,10 @@
 package aiclient
 
+import (
+	"encoding/json"
+	"errors"
+)
+
 func (t TTSClient) MarshalJSON() ([]byte, error) {
 	switch {
 	case t.UseOpenAI:
