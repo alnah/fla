@@ -265,7 +265,7 @@ func (t Text) MarshalJSON() ([]byte, error) { return json.Marshal(t.String()) }
 func (t Text) IsValid() bool                { return t != "" }
 func (t Text) Validate() error {
 	if !t.IsValid() {
-		errors.New("invalid text: can't be empty")
+		return errors.New("invalid text: can't be empty")
 	}
 	return nil
 }
