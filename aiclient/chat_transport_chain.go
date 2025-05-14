@@ -13,23 +13,23 @@ const AnthropicVersion string = "2023-06-01"
 
 func (c *ChatClient) configureTransportChain() http.RoundTripper {
 	return tripper.Chain(
-		tripper.Default(c.httpClient.Transport),
+		tripper.Default(c.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),
 		c.addAuthHeaders(),
 		c.addProviderSpecHeaders(),
 		tripper.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, c.buildError()),
 		tripper.UseCircuitBreaker(breaker.New()),
 		tripper.UseRetrier(retrier.New(), IsRetryable),
-		tripper.UseLogger(c.logger),
+		tripper.UseLogger(c.base.logger),
 	)
 }
 
 func (c *ChatClient) addAuthHeaders() tripper.Tripperware {
-	switch c.provider {
+	switch c.base.provider {
 	case ProviderOpenAI:
-		return tripper.AddHeader("Authorization", fmt.Sprintf("Bearer %s", c.apiKey.GetEnv()))
+		return tripper.AddHeader("Authorization", fmt.Sprintf("Bearer %s", c.base.apiKey.GetEnv()))
 	default:
-		return tripper.AddHeader("x-api-key", c.apiKey.GetEnv())
+		return tripper.AddHeader("x-api-key", c.base.apiKey.GetEnv())
 	}
 }
 

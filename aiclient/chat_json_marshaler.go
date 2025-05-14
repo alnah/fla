@@ -17,7 +17,7 @@ func (c ChatClient) MarshalJSON() ([]byte, error) {
 			MaxTokens   *int      `json:"max_completion_tokens,omitempty"`
 		}
 		payload := openaiPayload{
-			Model:       c.Model.String(),
+			Model:       c.base.Model.String(),
 			Temperature: c.Temperature.Float32(),
 			Messages:    append([]Message{{Role: RoleSystem, Content: c.System}}, c.Messages...),
 			MaxTokens:   (*int)(&c.MaxTokens),
@@ -32,7 +32,7 @@ func (c ChatClient) MarshalJSON() ([]byte, error) {
 			Temperature         float32   `json:"temperature,omitempty"`
 		}
 		payload := anthropicPayload{
-			Model:               c.Model.String(),
+			Model:               c.base.Model.String(),
 			System:              c.System,
 			Messages:            c.Messages,
 			MaxCompletionTokens: &v,

@@ -16,7 +16,7 @@ func (t TTSClient) MarshalJSON() ([]byte, error) {
 		}
 		payload := openaiPayload{
 			Input:        t.Text.String(),
-			Model:        t.Model.String(),
+			Model:        t.base.Model.String(),
 			Voice:        t.Voice.String(),
 			Instructions: t.Instructions.String(),
 		}
@@ -31,7 +31,7 @@ func (t TTSClient) MarshalJSON() ([]byte, error) {
 		}
 		payload := elevenlabsPayload{
 			Text:    t.Text.String(),
-			ModelID: t.Model.String(),
+			ModelID: t.base.Model.String(),
 			VoiceSettings: struct {
 				Speed Speed "json:\"speed\""
 			}{t.Speed},

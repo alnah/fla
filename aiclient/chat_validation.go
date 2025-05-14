@@ -8,35 +8,35 @@ import (
 // validate ensures required fields are set.
 func (c *ChatClient) validate() error {
 	// Required fields
-	if err := c.provider.Validate(); err != nil {
+	if err := c.base.provider.Validate(); err != nil {
 		return err
 	}
-	if err := c.url.Validate(); err != nil {
+	if err := c.base.url.Validate(); err != nil {
 		return err
 	}
-	if err := c.apiKey.Validate(); err != nil {
+	if err := c.base.apiKey.Validate(); err != nil {
 		return err
 	}
-	if err := c.httpMethod.Validate(); err != nil {
+	if err := c.base.httpMethod.Validate(); err != nil {
 		return err
 	}
-	if err := c.Model.Validate(); err != nil {
+	if err := c.base.Model.Validate(); err != nil {
 		return err
 	}
 	// Optional fields
 	if err := c.MaxTokens.Validate(); err != nil {
 		return err
 	}
-	if c.ctx == nil {
+	if c.base.ctx == nil {
 		return errors.New("context must be provided")
 	}
-	if c.logger == nil {
+	if c.base.logger == nil {
 		return errors.New("logger must be set")
 	}
-	if c.httpClient == nil {
+	if c.base.httpClient == nil {
 		return errors.New("http client must be set")
 	}
-	if err := c.Temperature.Validate(c.Model); err != nil {
+	if err := c.Temperature.Validate(c.base.Model); err != nil {
 		return err
 	}
 	if err := c.Messages.Validate(); err != nil {
@@ -46,15 +46,15 @@ func (c *ChatClient) validate() error {
 	if c.UseOpenAI == c.UseAnthropic {
 		return errors.New("must configure exactly one provider: openai or anthropic")
 	}
-	if c.UseOpenAI && c.provider != ProviderOpenAI {
-		return fmt.Errorf("url indicates openai but provider is %s", c.provider)
+	if c.UseOpenAI && c.base.provider != ProviderOpenAI {
+		return fmt.Errorf("url indicates openai but provider is %s", c.base.provider)
 	}
-	if c.UseAnthropic && c.provider != ProviderAnthropic {
-		return fmt.Errorf("url indicates anthropic but provider is %s", c.provider)
+	if c.UseAnthropic && c.base.provider != ProviderAnthropic {
+		return fmt.Errorf("url indicates anthropic but provider is %s", c.base.provider)
 	}
 	switch {
 	case c.UseOpenAI:
-		switch c.Model {
+		switch c.base.Model {
 		case AIModelReasoningOpenAI,
 			AIModelFlagshipOpenAI,
 			AIModelCostOptimizedOpenAI,
@@ -62,16 +62,16 @@ func (c *ChatClient) validate() error {
 			AIModelTranscriptionOpenAI:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by openai", c.Model)
+			return fmt.Errorf("model %s not supported by openai", c.base.Model)
 		}
 
 	case c.UseAnthropic:
-		switch c.Model {
+		switch c.base.Model {
 		case AIModelReasoningAnthropic,
 			AIModelCostOptimizedAnthropic:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by anthropic", c.Model)
+			return fmt.Errorf("model %s not supported by anthropic", c.base.Model)
 		}
 	}
 	if c.UseAnthropic {
