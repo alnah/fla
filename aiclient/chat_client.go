@@ -46,7 +46,7 @@ func NewChatClient(options ...Option) (*ChatClient, error) {
 		opt(c)
 	}
 
-	if err := c.applyDefaults().determineProvider().validate(); err != nil {
+	if err := c.applyDefaults().setProviderFlag().validate(); err != nil {
 		return nil, fmt.Errorf("failed to build chat client: %w", err)
 	}
 
@@ -70,7 +70,7 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 	return c
 }
 
-func (c *ChatClient) determineProvider() *ChatClient {
+func (c *ChatClient) setProviderFlag() *ChatClient {
 	c.UseOpenAI = strings.Contains(c.url.String(), ProviderOpenAI.String())
 	c.UseAnthropic = strings.Contains(c.url.String(), ProviderAnthropic.String())
 	return c
