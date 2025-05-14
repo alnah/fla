@@ -41,10 +41,10 @@ func (c *ChatClient) validate() error {
 		return errors.New("must configure exactly one provider: openai or anthropic")
 	}
 	if c.UseOpenAI && c.provider != ProviderOpenAI {
-		return fmt.Errorf("url indicates OpenAI but provider is %s", c.provider)
+		return fmt.Errorf("url indicates openai but provider is %s", c.provider)
 	}
 	if c.UseAnthropic && c.provider != ProviderAnthropic {
-		return fmt.Errorf("url indicates Anthropic but provider is %s", c.provider)
+		return fmt.Errorf("url indicates anthropic but provider is %s", c.provider)
 	}
 	switch {
 	case c.UseOpenAI:
