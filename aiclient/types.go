@@ -89,6 +89,27 @@ func (e APIKey) Validate() error {
 	return nil
 }
 
+type HTTPMethod string
+
+func (hm HTTPMethod) String() string { return string(hm) }
+func (hm HTTPMethod) IsValid() bool  { return hm.String() == http.MethodPost }
+func (hm HTTPMethod) Validate() error {
+	if !hm.IsValid() {
+		return errors.New("invalid http method: require POST")
+	}
+	return nil
+}
+
+const (
+	OpChatCompletion   Operation = "chat completion"
+	OpTTSAudio         Operation = "text-to-speech audio"
+	OpSTTTranscription Operation = "speech-to-text transcription"
+)
+
+type Operation string
+
+func (o Operation) String() string { return string(o) }
+
 const (
 	AIModelReasoningOpenAI        AIModel = "o4-mini"
 	AIModelFlagshipOpenAI         AIModel = "gpt-4.1"
@@ -237,23 +258,140 @@ func (mt MaxTokens) Validate() error {
 	return nil
 }
 
-type HTTPMethod string
+type Text string
 
-func (hm HTTPMethod) String() string { return string(hm) }
-func (hm HTTPMethod) IsValid() bool  { return hm.String() == http.MethodPost }
-func (hm HTTPMethod) Validate() error {
-	if !hm.IsValid() {
-		return errors.New("invalid http method: require POST")
+func (t Text) String() string               { return string(t) }
+func (t Text) MarshalJSON() ([]byte, error) { return json.Marshal(t.String()) }
+func (t Text) IsValid() bool                { return t != "" }
+func (t Text) Validate() error {
+	if !t.IsValid() {
+		errors.New("invalid text: can't be empty")
 	}
 	return nil
 }
 
+type Voice string
+
+// OpenAI
 const (
-	OpChatCompletion   Operation = "chat completion"
-	OpTTSAudio         Operation = "text-to-speech audio"
-	OpSTTTranscription Operation = "speech-to-text transcription"
+	VoiceOpenAIFemaleAlloy   Voice = "alloy"
+	VoiceOpenAIMaleAsh       Voice = "ash"
+	VoiceOpenAIMaleBallad    Voice = "ballad"
+	VoiceOpenAIFemaleCoral   Voice = "coral"
+	VoiceOpenAIMaleEcho      Voice = "echo"
+	VoiceOpenAINeutralFable  Voice = "fable"
+	VoiceOpenAIMaleOnyx      Voice = "onyx"
+	VoiceOpenAIFemaleNova    Voice = "nova"
+	VoiceOpenAIFemaleSage    Voice = "sage"
+	VoiceOpenAIFemaleShimmer Voice = "shimmer"
+	VoiceOpenAIMaleVerse     Voice = "verse"
 )
 
-type Operation string
+// ElevenLabs
+const (
+	// FR
+	VoiceElevenLabsFrMaleNicolas   Voice = "aQROLel5sQbj1vuIVi6B"
+	VoiceElevenLabsFrMaleGuillaume Voice = "ohItIVrXTBI80RrUECOD"
+	VoiceElevenLabsFrFemaleAudrey  Voice = "McVZB9hVxVSk3Equu8EH"
+	// PT
+	VoiceElevenLabsPtMaleMarcelo Voice = "bJrNspxJVFovUxNBQ0wh"
+	VoiceElevenLabsPtMaleSamuel  Voice = "ETf5cmpNIbpSiXmBaR2m"
+	VoiceElevenLabsPtFemaleBia   Voice = "Eyspt3SYhZzXd1Jd3J8O"
+)
 
-func (o Operation) String() string { return string(o) }
+func (v Voice) String() string               { return string(v) }
+func (v Voice) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v Voice) IsValid(p Provider) bool {
+	switch p {
+	case ProviderOpenAI:
+		return v == VoiceOpenAIFemaleAlloy ||
+			v == VoiceOpenAIMaleAsh ||
+			v == VoiceOpenAIMaleBallad ||
+			v == VoiceOpenAIFemaleCoral ||
+			v == VoiceOpenAIMaleEcho ||
+			v == VoiceOpenAINeutralFable ||
+			v == VoiceOpenAIMaleOnyx ||
+			v == VoiceOpenAIFemaleNova ||
+			v == VoiceOpenAIFemaleSage ||
+			v == VoiceOpenAIFemaleShimmer ||
+			v == VoiceOpenAIMaleVerse
+	case ProviderElevenLabs:
+		return v == VoiceElevenLabsFrMaleNicolas ||
+			v == VoiceElevenLabsFrMaleGuillaume ||
+			v == VoiceElevenLabsFrFemaleAudrey ||
+			v == VoiceElevenLabsPtMaleMarcelo ||
+			v == VoiceElevenLabsPtMaleSamuel ||
+			v == VoiceElevenLabsPtFemaleBia
+	default:
+		return false
+	}
+}
+
+func (v Voice) Validate(p Provider) error {
+	if v.String() == "" {
+		return errors.New("invalid voice: can't be empty")
+	}
+	if !v.IsValid(p) {
+		switch p {
+		case ProviderOpenAI:
+			available := strings.Join([]string{
+				VoiceOpenAIMaleAsh.String(),
+				VoiceOpenAIMaleBallad.String(),
+				VoiceOpenAIFemaleCoral.String(),
+				VoiceOpenAIMaleEcho.String(),
+				VoiceOpenAINeutralFable.String(),
+				VoiceOpenAIMaleOnyx.String(),
+				VoiceOpenAIFemaleNova.String(),
+				VoiceOpenAIFemaleSage.String(),
+				VoiceOpenAIFemaleShimmer.String(),
+				VoiceOpenAIMaleVerse.String(),
+			}, ", ")
+			return fmt.Errorf("invalid voice: %s, available voices: %s", v.String(), available)
+		case ProviderElevenLabs:
+			availableMap := map[Voice]string{
+				VoiceElevenLabsFrFemaleAudrey:  "audrey (fr)",
+				VoiceElevenLabsFrMaleGuillaume: "guillaume (fr)",
+				VoiceElevenLabsFrMaleNicolas:   "nicolas (fr)",
+				VoiceElevenLabsPtFemaleBia:     "bia (pt)",
+				VoiceElevenLabsPtMaleMarcelo:   "marcelo (pt)",
+				VoiceElevenLabsPtMaleSamuel:    "samuel (pt)",
+			}
+			var availableSlice []string
+			for _, name := range availableMap {
+				availableSlice = append(availableSlice, name)
+			}
+			available := strings.Join(availableSlice, ", ")
+			return fmt.Errorf("invalid voice: %s, available voices: %s", v.String(), available)
+		}
+	}
+	return nil
+}
+
+type Instructions string
+
+func (i Instructions) String() string               { return string(i) }
+func (i Instructions) MarshalJSON() ([]byte, error) { return json.Marshal(i) }
+func (i Instructions) IsValid() bool                { return i.String() != "" }
+func (i Instructions) Validate() error {
+	if !i.IsValid() {
+		return errors.New("invalid instructions: can't be empty")
+	}
+	return nil
+}
+
+type Speed float32
+
+func (s Speed) Float32() float32             { return float32(s) }
+func (s Speed) MarshalJSON() ([]byte, error) { return json.Marshal(s.Float32()) }
+func (s Speed) IsValid() bool {
+	if s.Float32() < 0.7 || s.Float32() > 1.2 {
+		return false
+	}
+	return true
+}
+func (s Speed) Validate() error {
+	if !s.IsValid() {
+		return fmt.Errorf("invalid speed: must be 0.7 <= s <= 1.2")
+	}
+	return nil
+}
