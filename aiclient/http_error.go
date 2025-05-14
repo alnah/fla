@@ -66,11 +66,20 @@ func (e *HTTPClientError) Unwrap() error {
 	return e.Wrapped
 }
 
-func NewChatClientError(p Provider, m string, w error) *HTTPClientError {
+func NewChatClientError(provider Provider, message string, wrapped error) *HTTPClientError {
 	return &HTTPClientError{
-		Provider:  p,
+		Provider:  provider,
 		Operation: OpChatCompletion,
-		Message:   m,
-		Wrapped:   w,
+		Message:   message,
+		Wrapped:   wrapped,
+	}
+}
+
+func NewTTSClientError(provider Provider, message string, wrapped error) *HTTPClientError {
+	return &HTTPClientError{
+		Provider:  provider,
+		Operation: OpSTTTranscription,
+		Message:   message,
+		Wrapped:   wrapped,
 	}
 }
