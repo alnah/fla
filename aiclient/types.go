@@ -205,11 +205,11 @@ func (m Message) IsValid() bool {
 	return m.Role.IsValid() && m.Content != ""
 }
 func (m Message) Validate() error {
-	if m.Content == "" {
-		return fmt.Errorf("invalid message: can't be empty")
-	}
 	if !m.Role.IsValid() {
 		return m.Role.Validate()
+	}
+	if !m.IsValid() {
+		return fmt.Errorf("invalid message: can't be empty")
 	}
 	return nil
 }
