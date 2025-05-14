@@ -33,7 +33,7 @@ type ChatClient struct {
 	url        URL
 	apiKey     APIKey
 
-	// internal fields
+	// provider fields
 	UseOpenAI    bool // internal
 	UseAnthropic bool // internal
 
