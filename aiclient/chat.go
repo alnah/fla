@@ -2,6 +2,7 @@ package aiclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -45,6 +46,9 @@ func NewChatClient(options ...Option[*ChatClient]) (*ChatClient, error) {
 }
 
 func (c *ChatClient) applyDefaults() *ChatClient {
+	if c.base.ctx == nil {
+		c.base.ctx = context.Background()
+	}
 	if c.base.logger == nil {
 		c.base.logger = logger.New()
 	}
