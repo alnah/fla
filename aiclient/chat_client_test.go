@@ -253,8 +253,301 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			},
 			wantError: true,
 		},
-	}
+		{
+			name: "MaxTokensLt1",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// tweak to test validation after defaults applied
+				// because defaults set max tokens to respect the validation rule
+				chat.MaxTokens = MaxTokens(-1)
+				tweakErr := chat.MaxTokens.Validate()
+				return chat, tweakErr
+			},
+			wantError: true,
+		},
+		{
+			name: "OpenAITemperatureGt2",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+					// test
+					WithTemperature(3),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "OpenAITemperatureLt0",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+					// test
+					WithTemperature(-1),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "AnthropicTemperatureGt1",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+					// test
+					WithTemperature(2),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "AnthropicTemperatureLt0",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+					// test
+					WithTemperature(-1),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "MessagesEmptyContent",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+					// test
+					WithMessages(Messages{
+						Message{
+							Content: "",
+							Role:    RoleSystem,
+						},
+						Message{
+							Content: "test",
+							Role:    RoleUser,
+						},
+					}),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "MessagesInvalidRole",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+					// test
+					WithMessages(Messages{
+						Message{
+							Content: "system",
+							Role:    RoleSystem,
+						},
+						Message{
+							Content: "test",
+							Role:    Role("invalid"),
+						},
+					}),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "NilContext",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// tweak to test validation after defaults applied
+				// because defaults set context to respect the validation rule
+				chat.ctx = nil
+				return chat, chat.validate()
+			},
+			wantError: true,
+		},
+		{
+			name: "NilLogger",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// tweak to test validation after defaults applied
+				// because defaults set logger to respect the validation rule
+				chat.logger = nil
+				return chat, chat.validate()
+			},
+			wantError: true,
+		},
+		{
+			name: "NilHTTPClient",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// tweak to test validation after defaults applied
+				// because defaults set http client to respect the validation rule
+				chat.httpClient = nil
+				return chat, chat.validate()
+			},
+			wantError: true,
+		},
+		{
+			name: "EnsureOneProviderOnly",
+			chatBuilder: func() (*ChatClient, error) {
+				chat, _ := NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+				// tweak to test validation after defaults applied
+				// because set provider flag respect the validation rule
+				chat.UseAnthropic = true
+				chat.UseAnthropic = true
+				return chat, chat.validate()
+			},
+			wantError: true,
+		},
+		{
+			name: "ProviderOpenAIUnmatchingURL",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionAnthropic), // anthropic, want openai
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "ProviderAnthropicUnmatchingURL",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionOpenAI), // openai, want anthropic
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "UnsupportedOpenAIModel",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic), // anthropic, want openai
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "UnsupportedAnthropicModel",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI), // openai, want anthropic
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "NoRoleSystemInMessagesForAnthropic",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderAnthropic),
+					WithURL(URLChatCompletionAnthropic),
+					WithAPIKey(EnvAnthropicAPIKey),
+					WithModel(AIModelCostOptimizedAnthropic),
+					// test
+					WithMessages(Messages{
+						Message{
+							Role:    RoleSystem, // fail
+							Content: "test",
+						},
+					}),
+				)
 
+			},
+			wantError: true,
+		},
+		{
+			name: "EnsureOneSystemRoleForOpenAI",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+					// test
+					WithMessages(Messages{
+						Message{
+							Role:    RoleSystem,
+							Content: "test",
+						},
+						Message{
+							Role:    RoleSystem, // fail
+							Content: "test",
+						},
+					}),
+				)
+
+			},
+			wantError: true,
+		},
+	}
+	// SystemOnce
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.chatBuilder()
