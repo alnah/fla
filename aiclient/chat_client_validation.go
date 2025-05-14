@@ -27,11 +27,14 @@ func (c *ChatClient) validate() error {
 	if err := c.MaxTokens.Validate(); err != nil {
 		return err
 	}
+	if c.ctx == nil {
+		return errors.New("context must be provided")
+	}
 	if c.logger == nil {
 		return errors.New("logger must be set")
 	}
-	if c.ctx == nil {
-		return errors.New("context must be provided")
+	if c.httpClient == nil {
+		return errors.New("http client must be set")
 	}
 	if err := c.Temperature.Validate(c.Model); err != nil {
 		return err
@@ -74,8 +77,19 @@ func (c *ChatClient) validate() error {
 	if c.UseAnthropic {
 		for _, m := range c.Messages {
 			if m.Role == RoleSystem {
-				return errors.New("system messages must be passed via c.System, not in c.Messages, when using anthropic")
+				return errors.New("system message must be passed via system field, not via messages, when using anthropic")
 			}
+		}
+	}
+	if c.UseOpenAI {
+		var systemCount int
+		for _, m := range c.Messages {
+			if m.Role == RoleSystem {
+				systemCount++
+			}
+		}
+		if systemCount > 1 {
+			return errors.New("system message must be passed once, when using openai")
 		}
 	}
 	return nil
