@@ -9,14 +9,13 @@ import (
 
 type BaseClient struct {
 	// api fields
-	Provider Provider
 	Model    AIModel
+	provider Provider
 	// infra fields
 	ctx        context.Context
 	logger     *logger.Logger
 	httpClient *http.Client
 	httpMethod HTTPMethod
-	provider   Provider
 	url        URL
 	apiKey     APIKey
 }
