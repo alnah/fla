@@ -145,10 +145,10 @@ func IsRetryable(err error) bool {
 		return anthropicError.StatusCode == 429 || anthropicError.StatusCode >= 500
 	case errors.As(err, &elevenlabsError):
 		return elevenlabsError.StatusCode == 429 || elevenlabsError.StatusCode >= 500
-	case errors.As(err, &netError):
-		return netError.Timeout()
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return false
+	case errors.As(err, &netError):
+		return netError.Timeout()
 	default:
 		return false
 	}
