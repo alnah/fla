@@ -7,7 +7,15 @@ import (
 
 // validate ensures required fields are set.
 func (c *ChatClient) validate() error {
-	// Required fields
+	if c.base.ctx == nil {
+		return errors.New("context must be provided")
+	}
+	if c.base.logger == nil {
+		return errors.New("logger must be set")
+	}
+	if c.base.httpClient == nil {
+		return errors.New("http client must be set")
+	}
 	if err := c.base.provider.Validate(); err != nil {
 		return err
 	}
@@ -23,18 +31,8 @@ func (c *ChatClient) validate() error {
 	if err := c.base.Model.Validate(); err != nil {
 		return err
 	}
-	// Optional fields
 	if err := c.MaxTokens.Validate(); err != nil {
 		return err
-	}
-	if c.base.ctx == nil {
-		return errors.New("context must be provided")
-	}
-	if c.base.logger == nil {
-		return errors.New("logger must be set")
-	}
-	if c.base.httpClient == nil {
-		return errors.New("http client must be set")
 	}
 	if err := c.Temperature.Validate(c.base.Model); err != nil {
 		return err
@@ -42,7 +40,6 @@ func (c *ChatClient) validate() error {
 	if err := c.Messages.Validate(); err != nil {
 		return err
 	}
-	// Rules
 	if c.UseOpenAI == c.UseAnthropic {
 		return errors.New("must configure exactly one provider: openai or anthropic")
 	}
