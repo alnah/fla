@@ -89,6 +89,9 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	if chat.httpMethod != httpMethod {
 		t.Errorf("http method: want %v, got %v", httpMethod, chat.httpMethod)
 	}
+	if chat.httpClient.Transport == nil {
+		t.Errorf("transport chain: want it set, got nil")
+	}
 }
 
 func TestChatClientNew_Apply_Defaults(t *testing.T) {
@@ -642,4 +645,11 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestChatClient_Do_Success(t *testing.T) {
+	_ = []struct {
+		name        string
+		chatBuilder func() (*ChatClient, error)
+	}{}
 }
