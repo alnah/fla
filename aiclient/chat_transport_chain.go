@@ -28,10 +28,9 @@ func (c *ChatClient) addAuthHeaders() tripper.Tripperware {
 	switch c.provider {
 	case ProviderOpenAI:
 		return tripper.AddHeader("Authorization", fmt.Sprintf("Bearer %s", c.apiKey.GetEnv()))
-	case ProviderAnthropic:
+	default:
 		return tripper.AddHeader("x-api-key", c.apiKey.GetEnv())
 	}
-	return nil
 }
 
 func (c *ChatClient) addProviderSpecHeaders() tripper.Tripperware {
@@ -45,9 +44,7 @@ func (c *ChatClient) buildError() tripper.BuildError {
 	switch {
 	case c.UseOpenAI:
 		return BuildOpenAIError
-	case c.UseAnthropic:
-		return BuildAnthropicError
 	default:
-		return tripper.BuildError(nil)
+		return BuildAnthropicError
 	}
 }
