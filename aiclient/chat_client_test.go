@@ -121,7 +121,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 		provider      Provider
 		url           URL
 		apiKey        APIKey
-		model         AIModel
+		aiModel       AIModel
 		flagOpenAI    bool
 		flagAnthropic bool
 	}{
@@ -130,7 +130,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			provider:      ProviderOpenAI,
 			url:           URLChatCompletionOpenAI,
 			apiKey:        EnvOpenAIAPIKey,
-			model:         AIModelCostOptimizedOpenAI,
+			aiModel:       AIModelCostOptimizedOpenAI,
 			flagOpenAI:    true,
 			flagAnthropic: false,
 		},
@@ -139,7 +139,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			provider:      ProviderAnthropic,
 			url:           URLChatCompletionAnthropic,
 			apiKey:        EnvAnthropicAPIKey,
-			model:         AIModelCostOptimizedAnthropic,
+			aiModel:       AIModelCostOptimizedAnthropic,
 			flagOpenAI:    false,
 			flagAnthropic: true,
 		},
@@ -150,7 +150,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			WithProvider(tc.provider),
 			WithURL(tc.url),
 			WithAPIKey(tc.apiKey),
-			WithModel(tc.model),
+			WithModel(tc.aiModel),
 		)
 		if err != nil {
 			t.Fatalf("want no error, got %v", err)
@@ -171,5 +171,99 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 				t.Errorf("anthropic provider: want flag")
 			}
 		}
+	}
+}
+
+func TestChatClientNew_Validate_Fields(t *testing.T) {
+	testCases := []struct {
+		name        string
+		chatBuilder func() (*ChatClient, error)
+		wantError   bool
+	}{
+		{
+			name: "AllRequiredFieldsSet",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: false,
+		},
+		{
+			name: "RequireContext",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "RequireProvider",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "RequireURL",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "RequireAPIKey",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithModel(AIModelCostOptimizedOpenAI),
+				)
+			},
+			wantError: true,
+		},
+		{
+			name: "RequireModel",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithContext(context.Background()),
+					WithProvider(ProviderOpenAI),
+					WithURL(URLChatCompletionOpenAI),
+					WithAPIKey(EnvOpenAIAPIKey),
+				)
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.chatBuilder()
+			if tc.wantError && err == nil {
+				t.Errorf("want error, got nil")
+			}
+			if !tc.wantError && err != nil {
+				t.Errorf("want no error, got %v", err)
+			}
+		})
 	}
 }
