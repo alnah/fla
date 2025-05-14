@@ -28,6 +28,10 @@ jobs:
         run: make install
 
       - name: Run tests with coverage
+        env:
+          OPENAI_API_KEY: key
+          ANTHROPIC_API_KEY: key
+          ELEVEN_LABS_API_KEY: key
         run: go test ./... -coverprofile=coverage.txt
 
       - name: Upload coverage reports to Codecov
@@ -45,9 +49,17 @@ jobs:
           args: --timeout=5m
 
       - name: Race detector
+        env:
+          OPENAI_API_KEY: key
+          ANTHROPIC_API_KEY: key
+          ELEVEN_LABS_API_KEY: key
         run: go test -race ./...
 
       - name: Benchmarks
+        env:
+          OPENAI_API_KEY: key
+          ANTHROPIC_API_KEY: key
+          ELEVEN_LABS_API_KEY: key
         run: go test -bench=. -benchmem ./...
 
   security:
