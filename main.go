@@ -1,10 +1,9 @@
 package main
 
 import (
-	"context"
-	"os"
+	"fmt"
 
-	"github.com/alnah/fla/cli"
+	"github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
 )
@@ -29,8 +28,17 @@ func main() {
 		return
 	}
 
-	cmd := cli.NewFlaCmd()
-	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		log.Error("root command", "error", err.Error())
+	tts, err := aiclient.NewTTSClient(
+		aiclient.WithProvider[*aiclient.TTSClient](aiclient.ProviderOpenAI),
+		aiclient.WithURL[*aiclient.TTSClient](aiclient.URLChatCompletionOpenAI),
+		aiclient.WithAPIKey[*aiclient.TTSClient](aiclient.EnvOpenAIAPIKey),
+		aiclient.WithModel[*aiclient.TTSClient](aiclient.AIModelTTSOpenAI),
+		aiclient.WithVoice(aiclient.VoiceOpenAIFemaleAlloy),
+		aiclient.WithText("test"),
+	)
+	if err != nil {
+		log.Error("tts", "error", err.Error())
+		return
 	}
+	log.Debug("tts", "struct", fmt.Sprintf("%#v", &tts))
 }
