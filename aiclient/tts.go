@@ -14,7 +14,7 @@ import (
 )
 
 type TTS struct {
-	// http fields
+	// shared fields
 	base *Base
 	// api fields
 	Voice        voice

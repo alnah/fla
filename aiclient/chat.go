@@ -17,7 +17,7 @@ import (
 // It automatically injects headers, error classification, circuit breaker,
 // retrier, and logging.
 type Chat struct {
-	// http fields
+	// shared fields
 	base *Base
 	// api fields
 	temperature Temperature
