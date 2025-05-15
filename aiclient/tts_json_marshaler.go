@@ -11,7 +11,7 @@ func (t TTSClient) MarshalJSON() ([]byte, error) {
 		type openaiPayload struct {
 			Input        string `json:"input"`
 			Model        string `json:"model"`
-			Voice        string `json:"string"`
+			Voice        string `json:"voice"`
 			Instructions string `json:"instructions"`
 		}
 		payload := openaiPayload{
