@@ -26,16 +26,16 @@ type Speech struct {
 	useElevenLabs bool
 }
 
-func NewTTS(options ...option[*Speech]) (*Speech, error) {
-	t := &Speech{base: &Base{}}
+func NewSpeech(options ...option[*Speech]) (*Speech, error) {
+	s := &Speech{base: &Base{}}
 	for _, opt := range options {
-		opt(t)
+		opt(s)
 	}
-	if err := t.applyDefaults().setProviderFlag().validate(); err != nil {
+	if err := s.applyDefaults().setProviderFlag().validate(); err != nil {
 		return nil, fmt.Errorf("failed to build speech client: %w", err)
 	}
-	t.base.httpClient.Transport = t.newTransportChain()
-	return t, nil
+	s.base.httpClient.Transport = s.newTransportChain()
+	return s, nil
 }
 
 func (s *Speech) applyDefaults() *Speech {
