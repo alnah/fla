@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
@@ -28,17 +28,26 @@ func main() {
 		return
 	}
 
+	/********* Demo *********/
 	tts, err := aiclient.NewTTSClient(
 		aiclient.WithProvider[*aiclient.TTSClient](aiclient.ProviderOpenAI),
-		aiclient.WithURL[*aiclient.TTSClient](aiclient.URLChatCompletionOpenAI),
+		aiclient.WithURL[*aiclient.TTSClient](aiclient.URLSpeechAudioOpenAI),
 		aiclient.WithAPIKey[*aiclient.TTSClient](aiclient.EnvOpenAIAPIKey),
 		aiclient.WithModel[*aiclient.TTSClient](aiclient.AIModelTTSOpenAI),
 		aiclient.WithVoice(aiclient.VoiceOpenAIFemaleAlloy),
+		aiclient.WithInstructions("test"),
 		aiclient.WithText("test"),
 	)
 	if err != nil {
 		log.Error("tts", "error", err.Error())
 		return
 	}
-	log.Debug("tts", "struct", fmt.Sprintf("%#v", &tts))
+	byt, err := tts.Do()
+	if err != nil {
+		log.Error("speech", "error", err.Error())
+		return
+	}
+	file, _ := os.Create("tts.mp3")
+	_, _ = file.Write(byt)
+	log.Info("done", "audio", file.Name())
 }
