@@ -21,16 +21,16 @@ func TestProvider_RetryPolicy(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{"OpenAI429", &OpenAIError{StatusCode: 429}, true},
-		{"OpenAI500", &OpenAIError{StatusCode: 502}, true},
-		{"OpenAI400", &OpenAIError{StatusCode: 400}, false},
-		{"Anthropic429", &AnthropicError{StatusCode: 429}, true},
-		{"Anthropic502", &AnthropicError{StatusCode: 502}, true},
-		{"Anthropic400", &AnthropicError{StatusCode: 400}, false},
-		{"ElevenLabs429", &ElevenLabsError{StatusCode: 429}, true},
-		{"ElevenLabs500", &ElevenLabsError{StatusCode: 500}, true},
-		{"ElevenLabs400", &ElevenLabsError{StatusCode: 400}, false},
-		{"Wrapped", wrap(&OpenAIError{StatusCode: 503}), true},
+		{"OpenAI429", &openaiError{StatusCode: 429}, true},
+		{"OpenAI500", &openaiError{StatusCode: 502}, true},
+		{"OpenAI400", &openaiError{StatusCode: 400}, false},
+		{"Anthropic429", &anthropicError{StatusCode: 429}, true},
+		{"Anthropic502", &anthropicError{StatusCode: 502}, true},
+		{"Anthropic400", &anthropicError{StatusCode: 400}, false},
+		{"ElevenLabs429", &elevenlabsError{StatusCode: 429}, true},
+		{"ElevenLabs500", &elevenlabsError{StatusCode: 500}, true},
+		{"ElevenLabs400", &elevenlabsError{StatusCode: 400}, false},
+		{"Wrapped", wrap(&openaiError{StatusCode: 503}), true},
 		{"NetTimeoutTrue", fakeNetErr{timeout: true}, true},
 		{"NetTimeoutFalse", fakeNetErr{timeout: false}, false},
 		{"ContextCanceled", context.Canceled, false},
@@ -40,7 +40,7 @@ func TestProvider_RetryPolicy(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := IsRetryable(tc.err)
+			got := isRetryable(tc.err)
 			if got != tc.want {
 				t.Errorf("%#v: want %v, got %v", tc.err, tc.want, got)
 			}

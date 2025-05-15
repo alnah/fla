@@ -31,17 +31,17 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	ctx := context.Background()
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	logger := logger.New()
-	httpMethod := HTTPMethod(http.MethodPost)
+	httpMethod := httpMethod(http.MethodPost)
 	maxTokens := MaxTokens(8192)
-	chat, err := NewChatClient(
-		WithProvider[*ChatClient](ProviderOpenAI),
-		WithURL[*ChatClient](URLChatCompletionOpenAI),
-		WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-		WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
-		WithContext[*ChatClient](ctx),
-		WithHTTPClient[*ChatClient](httpClient),
-		WithLogger[*ChatClient](logger),
-		WithHTTPMethod[*ChatClient](httpMethod),
+	chat, err := NewChat(
+		WithProvider[*Chat](ProviderOpenAI),
+		WithURL[*Chat](URLChatCompletionOpenAI),
+		WithAPIKey[*Chat](EnvOpenAIAPIKey),
+		WithModel[*Chat](AIModelCostOptimizedOpenAI),
+		WithContext[*Chat](ctx),
+		WithHTTPClient[*Chat](httpClient),
+		WithLogger[*Chat](logger),
+		WithHTTPMethod[*Chat](httpMethod),
 		WithTemperature(temperature),
 		WithMessages(messages),
 		WithMaxTokens(maxTokens),
@@ -62,7 +62,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 		t.Errorf("model: want %v, got %v", AIModelCostOptimizedOpenAI, chat.base.Model)
 	}
 	testCases := []struct {
-		role    Role
+		role    role
 		content string
 	}{
 		{role: RoleSystem, content: "system"},
@@ -70,15 +70,15 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 		{role: RoleAssistant, content: "test"},
 	}
 	for i, tc := range testCases {
-		if chat.Messages[i].Role != tc.role {
-			t.Errorf("role: want %v, got %v", tc.role, chat.Messages[i].Role)
+		if chat.messages[i].Role != tc.role {
+			t.Errorf("role: want %v, got %v", tc.role, chat.messages[i].Role)
 		}
-		if chat.Messages[i].Content != tc.content {
-			t.Errorf("content: want %v, got %v", tc.content, chat.Messages[i].Content)
+		if chat.messages[i].Content != tc.content {
+			t.Errorf("content: want %v, got %v", tc.content, chat.messages[i].Content)
 		}
 	}
-	if chat.MaxTokens != maxTokens {
-		t.Errorf("max tokens: want %v, got %v", maxTokens, chat.MaxTokens)
+	if chat.maxTokens != maxTokens {
+		t.Errorf("max tokens: want %v, got %v", maxTokens, chat.maxTokens)
 	}
 	if chat.base.ctx != ctx {
 		t.Errorf("ctx: want %v, got %v", ctx, chat.base.ctx)
@@ -98,11 +98,11 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 }
 
 func TestChatClientNew_Apply_Defaults(t *testing.T) {
-	chat, err := NewChatClient(
-		WithProvider[*ChatClient](ProviderOpenAI),
-		WithURL[*ChatClient](URLChatCompletionOpenAI),
-		WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-		WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+	chat, err := NewChat(
+		WithProvider[*Chat](ProviderOpenAI),
+		WithURL[*Chat](URLChatCompletionOpenAI),
+		WithAPIKey[*Chat](EnvOpenAIAPIKey),
+		WithModel[*Chat](AIModelCostOptimizedOpenAI),
 	)
 	if err != nil {
 		t.Fatalf("want no error, got %v", err)
@@ -112,7 +112,7 @@ func TestChatClientNew_Apply_Defaults(t *testing.T) {
 		"logger":      chat.base.logger,
 		"http client": chat.base.httpClient,
 		"http method": chat.base.httpMethod,
-		"max tokens":  chat.MaxTokens,
+		"max tokens":  chat.maxTokens,
 	}
 	for field, value := range testCases {
 		if value == nil {
@@ -124,10 +124,10 @@ func TestChatClientNew_Apply_Defaults(t *testing.T) {
 func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 	testCases := []struct {
 		name          string
-		provider      Provider
-		url           URL
-		apiKey        APIKey
-		aiModel       AIModel
+		provider      provider
+		url           url
+		apiKey        apiKey
+		aiModel       aiModel
 		flagOpenAI    bool
 		flagAnthropic bool
 	}{
@@ -151,28 +151,28 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		chat, err := NewChatClient(
-			WithProvider[*ChatClient](tc.provider),
-			WithURL[*ChatClient](tc.url),
-			WithAPIKey[*ChatClient](tc.apiKey),
-			WithModel[*ChatClient](tc.aiModel),
+		chat, err := NewChat(
+			WithProvider[*Chat](tc.provider),
+			WithURL[*Chat](tc.url),
+			WithAPIKey[*Chat](tc.apiKey),
+			WithModel[*Chat](tc.aiModel),
 		)
 		if err != nil {
 			t.Fatalf("want no error, got %v", err)
 		}
 		switch tc.provider {
 		case ProviderOpenAI:
-			if chat.UseOpenAI != tc.flagOpenAI {
+			if chat.useOpenAI != tc.flagOpenAI {
 				t.Errorf("openai provider: want flag")
 			}
-			if chat.UseAnthropic != tc.flagAnthropic {
+			if chat.useAnthropic != tc.flagAnthropic {
 				t.Errorf("anthropic provider: want no flag")
 			}
 		case ProviderAnthropic:
-			if chat.UseOpenAI != tc.flagOpenAI {
+			if chat.useOpenAI != tc.flagOpenAI {
 				t.Errorf("openai provider: want no flag")
 			}
-			if chat.UseAnthropic != tc.flagAnthropic {
+			if chat.useAnthropic != tc.flagAnthropic {
 				t.Errorf("anthropic provider: want flag")
 			}
 		}
@@ -182,168 +182,168 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 func TestChatClientNew_Validate_Fields(t *testing.T) {
 	testCases := []struct {
 		name        string
-		chatBuilder func() (*ChatClient, error)
+		chatBuilder func() (*Chat, error)
 		wantError   bool
 	}{
 		{
 			name: "AllRequiredFieldsPass",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: false,
 		},
 		{
 			name: "AllRerequiredAndOptionalFieldsPass",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithContext[*ChatClient](context.Background()),
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithContext[*Chat](context.Background()),
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					WithTemperature(Temperature(1)),
 					WithMessages(Messages{Message{Role: RoleUser, Content: "test"}}),
 					WithMaxTokens(MaxTokens(4096)),
-					WithHTTPClient[*ChatClient](http.DefaultClient),
-					WithHTTPMethod[*ChatClient](HTTPMethod(http.MethodPost)),
-					WithLogger[*ChatClient](logger.New()),
+					WithHTTPClient[*Chat](http.DefaultClient),
+					WithHTTPMethod[*Chat](httpMethod(http.MethodPost)),
+					WithLogger[*Chat](logger.New()),
 				)
 			},
 			wantError: false,
 		},
 		{
 			name: "RequireProvider",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "RequireURL",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "RequireAPIKey",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "RequireModel",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "InvalidProvider",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](Provider("invalid")),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](provider("invalid")),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "InvalidURL",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URL("invalid")),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](url("invalid")),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "InvalidAPIKey",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](APIKey("NON_EXISTING_API_KEY")),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](apiKey("NON_EXISTING_API_KEY")),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "InvalidModel",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModel("invalid")),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](aiModel("invalid")),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "InvalidHTTPMethod",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithHTTPMethod[*ChatClient](HTTPMethod("INVALID")), // should fail
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithHTTPMethod[*Chat](httpMethod("INVALID")), // should fail
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "MaxTokensLt1",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override default max tokens
-				chat.MaxTokens = MaxTokens(-1)
-				tweakErr := chat.MaxTokens.Validate()
+				chat.maxTokens = MaxTokens(-1)
+				tweakErr := chat.maxTokens.Validate()
 				return chat, tweakErr
 			},
 			wantError: true,
 		},
 		{
 			name: "OpenAITemperatureGt2",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
 					WithTemperature(3),
 				)
@@ -352,12 +352,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "OpenAITemperatureLt0",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
 					WithTemperature(-1),
 				)
@@ -366,12 +366,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "AnthropicTemperatureGt1",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
 					WithTemperature(2),
 				)
@@ -380,12 +380,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "AnthropicTemperatureLt0",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
 					WithTemperature(-1),
 				)
@@ -394,12 +394,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "MessagesEmptyContent",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
 					WithMessages(Messages{
 						Message{
@@ -417,12 +417,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "MessagesInvalidRole",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
 					WithMessages(Messages{
 						Message{
@@ -431,7 +431,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 						},
 						Message{
 							Content: "test",
-							Role:    Role("invalid"),
+							Role:    role("invalid"),
 						},
 					}),
 				)
@@ -440,12 +440,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "NilContext",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override default context
 				chat.base.ctx = nil
@@ -455,12 +455,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "NilLogger",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override default logger
 				chat.base.logger = nil
@@ -470,12 +470,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "NilHTTPClient",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override default http client
 				chat.base.httpClient = nil
@@ -485,76 +485,76 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "EnsureOneProviderOnly",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override provider flags to create conflict
-				chat.UseAnthropic = true
-				chat.UseOpenAI = true
+				chat.useAnthropic = true
+				chat.useOpenAI = true
 				return chat, chat.validate()
 			},
 			wantError: true,
 		},
 		{
 			name: "ProviderOpenAIUnmatchingURL",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionAnthropic), // anthropic, want openai
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionAnthropic), // anthropic, want openai
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "ProviderAnthropicUnmatchingURL",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionOpenAI), // openai, want anthropic
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionOpenAI), // openai, want anthropic
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "UnsupportedOpenAIModel",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic), // anthropic, want openai
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic), // anthropic, want openai
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "UnsupportedAnthropicModel",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI), // openai, want anthropic
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI), // openai, want anthropic
 				)
 			},
 			wantError: true,
 		},
 		{
 			name: "NoRoleSystemInMessagesForAnthropic",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
 					WithMessages(Messages{
 						Message{
@@ -569,12 +569,12 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 		},
 		{
 			name: "EnsureOneSystemRoleForOpenAI",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
 					WithMessages(Messages{
 						Message{
@@ -614,7 +614,7 @@ func (t tripperware) RoundTrip(req *http.Request) (*http.Response, error) {
 func TestChatClient_Do(t *testing.T) {
 	testCases := []struct {
 		name            string
-		chatBuilder     func() (*ChatClient, error)
+		chatBuilder     func() (*Chat, error)
 		statusCode      int
 		body            *bytes.Buffer
 		want            string
@@ -623,12 +623,12 @@ func TestChatClient_Do(t *testing.T) {
 	}{
 		{
 			name: "SuccessAnthropic",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 200,
@@ -638,12 +638,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "SuccessOpenAI",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			statusCode: 200,
@@ -653,12 +653,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "NoContentFinalCompletion",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 200,
@@ -668,12 +668,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedURL",
-			chatBuilder: func() (*ChatClient, error) {
-				chat, _ := NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				chat, _ := NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 				// override chat.url with malformed url
 				chat.base.url = "::::"
@@ -684,12 +684,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "NetworkFailed",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			body:            bytes.NewBufferString(""),
@@ -698,12 +698,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "StatusNotOKOpenAI",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 401,
@@ -714,12 +714,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "StatusNotOKAnthropic",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			statusCode: 401,
@@ -730,12 +730,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			body:    bytes.NewBufferString("{]]invalid[[}"),
@@ -743,12 +743,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "NoChoicesOpenAIPayload",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 200,
@@ -757,12 +757,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "NoContentAnthropicResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			statusCode: 200,
@@ -771,12 +771,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedOpenAIStatusOKResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 200,
@@ -785,12 +785,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedAnthropicStatusOKResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			statusCode: 200,
@@ -799,12 +799,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedOpenAIStatusNotOKResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatCompletionOpenAI),
-					WithAPIKey[*ChatClient](EnvOpenAIAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedOpenAI),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderOpenAI),
+					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithAPIKey[*Chat](EnvOpenAIAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
 			statusCode: 401,
@@ -813,12 +813,12 @@ func TestChatClient_Do(t *testing.T) {
 		},
 		{
 			name: "MalformedAnthropicStatusNotOKResponseBody",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderAnthropic),
-					WithURL[*ChatClient](URLChatCompletionAnthropic),
-					WithAPIKey[*ChatClient](EnvAnthropicAPIKey),
-					WithModel[*ChatClient](AIModelCostOptimizedAnthropic),
+			chatBuilder: func() (*Chat, error) {
+				return NewChat(
+					WithProvider[*Chat](ProviderAnthropic),
+					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithAPIKey[*Chat](EnvAnthropicAPIKey),
+					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
 			},
 			statusCode: 401,

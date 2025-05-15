@@ -9,20 +9,20 @@ import (
 	"net/http"
 )
 
-func BuildProviderError(provider Provider, res *http.Response) error {
+func buildProviderError(provider provider, res *http.Response) error {
 	switch provider {
 	case ProviderOpenAI:
-		return BuildOpenAIError(res)
+		return buildOpenaiError(res)
 	case ProviderAnthropic:
-		return BuildAnthropicError(res)
+		return buildAnthropicError(res)
 	case ProviderElevenLabs:
-		return BuildElevenLabsError(res)
+		return buildElevenlabsError(res)
 	default:
 		return fmt.Errorf("%s error: status %d", provider.String(), res.StatusCode)
 	}
 }
 
-type OpenAIError struct {
+type openaiError struct {
 	StatusCode int
 	Message    string
 	Type       string
@@ -30,11 +30,11 @@ type OpenAIError struct {
 	Code       string
 }
 
-func (e *OpenAIError) Error() string {
+func (e *openaiError) Error() string {
 	return fmt.Sprintf("OpenAI error %d %s: %s", e.StatusCode, e.Type, e.Message)
 }
 
-func BuildOpenAIError(res *http.Response) error {
+func buildOpenaiError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
 	// openai error shape
@@ -53,7 +53,7 @@ func BuildOpenAIError(res *http.Response) error {
 	}
 
 	// build error
-	return &OpenAIError{
+	return &openaiError{
 		StatusCode: res.StatusCode,
 		Message:    payload.Error.Message,
 		Type:       payload.Error.Type,
@@ -62,17 +62,17 @@ func BuildOpenAIError(res *http.Response) error {
 	}
 }
 
-type AnthropicError struct {
+type anthropicError struct {
 	StatusCode int
 	ErrType    string
 	Message    string
 }
 
-func (e *AnthropicError) Error() string {
+func (e *anthropicError) Error() string {
 	return fmt.Sprintf("Anthropic API error %d %s: %s", e.StatusCode, e.ErrType, e.Message)
 }
 
-func BuildAnthropicError(res *http.Response) error {
+func buildAnthropicError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
 	// anthropic error shape
@@ -89,24 +89,24 @@ func BuildAnthropicError(res *http.Response) error {
 	}
 
 	// build error
-	return &AnthropicError{
+	return &anthropicError{
 		StatusCode: res.StatusCode,
 		ErrType:    payload.Error.Type,
 		Message:    payload.Error.Message,
 	}
 }
 
-type ElevenLabsError struct {
+type elevenlabsError struct {
 	StatusCode int
 	Status     string
 	Message    string
 }
 
-func (e *ElevenLabsError) Error() string {
+func (e *elevenlabsError) Error() string {
 	return fmt.Sprintf("ElevenLabs API error %d %s: %s", e.StatusCode, e.Status, e.Message)
 }
 
-func BuildElevenLabsError(res *http.Response) error {
+func buildElevenlabsError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
 	// eleven labs error shape
@@ -123,18 +123,18 @@ func BuildElevenLabsError(res *http.Response) error {
 	}
 
 	// build error
-	return &ElevenLabsError{
+	return &elevenlabsError{
 		StatusCode: res.StatusCode,
 		Status:     payload.Details.Status,
 		Message:    payload.Details.Message,
 	}
 }
 
-func IsRetryable(err error) bool {
+func isRetryable(err error) bool {
 	var (
-		openaiError     *OpenAIError
-		anthropicError  *AnthropicError
-		elevenlabsError *ElevenLabsError
+		openaiError     *openaiError
+		anthropicError  *anthropicError
+		elevenlabsError *elevenlabsError
 		netError        net.Error
 	)
 

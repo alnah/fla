@@ -13,26 +13,26 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-// ChatClient wraps HTTP transport with middleware for different AI providers.
+// Chat wraps HTTP transport with middleware for different AI providers.
 // It automatically injects headers, error classification, circuit breaker,
 // retrier, and logging.
-type ChatClient struct {
+type Chat struct {
 	// http fields
-	base *BaseClient
+	base *Base
 	// api fields
-	Temperature Temperature
-	System      string // Anthropic only
-	Messages    Messages
-	MaxTokens   MaxTokens
+	temperature Temperature
+	system      string // Anthropic only
+	messages    Messages
+	maxTokens   MaxTokens
 	// provider fields
-	UseOpenAI    bool // internal
-	UseAnthropic bool // internal
+	useOpenAI    bool // internal
+	useAnthropic bool // internal
 
 }
 
-// NewChatClient builds a ChatClient with default transport chain.
-func NewChatClient(options ...Option[*ChatClient]) (*ChatClient, error) {
-	c := &ChatClient{base: &BaseClient{}}
+// NewChat builds a ChatClient with default transport chain.
+func NewChat(options ...option[*Chat]) (*Chat, error) {
+	c := &Chat{base: &Base{}}
 	for _, opt := range options {
 		opt(c)
 	}
@@ -45,7 +45,7 @@ func NewChatClient(options ...Option[*ChatClient]) (*ChatClient, error) {
 	return c, nil
 }
 
-func (c *ChatClient) applyDefaults() *ChatClient {
+func (c *Chat) applyDefaults() *Chat {
 	if c.base.ctx == nil {
 		c.base.ctx = context.Background()
 	}
@@ -56,50 +56,50 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 		c.base.httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
 	if c.base.httpMethod == "" {
-		c.base.httpMethod = HTTPMethod(http.MethodPost)
+		c.base.httpMethod = httpMethod(http.MethodPost)
 	}
-	if c.MaxTokens < 1 {
-		c.MaxTokens = MaxTokens(8192)
+	if c.maxTokens < 1 {
+		c.maxTokens = MaxTokens(8192)
 	}
 	return c
 }
 
-func (c *ChatClient) setProviderFlag() *ChatClient {
-	c.UseOpenAI = strings.Contains(c.base.url.String(), ProviderOpenAI.String())
-	c.UseAnthropic = strings.Contains(c.base.url.String(), ProviderAnthropic.String())
+func (c *Chat) setProviderFlag() *Chat {
+	c.useOpenAI = strings.Contains(c.base.url.String(), ProviderOpenAI.String())
+	c.useAnthropic = strings.Contains(c.base.url.String(), ProviderAnthropic.String())
 	return c
 }
 
-func (c *ChatClient) Do() (ChatCompletion, error) {
+func (c *Chat) Do() (ChatResponse, error) {
 	byt, err := json.Marshal(c)
 	if err != nil {
-		return ChatCompletion{}, NewChatClientError(c.base.provider, "failed to marshal payload", err)
+		return ChatResponse{}, NewChatError(c.base.provider, "failed to marshal payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(c.base.ctx, c.base.httpMethod.String(), c.base.url.String(), bytes.NewBuffer(byt))
 	if err != nil {
-		return ChatCompletion{}, NewChatClientError(c.base.provider, "failed to build http request", err)
+		return ChatResponse{}, NewChatError(c.base.provider, "failed to build http request", err)
 	}
 
 	res, err := c.base.httpClient.Do(req)
 	if err != nil {
-		return ChatCompletion{}, NewChatClientError(c.base.provider, "failed to send http request", err)
+		return ChatResponse{}, NewChatError(c.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return ChatCompletion{}, NewChatClientError(c.base.provider, "failed to read response body", err)
+		return ChatResponse{}, NewChatError(c.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {
-		return ChatCompletion{}, BuildProviderError(c.base.provider, res)
+		return ChatResponse{}, buildProviderError(c.base.provider, res)
 	}
 
 	completion, err := c.ParseResponse(byt)
 	if err != nil {
-		return ChatCompletion{}, NewChatClientError(c.base.provider, "failed to parse response payload: %w", err)
+		return ChatResponse{}, NewChatError(c.base.provider, "failed to parse response payload: %w", err)
 	}
 
 	return completion, nil

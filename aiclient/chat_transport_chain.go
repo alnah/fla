@@ -8,9 +8,9 @@ import (
 	"github.com/alnah/fla/tripper"
 )
 
-const AnthropicVersion string = "2023-06-01"
+const anthropicVersion string = "2023-06-01"
 
-func (c *ChatClient) newTransportChain() http.RoundTripper {
+func (c *Chat) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
 		tripper.Default(c.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),
@@ -21,8 +21,8 @@ func (c *ChatClient) newTransportChain() http.RoundTripper {
 			return tripper.AddHeader("x-api-key", c.base.apiKey.GetEnv())(next)
 		},
 		func(next http.RoundTripper) http.RoundTripper {
-			if c.UseAnthropic {
-				return tripper.AddHeader("anthropic-version", AnthropicVersion)(next)
+			if c.useAnthropic {
+				return tripper.AddHeader("anthropic-version", anthropicVersion)(next)
 			}
 			return tripper.AddHeader("key", "")(next)
 		},
@@ -30,14 +30,14 @@ func (c *ChatClient) newTransportChain() http.RoundTripper {
 		tripper.UseStatusClassifier(
 			func(code int) bool { return code == 429 || code >= 500 },
 			func(res *http.Response) error {
-				if c.UseOpenAI {
-					return BuildOpenAIError(res)
+				if c.useOpenAI {
+					return buildOpenaiError(res)
 				}
-				return BuildAnthropicError(res)
+				return buildAnthropicError(res)
 			},
 		),
 		tripper.UseCircuitBreaker(breaker.New()),
-		tripper.UseRetrier(retrier.New(), IsRetryable),
+		tripper.UseRetrier(retrier.New(), isRetryable),
 		tripper.UseLogger(c.base.logger),
 	)
 }

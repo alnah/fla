@@ -6,10 +6,10 @@ import (
 )
 
 // MarshalJSON handles provider-specific JSON fields.
-func (c ChatClient) MarshalJSON() ([]byte, error) {
-	v := c.MaxTokens.Int()
+func (c Chat) MarshalJSON() ([]byte, error) {
+	v := c.maxTokens.Int()
 	switch {
-	case c.UseOpenAI:
+	case c.useOpenAI:
 		type openaiPayload struct {
 			Model       string    `json:"model"`
 			Temperature float32   `json:"temperature"`
@@ -18,12 +18,12 @@ func (c ChatClient) MarshalJSON() ([]byte, error) {
 		}
 		payload := openaiPayload{
 			Model:       c.base.Model.String(),
-			Temperature: c.Temperature.Float32(),
-			Messages:    append([]Message{{Role: RoleSystem, Content: c.System}}, c.Messages...),
-			MaxTokens:   (*int)(&c.MaxTokens),
+			Temperature: c.temperature.Float32(),
+			Messages:    append([]Message{{Role: RoleSystem, Content: c.system}}, c.messages...),
+			MaxTokens:   (*int)(&c.maxTokens),
 		}
 		return json.Marshal(payload)
-	case c.UseAnthropic:
+	case c.useAnthropic:
 		type anthropicPayload struct {
 			Model               string    `json:"model"`
 			System              string    `json:"system"`
@@ -33,10 +33,10 @@ func (c ChatClient) MarshalJSON() ([]byte, error) {
 		}
 		payload := anthropicPayload{
 			Model:               c.base.Model.String(),
-			System:              c.System,
-			Messages:            c.Messages,
+			System:              c.system,
+			Messages:            c.messages,
 			MaxCompletionTokens: &v,
-			Temperature:         c.Temperature.Float32(),
+			Temperature:         c.temperature.Float32(),
 		}
 		return json.Marshal(payload)
 	default:

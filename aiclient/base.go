@@ -7,19 +7,19 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-type BaseClient struct {
+type Base struct {
 	// api fields
-	Model    AIModel
-	provider Provider
+	Model    aiModel
+	provider provider
 	// infra fields
 	ctx        context.Context
 	logger     *logger.Logger
 	httpClient *http.Client
-	httpMethod HTTPMethod
-	url        URL
-	apiKey     APIKey
+	httpMethod httpMethod
+	url        url
+	apiKey     apiKey
 }
 
-type hasBase interface{ BaseClient() *BaseClient }
+type hasBase interface{ BaseClient() *Base }
 
-type Option[T hasBase] func(T)
+type option[T hasBase] func(T)

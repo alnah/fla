@@ -6,7 +6,7 @@ import (
 )
 
 // validate ensures required fields are set.
-func (c *ChatClient) validate() error {
+func (c *Chat) validate() error {
 	if c.base.ctx == nil {
 		return errors.New("context must be provided")
 	}
@@ -31,26 +31,26 @@ func (c *ChatClient) validate() error {
 	if err := c.base.Model.Validate(); err != nil {
 		return err
 	}
-	if err := c.MaxTokens.Validate(); err != nil {
+	if err := c.maxTokens.Validate(); err != nil {
 		return err
 	}
-	if err := c.Temperature.Validate(c.base.Model); err != nil {
+	if err := c.temperature.Validate(c.base.Model); err != nil {
 		return err
 	}
-	if err := c.Messages.Validate(); err != nil {
+	if err := c.messages.Validate(); err != nil {
 		return err
 	}
-	if c.UseOpenAI == c.UseAnthropic {
+	if c.useOpenAI == c.useAnthropic {
 		return errors.New("must configure exactly one provider: openai or anthropic")
 	}
-	if c.UseOpenAI && c.base.provider != ProviderOpenAI {
+	if c.useOpenAI && c.base.provider != ProviderOpenAI {
 		return fmt.Errorf("url indicates openai but provider is %s", c.base.provider)
 	}
-	if c.UseAnthropic && c.base.provider != ProviderAnthropic {
+	if c.useAnthropic && c.base.provider != ProviderAnthropic {
 		return fmt.Errorf("url indicates anthropic but provider is %s", c.base.provider)
 	}
 	switch {
-	case c.UseOpenAI:
+	case c.useOpenAI:
 		switch c.base.Model {
 		case AIModelReasoningOpenAI,
 			AIModelFlagshipOpenAI,
@@ -62,7 +62,7 @@ func (c *ChatClient) validate() error {
 			return fmt.Errorf("model %s not supported by openai", c.base.Model)
 		}
 
-	case c.UseAnthropic:
+	case c.useAnthropic:
 		switch c.base.Model {
 		case AIModelReasoningAnthropic,
 			AIModelCostOptimizedAnthropic:
@@ -71,16 +71,16 @@ func (c *ChatClient) validate() error {
 			return fmt.Errorf("model %s not supported by anthropic", c.base.Model)
 		}
 	}
-	if c.UseAnthropic {
-		for _, m := range c.Messages {
+	if c.useAnthropic {
+		for _, m := range c.messages {
 			if m.Role == RoleSystem {
 				return errors.New("system message must be passed via system field, not via messages, when using anthropic")
 			}
 		}
 	}
-	if c.UseOpenAI {
+	if c.useOpenAI {
 		var systemCount int
-		for _, m := range c.Messages {
+		for _, m := range c.messages {
 			if m.Role == RoleSystem {
 				systemCount++
 			}

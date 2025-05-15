@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	ProviderOpenAI     Provider = "openai"
-	ProviderAnthropic  Provider = "anthropic"
-	ProviderElevenLabs Provider = "elevenlabs"
+	ProviderOpenAI     provider = "openai"
+	ProviderAnthropic  provider = "anthropic"
+	ProviderElevenLabs provider = "elevenlabs"
 )
 
-type Provider string
+type provider string
 
-func (p Provider) String() string { return string(p) }
-func (p Provider) IsValid() bool {
+func (p provider) String() string { return string(p) }
+func (p provider) IsValid() bool {
 	switch p {
 	case ProviderOpenAI, ProviderAnthropic, ProviderElevenLabs:
 		return true
@@ -26,7 +26,7 @@ func (p Provider) IsValid() bool {
 		return false
 	}
 }
-func (p Provider) Validate() error {
+func (p provider) Validate() error {
 	if p.String() == "" {
 		return fmt.Errorf("invalid provider: can't be empty")
 	}
@@ -38,17 +38,17 @@ func (p Provider) Validate() error {
 }
 
 const (
-	URLChatCompletionOpenAI    URL = "https://api.openai.com/v1/chat/completions"
-	URLChatCompletionAnthropic URL = "https://api.anthropic.com/v1/messages"
-	URLSpeechAudioOpenAI       URL = "https://api.openai.com/v1/audio/speech"
-	URLSpeechAudioElevenLabs   URL = "https://api.elevenlabs.io/v1/text-to-speech"
-	URLTranscriptionOpenAI     URL = "https://api.openai.com/v1/audio/transcriptions"
+	URLChatCompletionOpenAI    url = "https://api.openai.com/v1/chat/completions"
+	URLChatCompletionAnthropic url = "https://api.anthropic.com/v1/messages"
+	URLSpeechAudioOpenAI       url = "https://api.openai.com/v1/audio/speech"
+	URLSpeechAudioElevenLabs   url = "https://api.elevenlabs.io/v1/text-to-speech"
+	URLTranscriptionOpenAI     url = "https://api.openai.com/v1/audio/transcriptions"
 )
 
-type URL string
+type url string
 
-func (u URL) String() string { return string(u) }
-func (u URL) IsValid() bool {
+func (u url) String() string { return string(u) }
+func (u url) IsValid() bool {
 	switch u {
 	case URLChatCompletionOpenAI, URLChatCompletionAnthropic,
 		URLSpeechAudioOpenAI, URLSpeechAudioElevenLabs,
@@ -58,7 +58,7 @@ func (u URL) IsValid() bool {
 		return false
 	}
 }
-func (u URL) Validate() error {
+func (u url) Validate() error {
 	if u.String() == "" {
 		return fmt.Errorf("invalid url: can't be empty")
 	}
@@ -69,17 +69,17 @@ func (u URL) Validate() error {
 }
 
 const (
-	EnvOpenAIAPIKey     APIKey = "OPENAI_API_KEY"     // #nosec G101
-	EnvAnthropicAPIKey  APIKey = "ANTHROPIC_API_KEY"  // #nosec G101
-	EnvElevenLabsAPIKey APIKey = "ELEVENLABS_API_KEY" // #nosec G101
+	EnvOpenAIAPIKey     apiKey = "OPENAI_API_KEY"     // #nosec G101
+	EnvAnthropicAPIKey  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101
+	EnvElevenLabsAPIKey apiKey = "ELEVENLABS_API_KEY" // #nosec G101
 )
 
-type APIKey string
+type apiKey string
 
-func (e APIKey) String() string { return string(e) }
-func (e APIKey) GetEnv() string { return os.Getenv(e.String()) }
-func (e APIKey) IsValid() bool  { return e.GetEnv() != "" }
-func (e APIKey) Validate() error {
+func (e apiKey) String() string { return string(e) }
+func (e apiKey) GetEnv() string { return os.Getenv(e.String()) }
+func (e apiKey) IsValid() bool  { return e.GetEnv() != "" }
+func (e apiKey) Validate() error {
 	if e.String() == "" {
 		return fmt.Errorf("invalid api key: can't be empty")
 	}
@@ -89,11 +89,11 @@ func (e APIKey) Validate() error {
 	return nil
 }
 
-type HTTPMethod string
+type httpMethod string
 
-func (hm HTTPMethod) String() string { return string(hm) }
-func (hm HTTPMethod) IsValid() bool  { return hm.String() == http.MethodPost }
-func (hm HTTPMethod) Validate() error {
+func (hm httpMethod) String() string { return string(hm) }
+func (hm httpMethod) IsValid() bool  { return hm.String() == http.MethodPost }
+func (hm httpMethod) Validate() error {
 	if !hm.IsValid() {
 		return errors.New("invalid http method: require POST")
 	}
@@ -101,31 +101,31 @@ func (hm HTTPMethod) Validate() error {
 }
 
 const (
-	OpChatCompletion   Operation = "chat completion"
-	OpTTSAudio         Operation = "text-to-speech audio"
-	OpSTTTranscription Operation = "speech-to-text transcription"
+	OpChatCompletion   operation = "chat completion"
+	OpTTSAudio         operation = "text-to-speech audio"
+	OpSTTTranscription operation = "speech-to-text transcription"
 )
 
-type Operation string
+type operation string
 
-func (o Operation) String() string { return string(o) }
+func (o operation) String() string { return string(o) }
 
 const (
-	AIModelReasoningOpenAI        AIModel = "o4-mini"
-	AIModelFlagshipOpenAI         AIModel = "gpt-4.1"
-	AIModelCostOptimizedOpenAI    AIModel = "gpt-4.1-nano"
-	AIModelTTSOpenAI              AIModel = "gpt-4o-mini-tts"
-	AIModelTranscriptionOpenAI    AIModel = "gpt-4o-transcribe"
-	AIModelReasoningAnthropic     AIModel = "claude-3-7-sonnet-latest"
-	AIModelCostOptimizedAnthropic AIModel = "claude-3-5-haiku-latest"
-	AIModelTTSElevenLabs          AIModel = "eleven_multilingual_v2"
+	AIModelReasoningOpenAI        aiModel = "o4-mini"
+	AIModelFlagshipOpenAI         aiModel = "gpt-4.1"
+	AIModelCostOptimizedOpenAI    aiModel = "gpt-4.1-nano"
+	AIModelTTSOpenAI              aiModel = "gpt-4o-mini-tts"
+	AIModelTranscriptionOpenAI    aiModel = "gpt-4o-transcribe"
+	AIModelReasoningAnthropic     aiModel = "claude-3-7-sonnet-latest"
+	AIModelCostOptimizedAnthropic aiModel = "claude-3-5-haiku-latest"
+	AIModelTTSElevenLabs          aiModel = "eleven_multilingual_v2"
 )
 
-type AIModel string
+type aiModel string
 
-func (a AIModel) String() string               { return string(a) }
-func (a AIModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
-func (a AIModel) IsValid() bool {
+func (a aiModel) String() string               { return string(a) }
+func (a aiModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
+func (a aiModel) IsValid() bool {
 	switch a {
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI,
 		AIModelTTSOpenAI, AIModelTranscriptionOpenAI,
@@ -136,7 +136,7 @@ func (a AIModel) IsValid() bool {
 		return false
 	}
 }
-func (a AIModel) Validate() error {
+func (a aiModel) Validate() error {
 	if a.String() == "" {
 		return fmt.Errorf("invalid ai model: can't be empty")
 	}
@@ -162,7 +162,7 @@ type Temperature float32
 func (t Temperature) Float32() float32             { return float32(t) }
 func (t Temperature) MarshalJSON() ([]byte, error) { return json.Marshal(t.Float32()) }
 
-func (t Temperature) IsValid(m AIModel) bool {
+func (t Temperature) IsValid(m aiModel) bool {
 	switch m {
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
 		return t >= 0 && t <= 2
@@ -173,7 +173,7 @@ func (t Temperature) IsValid(m AIModel) bool {
 	}
 }
 
-func (t Temperature) Validate(m AIModel) error {
+func (t Temperature) Validate(m aiModel) error {
 	if !t.IsValid(m) {
 		switch m {
 		case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
@@ -188,16 +188,16 @@ func (t Temperature) Validate(m AIModel) error {
 }
 
 const (
-	RoleSystem    Role = "system"
-	RoleUser      Role = "user"
-	RoleAssistant Role = "assistant"
+	RoleSystem    role = "system"
+	RoleUser      role = "user"
+	RoleAssistant role = "assistant"
 )
 
-type Role string
+type role string
 
-func (r Role) String() string               { return string(r) }
-func (r Role) MarshalJSON() ([]byte, error) { return json.Marshal(r.String()) }
-func (r Role) IsValid() bool {
+func (r role) String() string               { return string(r) }
+func (r role) MarshalJSON() ([]byte, error) { return json.Marshal(r.String()) }
+func (r role) IsValid() bool {
 	switch r {
 	case RoleSystem, RoleUser, RoleAssistant:
 		return true
@@ -205,7 +205,7 @@ func (r Role) IsValid() bool {
 		return false
 	}
 }
-func (r Role) Validate() error {
+func (r role) Validate() error {
 	if !r.IsValid() {
 		available := strings.Join([]string{
 			RoleSystem.String(),
@@ -218,7 +218,7 @@ func (r Role) Validate() error {
 }
 
 type Message struct {
-	Role    Role   `json:"role"`
+	Role    role   `json:"role"`
 	Content string `json:"content"`
 }
 
@@ -270,38 +270,38 @@ func (t Text) Validate() error {
 	return nil
 }
 
-type Voice string
+type voice string
 
 // OpenAI
 const (
-	VoiceOpenAIFemaleAlloy   Voice = "alloy"
-	VoiceOpenAIMaleAsh       Voice = "ash"
-	VoiceOpenAIMaleBallad    Voice = "ballad"
-	VoiceOpenAIFemaleCoral   Voice = "coral"
-	VoiceOpenAIMaleEcho      Voice = "echo"
-	VoiceOpenAINeutralFable  Voice = "fable"
-	VoiceOpenAIMaleOnyx      Voice = "onyx"
-	VoiceOpenAIFemaleNova    Voice = "nova"
-	VoiceOpenAIFemaleSage    Voice = "sage"
-	VoiceOpenAIFemaleShimmer Voice = "shimmer"
-	VoiceOpenAIMaleVerse     Voice = "verse"
+	VoiceOpenAIFemaleAlloy   voice = "alloy"
+	VoiceOpenAIMaleAsh       voice = "ash"
+	VoiceOpenAIMaleBallad    voice = "ballad"
+	VoiceOpenAIFemaleCoral   voice = "coral"
+	VoiceOpenAIMaleEcho      voice = "echo"
+	VoiceOpenAINeutralFable  voice = "fable"
+	VoiceOpenAIMaleOnyx      voice = "onyx"
+	VoiceOpenAIFemaleNova    voice = "nova"
+	VoiceOpenAIFemaleSage    voice = "sage"
+	VoiceOpenAIFemaleShimmer voice = "shimmer"
+	VoiceOpenAIMaleVerse     voice = "verse"
 )
 
 // ElevenLabs
 const (
 	// FR
-	VoiceElevenLabsFrMaleNicolas   Voice = "aQROLel5sQbj1vuIVi6B"
-	VoiceElevenLabsFrMaleGuillaume Voice = "ohItIVrXTBI80RrUECOD"
-	VoiceElevenLabsFrFemaleAudrey  Voice = "McVZB9hVxVSk3Equu8EH"
+	VoiceElevenLabsFrMaleNicolas   voice = "aQROLel5sQbj1vuIVi6B"
+	VoiceElevenLabsFrMaleGuillaume voice = "ohItIVrXTBI80RrUECOD"
+	VoiceElevenLabsFrFemaleAudrey  voice = "McVZB9hVxVSk3Equu8EH"
 	// PT
-	VoiceElevenLabsPtMaleMarcelo Voice = "bJrNspxJVFovUxNBQ0wh"
-	VoiceElevenLabsPtMaleSamuel  Voice = "ETf5cmpNIbpSiXmBaR2m"
-	VoiceElevenLabsPtFemaleBia   Voice = "Eyspt3SYhZzXd1Jd3J8O"
+	VoiceElevenLabsPtMaleMarcelo voice = "bJrNspxJVFovUxNBQ0wh"
+	VoiceElevenLabsPtMaleSamuel  voice = "ETf5cmpNIbpSiXmBaR2m"
+	VoiceElevenLabsPtFemaleBia   voice = "Eyspt3SYhZzXd1Jd3J8O"
 )
 
-func (v Voice) String() string               { return string(v) }
-func (v Voice) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
-func (v Voice) IsValid(p Provider) bool {
+func (v voice) String() string               { return string(v) }
+func (v voice) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v voice) IsValid(p provider) bool {
 	switch p {
 	case ProviderOpenAI:
 		return v == VoiceOpenAIFemaleAlloy ||
@@ -327,7 +327,7 @@ func (v Voice) IsValid(p Provider) bool {
 	}
 }
 
-func (v Voice) Validate(p Provider) error {
+func (v voice) Validate(p provider) error {
 	if v.String() == "" {
 		return errors.New("invalid voice: can't be empty")
 	}
@@ -348,7 +348,7 @@ func (v Voice) Validate(p Provider) error {
 			}, ", ")
 			return fmt.Errorf("invalid voice: %s, available voices: %s", v.String(), available)
 		case ProviderElevenLabs:
-			availableMap := map[Voice]string{
+			availableMap := map[voice]string{
 				VoiceElevenLabsFrFemaleAudrey:  "audrey (fr)",
 				VoiceElevenLabsFrMaleGuillaume: "guillaume (fr)",
 				VoiceElevenLabsFrMaleNicolas:   "nicolas (fr)",
@@ -371,13 +371,13 @@ type Instructions string
 
 func (i Instructions) String() string               { return string(i) }
 func (i Instructions) MarshalJSON() ([]byte, error) { return json.Marshal(i) }
-func (i Instructions) IsValid(p Provider) bool {
+func (i Instructions) IsValid(p provider) bool {
 	if p == ProviderOpenAI && i.String() == "" {
 		return false
 	}
 	return true
 }
-func (i Instructions) Validate(p Provider) error {
+func (i Instructions) Validate(p provider) error {
 	if !i.IsValid(p) {
 		return errors.New("invalid instructions: can't be empty")
 	}
@@ -388,14 +388,14 @@ type Speed float32
 
 func (s Speed) Float32() float32             { return float32(s) }
 func (s Speed) MarshalJSON() ([]byte, error) { return json.Marshal(s.Float32()) }
-func (s Speed) IsValid(p Provider) bool {
+func (s Speed) IsValid(p provider) bool {
 	if p == ProviderElevenLabs && (s.Float32() < 0.7 || s.Float32() > 1.2) {
 		return false
 	}
 	return true
 }
 
-func (s Speed) Validate(p Provider) error {
+func (s Speed) Validate(p provider) error {
 	if !s.IsValid(p) {
 		return fmt.Errorf("invalid speed: must be 0.7 <= s <= 1.2")
 	}

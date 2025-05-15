@@ -8,7 +8,7 @@ import (
 	"github.com/alnah/fla/tripper"
 )
 
-func (t *TTSClient) newTransportChain() http.RoundTripper {
+func (t *TTS) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
 		tripper.Default(t.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),
@@ -22,14 +22,14 @@ func (t *TTSClient) newTransportChain() http.RoundTripper {
 		tripper.UseStatusClassifier(
 			func(code int) bool { return code == 429 || code >= 500 },
 			func(res *http.Response) error {
-				if t.UseOpenAI {
-					return BuildOpenAIError(res)
+				if t.useOpenAI {
+					return buildOpenaiError(res)
 				}
-				return BuildElevenLabsError(res)
+				return buildElevenlabsError(res)
 			},
 		),
 		tripper.UseCircuitBreaker(breaker.New()),
-		tripper.UseRetrier(retrier.New(), IsRetryable),
+		tripper.UseRetrier(retrier.New(), isRetryable),
 		tripper.UseLogger(t.base.logger),
 	)
 }

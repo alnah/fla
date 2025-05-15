@@ -2,7 +2,7 @@ package aiclient
 
 import "errors"
 
-func (t *TTSClient) validate() error {
+func (t *TTS) validate() error {
 	if t.base.ctx == nil {
 		return errors.New("context must be provided")
 	}

@@ -5,22 +5,22 @@ import (
 	"fmt"
 )
 
-// ChatCompletion holds the result of chat completions for chat completion providers.
-type ChatCompletion struct {
-	Content string
+// ChatResponse holds the result of chat completions for chat completion providers.
+type ChatResponse struct {
+	content string
 }
 
-func (cc ChatCompletion) String() string {
-	if cc.Content != "" {
-		return cc.Content
+func (cc ChatResponse) String() string {
+	if cc.content != "" {
+		return cc.content
 	}
 	return ""
 }
 
 // ParseResponse extracts a ChatCompletion from raw JSON depending on provider.
-func (c *ChatClient) ParseResponse(byt []byte) (ChatCompletion, error) {
+func (c *Chat) ParseResponse(byt []byte) (ChatResponse, error) {
 	switch {
-	case c.UseOpenAI:
+	case c.useOpenAI:
 		type openaiPayload struct {
 			Choices []struct {
 				Message struct {
@@ -30,14 +30,14 @@ func (c *ChatClient) ParseResponse(byt []byte) (ChatCompletion, error) {
 		}
 		var payload openaiPayload
 		if err := json.Unmarshal(byt, &payload); err != nil {
-			return ChatCompletion{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+			return ChatResponse{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 		}
 		if len(payload.Choices) == 0 {
-			return ChatCompletion{}, fmt.Errorf("no choices in OpenAI response")
+			return ChatResponse{}, fmt.Errorf("no choices in OpenAI response")
 		}
-		return ChatCompletion{Content: payload.Choices[0].Message.Content}, nil
+		return ChatResponse{content: payload.Choices[0].Message.Content}, nil
 
-	case c.UseAnthropic:
+	case c.useAnthropic:
 		type anthropicPayload struct {
 			Content []struct {
 				Text string `json:"text"`
@@ -45,14 +45,14 @@ func (c *ChatClient) ParseResponse(byt []byte) (ChatCompletion, error) {
 		}
 		var payload anthropicPayload
 		if err := json.Unmarshal(byt, &payload); err != nil {
-			return ChatCompletion{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+			return ChatResponse{}, fmt.Errorf("failed to unmarshal response body: %w", err)
 		}
 		if len(payload.Content) == 0 {
-			return ChatCompletion{}, fmt.Errorf("no content in Anthropic response")
+			return ChatResponse{}, fmt.Errorf("no content in Anthropic response")
 		}
-		return ChatCompletion{Content: payload.Content[0].Text}, nil
+		return ChatResponse{content: payload.Content[0].Text}, nil
 
 	default:
-		return ChatCompletion{}, fmt.Errorf("no provider configured")
+		return ChatResponse{}, fmt.Errorf("no provider configured")
 	}
 }

@@ -5,14 +5,14 @@ import (
 	"strings"
 )
 
-type HTTPClientError struct {
-	Provider  Provider
-	Operation Operation
+type httpClientError struct {
+	Provider  provider
+	Operation operation
 	Message   string
 	Wrapped   error
 }
 
-func (e HTTPClientError) Error() string {
+func (e httpClientError) Error() string {
 	const prefix = "http client error"
 
 	// build the "core" piece: operation and/or provider
@@ -62,12 +62,12 @@ func (e HTTPClientError) Error() string {
 	return result
 }
 
-func (e *HTTPClientError) Unwrap() error {
+func (e *httpClientError) Unwrap() error {
 	return e.Wrapped
 }
 
-func NewChatClientError(provider Provider, message string, wrapped error) *HTTPClientError {
-	return &HTTPClientError{
+func NewChatError(provider provider, message string, wrapped error) *httpClientError {
+	return &httpClientError{
 		Provider:  provider,
 		Operation: OpChatCompletion,
 		Message:   message,
@@ -75,8 +75,8 @@ func NewChatClientError(provider Provider, message string, wrapped error) *HTTPC
 	}
 }
 
-func NewTTSClientError(provider Provider, message string, wrapped error) *HTTPClientError {
-	return &HTTPClientError{
+func NewTTSError(provider provider, message string, wrapped error) *httpClientError {
+	return &httpClientError{
 		Provider:  provider,
 		Operation: OpSTTTranscription,
 		Message:   message,

@@ -5,9 +5,9 @@ import (
 	"errors"
 )
 
-func (t TTSClient) MarshalJSON() ([]byte, error) {
+func (t TTS) MarshalJSON() ([]byte, error) {
 	switch {
-	case t.UseOpenAI:
+	case t.useOpenAI:
 		type openaiPayload struct {
 			Input        string `json:"input"`
 			Model        string `json:"model"`
@@ -21,7 +21,7 @@ func (t TTSClient) MarshalJSON() ([]byte, error) {
 			Instructions: t.Instructions.String(),
 		}
 		return json.Marshal(payload)
-	case t.UseElevenLabs:
+	case t.useElevenLabs:
 		type elevenlabsPayload struct {
 			Text          string `json:"text"`
 			ModelID       string `json:"model_id"`

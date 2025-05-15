@@ -1,17 +1,17 @@
 package aiclient
 
-func (t *TTSClient) BaseClient() *BaseClient { return t.base }
+func (t *TTS) BaseClient() *Base { return t.base }
 
-func WithVoice(v Voice) Option[*TTSClient] {
-	return func(t *TTSClient) { t.Voice = v }
+func WithVoice(v voice) option[*TTS] {
+	return func(t *TTS) { t.Voice = v }
 }
 
-func WithText(txt Text) Option[*TTSClient] {
-	return func(t *TTSClient) { t.Text = txt }
+func WithText(txt Text) option[*TTS] {
+	return func(t *TTS) { t.Text = txt }
 }
-func WithInstructions(i Instructions) Option[*TTSClient] {
-	return func(t *TTSClient) { t.Instructions = i }
+func WithInstructions(i Instructions) option[*TTS] {
+	return func(t *TTS) { t.Instructions = i }
 }
-func WithSpeed(s Speed) Option[*TTSClient] {
-	return func(t *TTSClient) { t.Speed = s }
+func WithSpeed(s Speed) option[*TTS] {
+	return func(t *TTS) { t.Speed = s }
 }

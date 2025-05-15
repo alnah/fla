@@ -13,21 +13,21 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-type TTSClient struct {
+type TTS struct {
 	// http fields
-	base *BaseClient
+	base *Base
 	// api fields
-	Voice        Voice
+	Voice        voice
 	Text         Text
 	Instructions Instructions // OpenAI only
 	Speed        Speed        // ElevenLabs only
 	// provider fields
-	UseOpenAI     bool
-	UseElevenLabs bool
+	useOpenAI     bool
+	useElevenLabs bool
 }
 
-func NewTTSClient(options ...Option[*TTSClient]) (*TTSClient, error) {
-	t := &TTSClient{base: &BaseClient{}}
+func NewTTS(options ...option[*TTS]) (*TTS, error) {
+	t := &TTS{base: &Base{}}
 	for _, opt := range options {
 		opt(t)
 	}
@@ -38,7 +38,7 @@ func NewTTSClient(options ...Option[*TTSClient]) (*TTSClient, error) {
 	return t, nil
 }
 
-func (t *TTSClient) applyDefaults() *TTSClient {
+func (t *TTS) applyDefaults() *TTS {
 	if t.base.ctx == nil {
 		t.base.ctx = context.Background()
 	}
@@ -49,21 +49,21 @@ func (t *TTSClient) applyDefaults() *TTSClient {
 		t.base.httpClient = &http.Client{Timeout: 10 * time.Minute}
 	}
 	if t.base.httpMethod == "" {
-		t.base.httpMethod = HTTPMethod(http.MethodPost)
+		t.base.httpMethod = httpMethod(http.MethodPost)
 	}
 	return t
 }
 
-func (t *TTSClient) setProviderFlag() *TTSClient {
-	t.UseOpenAI = strings.Contains(t.base.url.String(), ProviderOpenAI.String())
-	t.UseElevenLabs = strings.Contains(t.base.url.String(), ProviderElevenLabs.String())
+func (t *TTS) setProviderFlag() *TTS {
+	t.useOpenAI = strings.Contains(t.base.url.String(), ProviderOpenAI.String())
+	t.useElevenLabs = strings.Contains(t.base.url.String(), ProviderElevenLabs.String())
 	return t
 }
 
-func (t *TTSClient) Do() ([]byte, error) {
+func (t *TTS) Do() ([]byte, error) {
 	byt, err := json.Marshal(t)
 	if err != nil {
-		return nil, NewTTSClientError(t.base.provider, "failed to marshal payload", err)
+		return nil, NewTTSError(t.base.provider, "failed to marshal payload", err)
 	}
 
 	url := t.base.url.String()
@@ -72,23 +72,23 @@ func (t *TTSClient) Do() ([]byte, error) {
 	}
 	req, err := http.NewRequestWithContext(t.base.ctx, t.base.httpMethod.String(), url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, NewTTSClientError(t.base.provider, "failed to build http request", err)
+		return nil, NewTTSError(t.base.provider, "failed to build http request", err)
 	}
 
 	res, err := t.base.httpClient.Do(req)
 	if err != nil {
-		return nil, NewTTSClientError(t.base.provider, "failed to send http request", err)
+		return nil, NewTTSError(t.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return nil, NewTTSClientError(t.base.provider, "failed to read response body", err)
+		return nil, NewTTSError(t.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {
-		return nil, BuildProviderError(t.base.provider, res)
+		return nil, buildProviderError(t.base.provider, res)
 	}
 
 	return byt, nil
