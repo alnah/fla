@@ -55,7 +55,7 @@ func (c *Chat) validate() error {
 		case AIModelReasoningOpenAI,
 			AIModelFlagshipOpenAI,
 			AIModelCostOptimizedOpenAI,
-			AIModelTTSOpenAI,
+			AIModelSpeechOpenAI,
 			AIModelTranscriptionOpenAI:
 			// ok
 		default:

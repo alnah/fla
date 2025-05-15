@@ -78,7 +78,7 @@ func NewChatError(provider provider, message string, wrapped error) *httpClientE
 func NewTTSError(provider provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
 		Provider:  provider,
-		Operation: OpSTTTranscription,
+		Operation: OpTranscript,
 		Message:   message,
 		Wrapped:   wrapped,
 	}

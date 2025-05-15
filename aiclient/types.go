@@ -38,11 +38,12 @@ func (p provider) Validate() error {
 }
 
 const (
-	URLChatCompletionOpenAI    url = "https://api.openai.com/v1/chat/completions"
-	URLChatCompletionAnthropic url = "https://api.anthropic.com/v1/messages"
-	URLSpeechAudioOpenAI       url = "https://api.openai.com/v1/audio/speech"
-	URLSpeechAudioElevenLabs   url = "https://api.elevenlabs.io/v1/text-to-speech"
-	URLTranscriptionOpenAI     url = "https://api.openai.com/v1/audio/transcriptions"
+	URLChatOpenAI           url = "https://api.openai.com/v1/chat/completions"
+	URLChatAnthropic        url = "https://api.anthropic.com/v1/messages"
+	URLSpeechOpenAI         url = "https://api.openai.com/v1/audio/speech"
+	URLSpeechElevenLabs     url = "https://api.elevenlabs.io/v1/text-to-speech"
+	URLTranscriptOpenAI     url = "https://api.openai.com/v1/audio/transcriptions"
+	URLTranscriptElevenLabs url = "https://api.elevenlabs.io/v1/speech-to-text"
 )
 
 type url string
@@ -50,9 +51,9 @@ type url string
 func (u url) String() string { return string(u) }
 func (u url) IsValid() bool {
 	switch u {
-	case URLChatCompletionOpenAI, URLChatCompletionAnthropic,
-		URLSpeechAudioOpenAI, URLSpeechAudioElevenLabs,
-		URLTranscriptionOpenAI:
+	case URLChatOpenAI, URLChatAnthropic,
+		URLSpeechOpenAI, URLSpeechElevenLabs,
+		URLTranscriptOpenAI:
 		return true
 	default:
 		return false
@@ -101,9 +102,9 @@ func (hm httpMethod) Validate() error {
 }
 
 const (
-	OpChatCompletion   operation = "chat completion"
-	OpTTSAudio         operation = "text-to-speech audio"
-	OpSTTTranscription operation = "speech-to-text transcription"
+	OpChatCompletion operation = "chat completion"
+	OpSpeechAudio    operation = "audio speech"
+	OpTranscript     operation = "transcript"
 )
 
 type operation string
@@ -114,7 +115,7 @@ const (
 	AIModelReasoningOpenAI        aiModel = "o4-mini"
 	AIModelFlagshipOpenAI         aiModel = "gpt-4.1"
 	AIModelCostOptimizedOpenAI    aiModel = "gpt-4.1-nano"
-	AIModelTTSOpenAI              aiModel = "gpt-4o-mini-tts"
+	AIModelSpeechOpenAI           aiModel = "gpt-4o-mini-tts"
 	AIModelTranscriptionOpenAI    aiModel = "gpt-4o-transcribe"
 	AIModelReasoningAnthropic     aiModel = "claude-3-7-sonnet-latest"
 	AIModelCostOptimizedAnthropic aiModel = "claude-3-5-haiku-latest"
@@ -128,7 +129,7 @@ func (a aiModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String())
 func (a aiModel) IsValid() bool {
 	switch a {
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI,
-		AIModelTTSOpenAI, AIModelTranscriptionOpenAI,
+		AIModelSpeechOpenAI, AIModelTranscriptionOpenAI,
 		AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic,
 		AIModelTTSElevenLabs:
 		return true
@@ -145,7 +146,7 @@ func (a aiModel) Validate() error {
 			AIModelReasoningOpenAI.String(),
 			AIModelFlagshipOpenAI.String(),
 			AIModelCostOptimizedOpenAI.String(),
-			AIModelTTSOpenAI.String(),
+			AIModelSpeechOpenAI.String(),
 			AIModelTranscriptionOpenAI.String(),
 			AIModelReasoningAnthropic.String(),
 			AIModelCostOptimizedAnthropic.String(),

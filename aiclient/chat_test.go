@@ -35,7 +35,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	maxTokens := MaxTokens(8192)
 	chat, err := NewChat(
 		WithProvider[*Chat](ProviderOpenAI),
-		WithURL[*Chat](URLChatCompletionOpenAI),
+		WithURL[*Chat](URLChatOpenAI),
 		WithAPIKey[*Chat](EnvOpenAIAPIKey),
 		WithModel[*Chat](AIModelCostOptimizedOpenAI),
 		WithContext[*Chat](ctx),
@@ -52,8 +52,8 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	if chat.base.provider != ProviderOpenAI {
 		t.Errorf("provider: want %v, got %v", ProviderOpenAI, chat.base.provider)
 	}
-	if chat.base.url != URLChatCompletionOpenAI {
-		t.Errorf("url: want %v, got %v", URLChatCompletionOpenAI, chat.base.url)
+	if chat.base.url != URLChatOpenAI {
+		t.Errorf("url: want %v, got %v", URLChatOpenAI, chat.base.url)
 	}
 	if chat.base.apiKey != EnvOpenAIAPIKey {
 		t.Errorf("api key: want %v, got %v", EnvOpenAIAPIKey, chat.base.apiKey)
@@ -100,7 +100,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 func TestChatClientNew_Apply_Defaults(t *testing.T) {
 	chat, err := NewChat(
 		WithProvider[*Chat](ProviderOpenAI),
-		WithURL[*Chat](URLChatCompletionOpenAI),
+		WithURL[*Chat](URLChatOpenAI),
 		WithAPIKey[*Chat](EnvOpenAIAPIKey),
 		WithModel[*Chat](AIModelCostOptimizedOpenAI),
 	)
@@ -134,7 +134,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 		{
 			name:          "OpenAI",
 			provider:      ProviderOpenAI,
-			url:           URLChatCompletionOpenAI,
+			url:           URLChatOpenAI,
 			apiKey:        EnvOpenAIAPIKey,
 			aiModel:       AIModelCostOptimizedOpenAI,
 			flagOpenAI:    true,
@@ -143,7 +143,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 		{
 			name:          "Anthropic",
 			provider:      ProviderAnthropic,
-			url:           URLChatCompletionAnthropic,
+			url:           URLChatAnthropic,
 			apiKey:        EnvAnthropicAPIKey,
 			aiModel:       AIModelCostOptimizedAnthropic,
 			flagOpenAI:    false,
@@ -190,7 +190,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -203,7 +203,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 				return NewChat(
 					WithContext[*Chat](context.Background()),
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					WithTemperature(Temperature(1)),
@@ -220,7 +220,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			name: "RequireProvider",
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -243,7 +243,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
 			},
@@ -254,7 +254,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 				)
 			},
@@ -265,7 +265,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](provider("invalid")),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -289,7 +289,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](apiKey("NON_EXISTING_API_KEY")),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -301,7 +301,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](aiModel("invalid")),
 				)
@@ -313,7 +313,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithHTTPMethod[*Chat](httpMethod("INVALID")), // should fail
 				)
@@ -325,7 +325,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -341,7 +341,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
@@ -355,7 +355,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
@@ -369,7 +369,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
@@ -383,7 +383,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
@@ -397,7 +397,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
@@ -420,7 +420,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
@@ -443,7 +443,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -458,7 +458,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -473,7 +473,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -488,7 +488,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -504,7 +504,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionAnthropic), // anthropic, want openai
+					WithURL[*Chat](URLChatAnthropic), // anthropic, want openai
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -516,7 +516,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionOpenAI), // openai, want anthropic
+					WithURL[*Chat](URLChatOpenAI), // openai, want anthropic
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
@@ -528,7 +528,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic), // anthropic, want openai
 				)
@@ -540,7 +540,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI), // openai, want anthropic
 				)
@@ -552,7 +552,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 					// test
@@ -572,7 +572,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 					// test
@@ -626,7 +626,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -641,7 +641,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
@@ -656,7 +656,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -671,7 +671,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				chat, _ := NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -687,7 +687,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -701,7 +701,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -717,7 +717,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
@@ -733,7 +733,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -746,7 +746,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -760,7 +760,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
@@ -774,7 +774,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -788,7 +788,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
@@ -802,7 +802,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderOpenAI),
-					WithURL[*Chat](URLChatCompletionOpenAI),
+					WithURL[*Chat](URLChatOpenAI),
 					WithAPIKey[*Chat](EnvOpenAIAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedOpenAI),
 				)
@@ -816,7 +816,7 @@ func TestChatClient_Do(t *testing.T) {
 			chatBuilder: func() (*Chat, error) {
 				return NewChat(
 					WithProvider[*Chat](ProviderAnthropic),
-					WithURL[*Chat](URLChatCompletionAnthropic),
+					WithURL[*Chat](URLChatAnthropic),
 					WithAPIKey[*Chat](EnvAnthropicAPIKey),
 					WithModel[*Chat](AIModelCostOptimizedAnthropic),
 				)
