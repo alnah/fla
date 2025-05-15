@@ -15,8 +15,8 @@ type Tripper func(*http.Request) (*http.Response, error)
 type ShouldError func(code int) bool
 type BuildError func(res *http.Response) error
 
-func (f Tripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req)
+func (t Tripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return t(req)
 }
 
 // Default yields a non-nil RoundTripper.
