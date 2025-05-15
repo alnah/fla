@@ -372,7 +372,7 @@ type Instructions string
 func (i Instructions) String() string               { return string(i) }
 func (i Instructions) MarshalJSON() ([]byte, error) { return json.Marshal(i) }
 func (i Instructions) IsValid(p Provider) bool {
-	if p == ProviderOpenAI && i.String() != "" {
+	if p == ProviderOpenAI && i.String() == "" {
 		return false
 	}
 	return true
