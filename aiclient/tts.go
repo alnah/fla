@@ -13,7 +13,7 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-type TTS struct {
+type Speech struct {
 	// shared fields
 	base *Base
 	// api fields
@@ -26,8 +26,8 @@ type TTS struct {
 	useElevenLabs bool
 }
 
-func NewTTS(options ...option[*TTS]) (*TTS, error) {
-	t := &TTS{base: &Base{}}
+func NewTTS(options ...option[*Speech]) (*Speech, error) {
+	t := &Speech{base: &Base{}}
 	for _, opt := range options {
 		opt(t)
 	}
@@ -38,7 +38,7 @@ func NewTTS(options ...option[*TTS]) (*TTS, error) {
 	return t, nil
 }
 
-func (t *TTS) applyDefaults() *TTS {
+func (t *Speech) applyDefaults() *Speech {
 	if t.base.ctx == nil {
 		t.base.ctx = context.Background()
 	}
@@ -54,13 +54,13 @@ func (t *TTS) applyDefaults() *TTS {
 	return t
 }
 
-func (t *TTS) setProviderFlag() *TTS {
+func (t *Speech) setProviderFlag() *Speech {
 	t.useOpenAI = strings.Contains(t.base.url.String(), ProviderOpenAI.String())
 	t.useElevenLabs = strings.Contains(t.base.url.String(), ProviderElevenLabs.String())
 	return t
 }
 
-func (t *TTS) Do() ([]byte, error) {
+func (t *Speech) Do() ([]byte, error) {
 	byt, err := json.Marshal(t)
 	if err != nil {
 		return nil, NewTTSError(t.base.provider, "failed to marshal payload", err)

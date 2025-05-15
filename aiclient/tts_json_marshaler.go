@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-func (t TTS) MarshalJSON() ([]byte, error) {
+func (t Speech) MarshalJSON() ([]byte, error) {
 	switch {
 	case t.useOpenAI:
 		type openaiPayload struct {

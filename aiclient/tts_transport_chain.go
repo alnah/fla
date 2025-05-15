@@ -8,7 +8,7 @@ import (
 	"github.com/alnah/fla/tripper"
 )
 
-func (t *TTS) newTransportChain() http.RoundTripper {
+func (t *Speech) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
 		tripper.Default(t.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),
