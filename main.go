@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/alnah/fla/aiclient"
+	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
 )
@@ -29,14 +29,43 @@ func main() {
 	}
 
 	/********* Demo *********/
-	tts, err := aiclient.NewTTSClient(
-		aiclient.WithProvider[*aiclient.TTSClient](aiclient.ProviderOpenAI),
-		aiclient.WithURL[*aiclient.TTSClient](aiclient.URLSpeechAudioOpenAI),
-		aiclient.WithAPIKey[*aiclient.TTSClient](aiclient.EnvOpenAIAPIKey),
-		aiclient.WithModel[*aiclient.TTSClient](aiclient.AIModelTTSOpenAI),
-		aiclient.WithVoice(aiclient.VoiceOpenAIFemaleAlloy),
-		aiclient.WithInstructions("test"),
-		aiclient.WithText("test"),
+	chat, err := ai.NewChat(
+		ai.WithLogger[*ai.Chat](log),
+		ai.WithProvider[*ai.Chat](ai.ProviderOpenAI),
+		ai.WithURL[*ai.Chat](ai.URLChatCompletionOpenAI),
+		ai.WithAPIKey[*ai.Chat](ai.EnvOpenAIAPIKey),
+		ai.WithModel[*ai.Chat](ai.AIModelCostOptimizedOpenAI),
+		ai.WithMessages(ai.Messages{
+			ai.Message{
+				Role:    ai.RoleUser,
+				Content: "Écrire un texte racontant la routine sportive d'une jeune femme la semaine.",
+			},
+		}),
+	)
+	if err != nil {
+		log.Error("chat client", "error", err.Error())
+		return
+	}
+
+	completion, err := chat.Do()
+	if err != nil {
+		log.Error("chat response", "error", err.Error())
+		return
+	}
+	text := ai.Text(completion.String())
+	log.Info("chat response", "completion", text)
+
+	tts, err := ai.NewTTS(
+		ai.WithLogger[*ai.TTS](log),
+		ai.WithProvider[*ai.TTS](ai.ProviderOpenAI),
+		ai.WithURL[*ai.TTS](ai.URLSpeechAudioOpenAI),
+		ai.WithAPIKey[*ai.TTS](ai.EnvOpenAIAPIKey),
+		ai.WithModel[*ai.TTS](ai.AIModelTTSOpenAI),
+		ai.WithVoice(ai.VoiceOpenAIFemaleAlloy),
+		ai.WithInstructions(`Personalité : Une jeune femme qui adore le sport, notamment les sports extrêmes.
+Ton : Passionnée, enjouée, elle adore partager ses passions.
+Prononciation : parle lentement, elle parle à des débutants en français, niveau A1.`),
+		ai.WithText(text),
 	)
 	if err != nil {
 		log.Error("tts", "error", err.Error())
