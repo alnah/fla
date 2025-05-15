@@ -32,7 +32,7 @@ func NewTTS(options ...option[*Speech]) (*Speech, error) {
 		opt(t)
 	}
 	if err := t.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, fmt.Errorf("failed to build tts client: %w", err)
+		return nil, fmt.Errorf("failed to build speech client: %w", err)
 	}
 	t.base.httpClient.Transport = t.newTransportChain()
 	return t, nil
