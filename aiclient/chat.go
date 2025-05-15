@@ -41,7 +41,7 @@ func NewChatClient(options ...Option[*ChatClient]) (*ChatClient, error) {
 		return nil, fmt.Errorf("failed to build chat client: %w", err)
 	}
 
-	c.base.httpClient.Transport = c.configureTransportChain()
+	c.base.httpClient.Transport = c.newTransportChain()
 	return c, nil
 }
 
