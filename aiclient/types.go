@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
+
+	"golang.org/x/text/language"
 )
 
 const (
@@ -399,6 +402,25 @@ func (s Speed) IsValid(p provider) bool {
 func (s Speed) Validate(p provider) error {
 	if !s.IsValid(p) {
 		return fmt.Errorf("invalid speed: must be 0.7 <= s <= 1.2")
+	}
+	return nil
+}
+
+type ISO6391 string
+
+func (i ISO6391) String() string { return string(i) }
+func (i ISO6391) IsValid() bool {
+	var iso6391Pattern = regexp.MustCompile(`^[A-Za-z]{2}$`)
+	s := strings.ToLower(i.String())
+	if !iso6391Pattern.MatchString(s) {
+		return false
+	}
+	tag := language.Make(s)
+	return !tag.IsRoot()
+}
+func (i ISO6391) Validate() error {
+	if !i.IsValid() {
+		return fmt.Errorf("invalid ISO 639-1 code: %q", i.String())
 	}
 	return nil
 }
