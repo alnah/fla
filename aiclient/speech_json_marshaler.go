@@ -5,9 +5,9 @@ import (
 	"errors"
 )
 
-func (t Speech) MarshalJSON() ([]byte, error) {
+func (s Speech) MarshalJSON() ([]byte, error) {
 	switch {
-	case t.useOpenAI:
+	case s.useOpenAI:
 		type openaiPayload struct {
 			Input        string `json:"input"`
 			Model        string `json:"model"`
@@ -15,13 +15,13 @@ func (t Speech) MarshalJSON() ([]byte, error) {
 			Instructions string `json:"instructions"`
 		}
 		payload := openaiPayload{
-			Input:        t.Text.String(),
-			Model:        t.base.Model.String(),
-			Voice:        t.Voice.String(),
-			Instructions: t.Instructions.String(),
+			Input:        s.Text.String(),
+			Model:        s.base.Model.String(),
+			Voice:        s.Voice.String(),
+			Instructions: s.Instructions.String(),
 		}
 		return json.Marshal(payload)
-	case t.useElevenLabs:
+	case s.useElevenLabs:
 		type elevenlabsPayload struct {
 			Text          string `json:"text"`
 			ModelID       string `json:"model_id"`
@@ -30,11 +30,11 @@ func (t Speech) MarshalJSON() ([]byte, error) {
 			} `json:"voice_settings"`
 		}
 		payload := elevenlabsPayload{
-			Text:    t.Text.String(),
-			ModelID: t.base.Model.String(),
+			Text:    s.Text.String(),
+			ModelID: s.base.Model.String(),
 			VoiceSettings: struct {
 				Speed Speed "json:\"speed\""
-			}{t.Speed},
+			}{s.Speed},
 		}
 		return json.Marshal(payload)
 	default:
