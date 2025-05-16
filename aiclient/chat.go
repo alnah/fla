@@ -41,7 +41,6 @@ func NewChat(options ...option[*Chat]) (*Chat, error) {
 		return nil, fmt.Errorf("failed to build chat client: %w", err)
 	}
 
-	c.base.httpClient.Transport = c.newTransportChain()
 	return c, nil
 }
 
@@ -81,6 +80,7 @@ func (c *Chat) Do() (ChatResponse, error) {
 		return ChatResponse{}, NewChatError(c.base.provider, "failed to build http request", err)
 	}
 
+	c.base.httpClient.Transport = c.newTransportChain()
 	res, err := c.base.httpClient.Do(req)
 	if err != nil {
 		return ChatResponse{}, NewChatError(c.base.provider, "failed to send http request", err)

@@ -34,7 +34,6 @@ func NewSpeech(options ...option[*Speech]) (*Speech, error) {
 	if err := s.applyDefaults().setProviderFlag().validate(); err != nil {
 		return nil, fmt.Errorf("failed to build speech client: %w", err)
 	}
-	s.base.httpClient.Transport = s.newTransportChain()
 	return s, nil
 }
 
@@ -63,7 +62,7 @@ func (s *Speech) setProviderFlag() *Speech {
 func (s *Speech) Do() ([]byte, error) {
 	byt, err := json.Marshal(s)
 	if err != nil {
-		return nil, NewTTSError(s.base.provider, "failed to marshal payload", err)
+		return nil, NewSpeechError(s.base.provider, "failed to marshal payload", err)
 	}
 
 	url := s.base.url.String()
@@ -72,19 +71,20 @@ func (s *Speech) Do() ([]byte, error) {
 	}
 	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, NewTTSError(s.base.provider, "failed to build http request", err)
+		return nil, NewSpeechError(s.base.provider, "failed to build http request", err)
 	}
 
+	s.base.httpClient.Transport = s.newTransportChain()
 	res, err := s.base.httpClient.Do(req)
 	if err != nil {
-		return nil, NewTTSError(s.base.provider, "failed to send http request", err)
+		return nil, NewSpeechError(s.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return nil, NewTTSError(s.base.provider, "failed to read response body", err)
+		return nil, NewSpeechError(s.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {
