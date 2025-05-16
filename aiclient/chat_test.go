@@ -835,7 +835,7 @@ func TestChatClient_Do(t *testing.T) {
 				return &http.Response{StatusCode: tc.statusCode, Body: io.NopCloser(tc.body)}, tc.roundTripperErr
 			})
 
-			completion, err := chat.Do()
+			completion, err := chat.Completion()
 			switch {
 			case tc.wantErr:
 				if err == nil {
@@ -845,8 +845,8 @@ func TestChatClient_Do(t *testing.T) {
 				if err != nil {
 					t.Fatalf("want no error, got %v", err)
 				}
-				if completion.String() != tc.want {
-					t.Errorf("want %q, got %q", tc.want, completion.String())
+				if completion.Content() != tc.want {
+					t.Errorf("want %q, got %q", tc.want, completion.Content())
 				}
 			}
 		})
