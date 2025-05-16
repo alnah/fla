@@ -52,11 +52,7 @@ func (c *Chat) validate() error {
 	switch {
 	case c.useOpenAI:
 		switch c.base.Model {
-		case AIModelReasoningOpenAI,
-			AIModelFlagshipOpenAI,
-			AIModelCostOptimizedOpenAI,
-			AIModelSpeechOpenAI,
-			AIModelTranscriptOpenAI:
+		case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
 			// ok
 		default:
 			return fmt.Errorf("model %s not supported by openai", c.base.Model)
@@ -64,8 +60,7 @@ func (c *Chat) validate() error {
 
 	case c.useAnthropic:
 		switch c.base.Model {
-		case AIModelReasoningAnthropic,
-			AIModelCostOptimizedAnthropic:
+		case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
 			// ok
 		default:
 			return fmt.Errorf("model %s not supported by anthropic", c.base.Model)
