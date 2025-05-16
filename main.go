@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
@@ -26,23 +28,33 @@ func main() {
 		return
 	}
 
-	transcript, err := ai.NewSTTClient(
-		ai.WithLogger[*ai.STTClient](log),
-		ai.WithProvider[*ai.STTClient](ai.ProviderElevenLabs),
-		ai.WithURL[*ai.STTClient](ai.URLTranscriptElevenLabs),
-		ai.WithAPIKey[*ai.STTClient](ai.EnvElevenLabsAPIKey),
-		ai.WithModel[*ai.STTClient](ai.AIModelTranscriptElevenLabs),
-		ai.WithFilePath("tts.mp3"),
-		ai.WithLanguage("fr"),
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.AI.Timeout.Chat)
+	defer cancel()
+
+	chat, err := ai.NewChatClient(
+		ai.WithContext[*ai.ChatClient](ctx),
+		ai.WithLogger[*ai.ChatClient](log),
+		ai.WithProvider[*ai.ChatClient](ai.ProviderAnthropic),
+		ai.WithURL[*ai.ChatClient](ai.URLChatAnthropic),
+		ai.WithAPIKey[*ai.ChatClient](ai.APIKeyEnvAnthropic),
+		ai.WithModel[*ai.ChatClient](ai.ModelCheapAnthropic),
+		ai.WithMaxTokens(100),
+		ai.WithTemperature(0.2),
+		ai.WithMessages(ai.Messages{
+			ai.Message{
+				Role:    ai.RoleUser,
+				Content: "say hi",
+			},
+		}),
 	)
 	if err != nil {
-		log.Error("transcript client", "error", err.Error())
+		log.Error("chat", "error", err.Error())
 		return
 	}
-	result, err := transcript.Transcript()
+	completion, err := chat.Completion()
 	if err != nil {
-		log.Error("transcript doer", "error", err.Error())
+		log.Error("completion", "error", err.Error())
 		return
 	}
-	log.Info("transcript", "result", result.Content())
+	log.Info("completion", "content", completion.Content())
 }

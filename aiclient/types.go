@@ -73,9 +73,9 @@ func (u url) Validate() error {
 }
 
 const (
-	EnvOpenAIAPIKey     apiKey = "OPENAI_API_KEY"     // #nosec G101
-	EnvAnthropicAPIKey  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101
-	EnvElevenLabsAPIKey apiKey = "ELEVENLABS_API_KEY" // #nosec G101
+	APIKeyEnvOpenAI     apiKey = "OPENAI_API_KEY"     // #nosec G101
+	APIKeyEnvAnthropic  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101
+	APIKeyEnvElevenLabs apiKey = "ELEVENLABS_API_KEY" // #nosec G101
 )
 
 type apiKey string
@@ -116,50 +116,50 @@ func (o operation) String() string { return string(o) }
 
 const (
 	// chat completion
-	AIModelReasoningOpenAI        aiModel = "o4-mini"
-	AIModelFlagshipOpenAI         aiModel = "gpt-4.1"
-	AIModelCostOptimizedOpenAI    aiModel = "gpt-4.1-nano"
-	AIModelReasoningAnthropic     aiModel = "claude-3-7-sonnet-latest"
-	AIModelCostOptimizedAnthropic aiModel = "claude-3-5-haiku-latest"
+	ModelReasoningOpenAI    model = "o4-mini"
+	ModelFlagshipOpenAI     model = "gpt-4.1"
+	ModelCheapOpenAI        model = "gpt-4.1-nano"
+	ModelReasoningAnthropic model = "claude-3-7-sonnet-latest"
+	ModelCheapAnthropic     model = "claude-3-5-haiku-latest"
 
 	// text-to-speech audio
-	AIModelSpeechOpenAI     aiModel = "gpt-4o-mini-tts"
-	AIModelSpeechElevenLabs aiModel = "eleven_multilingual_v2"
+	ModelTTSOpenAI     model = "gpt-4o-mini-tts"
+	ModelTTSElevenLabs model = "eleven_multilingual_v2"
 
 	// speech-to-text transcript
-	AIModelTranscriptOpenAI     aiModel = "gpt-4o-transcribe"
-	AIModelTranscriptElevenLabs aiModel = "scribe_v1"
+	ModelSTTOpenAI     model = "gpt-4o-transcribe"
+	ModelSTTElevenLabs model = "scribe_v1"
 )
 
-type aiModel string
+type model string
 
-func (a aiModel) String() string               { return string(a) }
-func (a aiModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
-func (a aiModel) IsValid() bool {
+func (a model) String() string               { return string(a) }
+func (a model) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
+func (a model) IsValid() bool {
 	switch a {
-	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI,
-		AIModelSpeechOpenAI, AIModelTranscriptOpenAI,
-		AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic,
-		AIModelSpeechElevenLabs, AIModelTranscriptElevenLabs:
+	case ModelReasoningOpenAI, ModelFlagshipOpenAI, ModelCheapOpenAI,
+		ModelTTSOpenAI, ModelSTTOpenAI,
+		ModelReasoningAnthropic, ModelCheapAnthropic,
+		ModelTTSElevenLabs, ModelSTTElevenLabs:
 		return true
 	default:
 		return false
 	}
 }
-func (a aiModel) Validate() error {
+func (a model) Validate() error {
 	if a.String() == "" {
 		return fmt.Errorf("invalid ai model: can't be empty")
 	}
 	if !a.IsValid() {
 		available := strings.Join([]string{
-			AIModelReasoningOpenAI.String(),
-			AIModelFlagshipOpenAI.String(),
-			AIModelCostOptimizedOpenAI.String(),
-			AIModelSpeechOpenAI.String(),
-			AIModelTranscriptOpenAI.String(),
-			AIModelReasoningAnthropic.String(),
-			AIModelCostOptimizedAnthropic.String(),
-			AIModelSpeechElevenLabs.String(),
+			ModelReasoningOpenAI.String(),
+			ModelFlagshipOpenAI.String(),
+			ModelCheapOpenAI.String(),
+			ModelTTSOpenAI.String(),
+			ModelSTTOpenAI.String(),
+			ModelReasoningAnthropic.String(),
+			ModelCheapAnthropic.String(),
+			ModelTTSElevenLabs.String(),
 		}, ", ")
 		return fmt.Errorf("invalid ai model: %s, available models: %s", a.String(), available)
 	}
@@ -172,23 +172,23 @@ type Temperature float32
 func (t Temperature) Float32() float32             { return float32(t) }
 func (t Temperature) MarshalJSON() ([]byte, error) { return json.Marshal(t.Float32()) }
 
-func (t Temperature) IsValid(m aiModel) bool {
+func (t Temperature) IsValid(m model) bool {
 	switch m {
-	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
+	case ModelReasoningOpenAI, ModelFlagshipOpenAI, ModelCheapOpenAI:
 		return t >= 0 && t <= 2
-	case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
+	case ModelReasoningAnthropic, ModelCheapAnthropic:
 		return t >= 0 && t <= 1
 	default:
 		return false
 	}
 }
 
-func (t Temperature) Validate(m aiModel) error {
+func (t Temperature) Validate(m model) error {
 	if !t.IsValid(m) {
 		switch m {
-		case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
+		case ModelReasoningOpenAI, ModelFlagshipOpenAI, ModelCheapOpenAI:
 			return fmt.Errorf("invalid temperature for %s: must be 0 <= t <= 2", m)
-		case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
+		case ModelReasoningAnthropic, ModelCheapAnthropic:
 			return fmt.Errorf("invalid temperature for %s: must be 0 <= t <= 1", m)
 		default:
 			return fmt.Errorf("temperature validation not supported for model %s", m)

@@ -45,12 +45,12 @@ func (t *STTClient) validate() (string, error) {
 	allowed := []string{"flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"}
 	switch {
 	case t.useOpenAI:
-		if t.base.model != AIModelTranscriptOpenAI {
+		if t.base.model != ModelSTTOpenAI {
 			return "", fmt.Errorf("model %s not supported by openai", t.base.model)
 		}
 		return t.filePath.Validate(25, allowed...)
 	case t.useElevenLabs:
-		if t.base.model != AIModelTranscriptElevenLabs {
+		if t.base.model != ModelSTTElevenLabs {
 			return "", fmt.Errorf("model %s not supported by elevenlabs", t.base.model)
 		}
 		return t.filePath.Validate(25, allowed...)

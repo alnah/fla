@@ -31,13 +31,13 @@ const (
 	AppName string = "fla"
 
 	// Env variables
-	Env                     string = "FLA_ENV"
-	EnvLang                 string = "FLA_LANG"
-	EnvInput                string = "FLA_INPUT"
-	EnvOutput               string = "FLA_OUTPUT"
-	EnvTimeoutAudio         string = "FLA_TIMEOUT_AUDIO"
-	EnvTimeoutCompletion    string = "FLA_TIMEOUT_COMPLETION"
-	EnvTimeoutTranscription string = "FLA_TIMEOUT_TRANSCRIPTION"
+	Env            string = "FLA_ENV"
+	EnvLang        string = "FLA_LANG"
+	EnvInput       string = "FLA_INPUT"
+	EnvOutput      string = "FLA_OUTPUT"
+	EnvTimeoutTTS  string = "FLA_TIMEOUT_TTS"
+	EnvTimeoutChat string = "FLA_TIMEOUT_CHAT"
+	EnvTimeoutSTT  string = "FLA_TIMEOUT_STT"
 
 	// Permissions
 	PermUserRW  os.FileMode = 0o600
@@ -46,9 +46,9 @@ const (
 
 // Timeout groups the various AI-related deadlines so they can be managed and validated as a unit.
 type Timeout struct {
-	Completion    time.Duration `json:"completion"`
-	Audio         time.Duration `json:"audio"`
-	Transcription time.Duration `json:"transcription"`
+	Chat time.Duration `json:"chat_completion"`
+	TTS  time.Duration `json:"tts_audio"`
+	STT  time.Duration `json:"stt_transcript"`
 }
 
 // AI holds configuration for any AI client integrations.
@@ -165,17 +165,17 @@ func (c *Config) BindFlags() {
 	)
 
 	// ai timeouts
-	flag.DurationVar(&c.AI.Timeout.Completion,
-		"timeout-completion", c.AI.Timeout.Completion,
-		"AI completion timeout (e.g. 30s, 1m)",
+	flag.DurationVar(&c.AI.Timeout.Chat,
+		"timeout-chat", c.AI.Timeout.Chat,
+		"chat timeout (e.g. 30s, 1m)",
 	)
-	flag.DurationVar(&c.AI.Timeout.Audio,
-		"timeout-audio", c.AI.Timeout.Audio,
-		"AI audio timeout (e.g. 5m)",
+	flag.DurationVar(&c.AI.Timeout.TTS,
+		"timeout-tts", c.AI.Timeout.TTS,
+		"text-to-speech timeout (e.g. 5m)",
 	)
-	flag.DurationVar(&c.AI.Timeout.Transcription,
-		"timeout-transcription", c.AI.Timeout.Transcription,
-		"AI transcription timeout (e.g. 30s)",
+	flag.DurationVar(&c.AI.Timeout.STT,
+		"timeout-stt", c.AI.Timeout.STT,
+		"speech-to-text timeout (e.g. 30s)",
 	)
 }
 
@@ -200,9 +200,9 @@ func (c *Config) Validate() error {
 
 	// ai client timeouts
 	timeouts := map[string]time.Duration{
-		"completion":    c.AI.Timeout.Completion,
-		"audio":         c.AI.Timeout.Audio,
-		"transcription": c.AI.Timeout.Transcription,
+		"chat": c.AI.Timeout.Chat,
+		"tts":  c.AI.Timeout.TTS,
+		"stt":  c.AI.Timeout.STT,
 	}
 	for name, t := range timeouts {
 		if t <= 0 {
@@ -358,14 +358,14 @@ func (c *Config) applyDefaults(log *logger.Logger, dirpath, filename string) err
 	}
 
 	// apply default ai timeouts
-	if c.AI.Timeout.Completion == 0 {
-		c.AI.Timeout.Completion = 30 * time.Second
+	if c.AI.Timeout.Chat == 0 {
+		c.AI.Timeout.Chat = 30 * time.Second
 	}
-	if c.AI.Timeout.Audio == 0 {
-		c.AI.Timeout.Audio = 5 * time.Minute
+	if c.AI.Timeout.TTS == 0 {
+		c.AI.Timeout.TTS = 5 * time.Minute
 	}
-	if c.AI.Timeout.Transcription == 0 {
-		c.AI.Timeout.Transcription = 30 * time.Second
+	if c.AI.Timeout.STT == 0 {
+		c.AI.Timeout.STT = 30 * time.Second
 	}
 
 	return nil
@@ -390,26 +390,26 @@ func (c *Config) applyEnvOverrides() error {
 	}
 
 	// ai timeouts
-	if v, ok := os.LookupEnv(EnvTimeoutCompletion); ok {
+	if v, ok := os.LookupEnv(EnvTimeoutChat); ok {
 		d, err := time.ParseDuration(v)
 		if err != nil {
-			return fmt.Errorf("parsing FLA_TIMEOUT_COMPLETION=%q: %w", v, err)
+			return fmt.Errorf("parsing FLA_TIMEOUT_CHAT=%q: %w", v, err)
 		}
-		c.AI.Timeout.Completion = d
+		c.AI.Timeout.Chat = d
 	}
-	if v, ok := os.LookupEnv(EnvTimeoutAudio); ok {
+	if v, ok := os.LookupEnv(EnvTimeoutTTS); ok {
 		d, err := time.ParseDuration(v)
 		if err != nil {
-			return fmt.Errorf("parsing FLA_TIMEOUT_AUDIO=%q: %w", v, err)
+			return fmt.Errorf("parsing FLA_TIMEOUT_TTS=%q: %w", v, err)
 		}
-		c.AI.Timeout.Audio = d
+		c.AI.Timeout.TTS = d
 	}
-	if v, ok := os.LookupEnv(EnvTimeoutTranscription); ok {
+	if v, ok := os.LookupEnv(EnvTimeoutSTT); ok {
 		d, err := time.ParseDuration(v)
 		if err != nil {
-			return fmt.Errorf("parsing FLA_TIMEOUT_TRANSCRIPTION=%q: %w", v, err)
+			return fmt.Errorf("parsing FLA_TIMEOUT_STT=%q: %w", v, err)
 		}
-		c.AI.Timeout.Transcription = d
+		c.AI.Timeout.STT = d
 	}
 
 	return nil

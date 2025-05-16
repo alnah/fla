@@ -31,7 +31,7 @@ type openaiError struct {
 }
 
 func (e *openaiError) Error() string {
-	return fmt.Sprintf("OpenAI error %d %s: %s", e.StatusCode, e.Type, e.Message)
+	return fmt.Sprintf("openai error %d %s: %s", e.StatusCode, e.Type, e.Message)
 }
 
 func buildOpenaiError(res *http.Response) error {
@@ -49,7 +49,7 @@ func buildOpenaiError(res *http.Response) error {
 
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
 		// fallback
-		return fmt.Errorf("OpenAI API error: status %d", res.StatusCode)
+		return fmt.Errorf("openai api error: status %d", res.StatusCode)
 	}
 
 	// build error
@@ -69,7 +69,7 @@ type anthropicError struct {
 }
 
 func (e *anthropicError) Error() string {
-	return fmt.Sprintf("Anthropic API error %d %s: %s", e.StatusCode, e.ErrType, e.Message)
+	return fmt.Sprintf("anthropic api error %d %s: %s", e.StatusCode, e.ErrType, e.Message)
 }
 
 func buildAnthropicError(res *http.Response) error {
@@ -85,7 +85,7 @@ func buildAnthropicError(res *http.Response) error {
 
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
 		// fallback
-		return fmt.Errorf("Anthropic API error: status %d", res.StatusCode)
+		return fmt.Errorf("anthropic api error: status %d", res.StatusCode)
 	}
 
 	// build error
@@ -103,7 +103,7 @@ type elevenlabsError struct {
 }
 
 func (e *elevenlabsError) Error() string {
-	return fmt.Sprintf("ElevenLabs API error %d %s: %s", e.StatusCode, e.Status, e.Message)
+	return fmt.Sprintf("elevenlabs api error %d %s: %s", e.StatusCode, e.Status, e.Message)
 }
 
 func buildElevenlabsError(res *http.Response) error {
@@ -119,7 +119,7 @@ func buildElevenlabsError(res *http.Response) error {
 
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
 		// fallback
-		return fmt.Errorf("ElevenLabs API error: status %d", res.StatusCode)
+		return fmt.Errorf("elevenlabs api error: status %d", res.StatusCode)
 	}
 
 	// build error

@@ -47,14 +47,14 @@ func (s *TTSClient) validate() error {
 	}
 	switch {
 	case s.useOpenAI:
-		if s.base.model != AIModelSpeechOpenAI {
+		if s.base.model != ModelTTSOpenAI {
 			return fmt.Errorf("model %s not supported by openai", s.base.model)
 		}
 		if err := s.instructions.Validate(s.base.provider); err != nil {
 			return err
 		}
 	case s.useElevenLabs:
-		if s.base.model != AIModelSpeechElevenLabs {
+		if s.base.model != ModelTTSElevenLabs {
 			return fmt.Errorf("model %s not supported by elevenlabs", s.base.model)
 		}
 		if err := s.speed.Validate(s.base.provider); err != nil {
