@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -38,7 +37,7 @@ func NewChat(options ...option[*Chat]) (*Chat, error) {
 	}
 
 	if err := c.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, fmt.Errorf("failed to build chat client: %w", err)
+		return nil, NewChatError(c.base.provider, "failed to build chat client", err)
 	}
 
 	return c, nil

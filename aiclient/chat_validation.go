@@ -56,7 +56,7 @@ func (c *Chat) validate() error {
 			AIModelFlagshipOpenAI,
 			AIModelCostOptimizedOpenAI,
 			AIModelSpeechOpenAI,
-			AIModelTranscriptionOpenAI:
+			AIModelTranscriptOpenAI:
 			// ok
 		default:
 			return fmt.Errorf("model %s not supported by openai", c.base.Model)
