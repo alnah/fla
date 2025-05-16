@@ -18,7 +18,7 @@ func (cc chatResponse) Content() string {
 }
 
 // parseResponse extracts a ChatCompletion from raw JSON depending on provider.
-func (c *Chat) parseResponse(byt []byte) (chatResponse, error) {
+func (c *ChatClient) parseResponse(byt []byte) (chatResponse, error) {
 	switch {
 	case c.useOpenAI:
 		type openaiPayload struct {

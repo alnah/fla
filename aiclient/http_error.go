@@ -66,19 +66,28 @@ func (e *httpClientError) Unwrap() error {
 	return e.Wrapped
 }
 
-func NewChatError(provider provider, message string, wrapped error) *httpClientError {
+func NewChatClientError(pvd provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
-		Provider:  provider,
-		Operation: OpChatCompletion,
+		Provider:  pvd,
+		Operation: opChatCompletion,
 		Message:   message,
 		Wrapped:   wrapped,
 	}
 }
 
-func NewTTSError(provider provider, message string, wrapped error) *httpClientError {
+func NewTTSClientError(pvd provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
-		Provider:  provider,
-		Operation: OpTranscript,
+		Provider:  pvd,
+		Operation: opTextToSpeech,
+		Message:   message,
+		Wrapped:   wrapped,
+	}
+}
+
+func NewSTTClientError(pvd provider, message string, wrapped error) *httpClientError {
+	return &httpClientError{
+		Provider:  pvd,
+		Operation: opSpeechToText,
 		Message:   message,
 		Wrapped:   wrapped,
 	}

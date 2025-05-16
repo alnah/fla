@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -13,31 +12,31 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
-type Speech struct {
+type TTSClient struct {
 	// shared fields
-	base *Base
+	base *baseClient
 	// api fields
-	Voice        voice
-	Text         Text
-	Instructions Instructions // OpenAI only
-	Speed        Speed        // ElevenLabs only
+	voice        voice
+	text         Text
+	instructions Instructions // OpenAI only
+	speed        Speed        // ElevenLabs only
 	// provider fields
 	useOpenAI     bool
 	useElevenLabs bool
 }
 
-func NewSpeech(options ...option[*Speech]) (*Speech, error) {
-	s := &Speech{base: &Base{}}
+func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
+	s := &TTSClient{base: &baseClient{}}
 	for _, opt := range options {
 		opt(s)
 	}
 	if err := s.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, fmt.Errorf("failed to build speech client: %w", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to build speech client", err)
 	}
 	return s, nil
 }
 
-func (s *Speech) applyDefaults() *Speech {
+func (s *TTSClient) applyDefaults() *TTSClient {
 	if s.base.ctx == nil {
 		s.base.ctx = context.Background()
 	}
@@ -53,38 +52,38 @@ func (s *Speech) applyDefaults() *Speech {
 	return s
 }
 
-func (s *Speech) setProviderFlag() *Speech {
+func (s *TTSClient) setProviderFlag() *TTSClient {
 	s.useOpenAI = strings.Contains(s.base.url.String(), ProviderOpenAI.String())
 	s.useElevenLabs = strings.Contains(s.base.url.String(), ProviderElevenLabs.String())
 	return s
 }
 
-func (s *Speech) Do() ([]byte, error) {
+func (s *TTSClient) Audio() ([]byte, error) {
 	byt, err := json.Marshal(s)
 	if err != nil {
-		return nil, NewSpeechError(s.base.provider, "failed to marshal payload", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to marshal payload", err)
 	}
 
 	url := s.base.url.String()
 	if s.base.provider == ProviderElevenLabs {
-		url += "/" + s.Voice.String()
+		url += "/" + s.voice.String()
 	}
 	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, NewSpeechError(s.base.provider, "failed to build http request", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to build http request", err)
 	}
 
 	s.base.httpClient.Transport = s.newTransportChain()
 	res, err := s.base.httpClient.Do(req)
 	if err != nil {
-		return nil, NewSpeechError(s.base.provider, "failed to send http request", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return nil, NewSpeechError(s.base.provider, "failed to read response body", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {

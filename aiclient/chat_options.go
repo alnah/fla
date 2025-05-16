@@ -1,13 +1,13 @@
 package aiclient
 
-func (c *Chat) BaseClient() *Base { return c.base }
+func (c *ChatClient) BaseClient() *baseClient { return c.base }
 
-func WithTemperature(t Temperature) option[*Chat] {
-	return func(c *Chat) { c.temperature = t }
+func WithTemperature(t Temperature) option[*ChatClient] {
+	return func(c *ChatClient) { c.temperature = t }
 }
-func WithMessages(ms Messages) option[*Chat] {
-	return func(c *Chat) { c.messages = ms }
+func WithMessages(ms Messages) option[*ChatClient] {
+	return func(c *ChatClient) { c.messages = ms }
 }
-func WithMaxTokens(mt MaxTokens) option[*Chat] {
-	return func(c *Chat) { c.maxTokens = mt }
+func WithMaxTokens(mt MaxTokens) option[*ChatClient] {
+	return func(c *ChatClient) { c.maxTokens = mt }
 }

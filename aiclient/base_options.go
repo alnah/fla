@@ -29,5 +29,5 @@ func WithProvider[T hasBase](p provider) option[T] {
 	return func(t T) { (t).BaseClient().provider = p }
 }
 func WithModel[T hasBase](a aiModel) option[T] {
-	return func(t T) { (t).BaseClient().Model = a }
+	return func(t T) { (t).BaseClient().model = a }
 }

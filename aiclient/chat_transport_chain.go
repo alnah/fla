@@ -10,7 +10,7 @@ import (
 
 const anthropicVersion string = "2023-06-01"
 
-func (c *Chat) newTransportChain() http.RoundTripper {
+func (c *ChatClient) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
 		tripper.Default(c.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),

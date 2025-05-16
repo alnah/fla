@@ -6,7 +6,7 @@ import (
 )
 
 // validate ensures required fields are set.
-func (c *Chat) validate() error {
+func (c *ChatClient) validate() error {
 	if c.base.ctx == nil {
 		return errors.New("context must be provided")
 	}
@@ -28,13 +28,13 @@ func (c *Chat) validate() error {
 	if err := c.base.httpMethod.Validate(); err != nil {
 		return err
 	}
-	if err := c.base.Model.Validate(); err != nil {
+	if err := c.base.model.Validate(); err != nil {
 		return err
 	}
 	if err := c.maxTokens.Validate(); err != nil {
 		return err
 	}
-	if err := c.temperature.Validate(c.base.Model); err != nil {
+	if err := c.temperature.Validate(c.base.model); err != nil {
 		return err
 	}
 	if err := c.messages.Validate(); err != nil {
@@ -51,19 +51,19 @@ func (c *Chat) validate() error {
 	}
 	switch {
 	case c.useOpenAI:
-		switch c.base.Model {
+		switch c.base.model {
 		case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by openai", c.base.Model)
+			return fmt.Errorf("model %s not supported by openai", c.base.model)
 		}
 
 	case c.useAnthropic:
-		switch c.base.Model {
+		switch c.base.model {
 		case AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic:
 			// ok
 		default:
-			return fmt.Errorf("model %s not supported by anthropic", c.base.Model)
+			return fmt.Errorf("model %s not supported by anthropic", c.base.model)
 		}
 	}
 	if c.useAnthropic {

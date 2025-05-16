@@ -6,7 +6,7 @@ import (
 )
 
 // MarshalJSON handles provider-specific JSON fields.
-func (c Chat) MarshalJSON() ([]byte, error) {
+func (c ChatClient) MarshalJSON() ([]byte, error) {
 	v := c.maxTokens.Int()
 	switch {
 	case c.useOpenAI:
@@ -17,7 +17,7 @@ func (c Chat) MarshalJSON() ([]byte, error) {
 			MaxTokens   *int      `json:"max_completion_tokens,omitempty"`
 		}
 		payload := openaiPayload{
-			Model:       c.base.Model.String(),
+			Model:       c.base.model.String(),
 			Temperature: c.temperature.Float32(),
 			Messages:    append([]Message{{Role: RoleSystem, Content: c.system}}, c.messages...),
 			MaxTokens:   (*int)(&c.maxTokens),
@@ -32,7 +32,7 @@ func (c Chat) MarshalJSON() ([]byte, error) {
 			Temperature         float32   `json:"temperature,omitempty"`
 		}
 		payload := anthropicPayload{
-			Model:               c.base.Model.String(),
+			Model:               c.base.model.String(),
 			System:              c.system,
 			Messages:            c.messages,
 			MaxCompletionTokens: &v,
