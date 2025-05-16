@@ -56,7 +56,7 @@ func (u url) IsValid() bool {
 	switch u {
 	case URLChatOpenAI, URLChatAnthropic,
 		URLSpeechOpenAI, URLSpeechElevenLabs,
-		URLTranscriptOpenAI:
+		URLTranscriptOpenAI, URLTranscriptElevenLabs:
 		return true
 	default:
 		return false
@@ -105,9 +105,9 @@ func (hm httpMethod) Validate() error {
 }
 
 const (
-	OpChatCompletion operation = "chat completion"
-	OpSpeechAudio    operation = "audio speech"
-	OpTranscript     operation = "transcript"
+	opChatCompletion operation = "chat completion"
+	opTextToSpeech   operation = "text-to-speech audio"
+	opSpeechToText   operation = "speech-to-text transcript"
 )
 
 type operation string
@@ -115,14 +115,20 @@ type operation string
 func (o operation) String() string { return string(o) }
 
 const (
+	// chat completion
 	AIModelReasoningOpenAI        aiModel = "o4-mini"
 	AIModelFlagshipOpenAI         aiModel = "gpt-4.1"
 	AIModelCostOptimizedOpenAI    aiModel = "gpt-4.1-nano"
-	AIModelSpeechOpenAI           aiModel = "gpt-4o-mini-tts"
-	AIModelTranscriptionOpenAI    aiModel = "gpt-4o-transcribe"
 	AIModelReasoningAnthropic     aiModel = "claude-3-7-sonnet-latest"
 	AIModelCostOptimizedAnthropic aiModel = "claude-3-5-haiku-latest"
-	AIModelTTSElevenLabs          aiModel = "eleven_multilingual_v2"
+
+	// text-to-speech audio
+	AIModelSpeechOpenAI     aiModel = "gpt-4o-mini-tts"
+	AIModelSpeechElevenLabs aiModel = "eleven_multilingual_v2"
+
+	// speech-to-text transcript
+	AIModelTranscriptOpenAI     aiModel = "gpt-4o-transcribe"
+	AIModelTranscriptElevenLabs aiModel = "scribe_v1"
 )
 
 type aiModel string
@@ -132,9 +138,9 @@ func (a aiModel) MarshalJSON() ([]byte, error) { return json.Marshal(a.String())
 func (a aiModel) IsValid() bool {
 	switch a {
 	case AIModelReasoningOpenAI, AIModelFlagshipOpenAI, AIModelCostOptimizedOpenAI,
-		AIModelSpeechOpenAI, AIModelTranscriptionOpenAI,
+		AIModelSpeechOpenAI, AIModelTranscriptOpenAI,
 		AIModelReasoningAnthropic, AIModelCostOptimizedAnthropic,
-		AIModelTTSElevenLabs:
+		AIModelSpeechElevenLabs, AIModelTranscriptElevenLabs:
 		return true
 	default:
 		return false
@@ -150,10 +156,10 @@ func (a aiModel) Validate() error {
 			AIModelFlagshipOpenAI.String(),
 			AIModelCostOptimizedOpenAI.String(),
 			AIModelSpeechOpenAI.String(),
-			AIModelTranscriptionOpenAI.String(),
+			AIModelTranscriptOpenAI.String(),
 			AIModelReasoningAnthropic.String(),
 			AIModelCostOptimizedAnthropic.String(),
-			AIModelTTSElevenLabs.String(),
+			AIModelSpeechElevenLabs.String(),
 		}, ", ")
 		return fmt.Errorf("invalid ai model: %s, available models: %s", a.String(), available)
 	}
