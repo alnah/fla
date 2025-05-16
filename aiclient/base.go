@@ -11,13 +11,13 @@ type baseClient struct {
 	// api fields
 	model    aiModel
 	provider provider
+	url      url
+	apiKey   apiKey
 	// infra fields
 	ctx        context.Context
 	logger     *logger.Logger
 	httpClient *http.Client
 	httpMethod httpMethod
-	url        url
-	apiKey     apiKey
 }
 
 type hasBase interface{ BaseClient() *baseClient }
