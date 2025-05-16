@@ -68,37 +68,37 @@ func (c *Chat) setProviderFlag() *Chat {
 	return c
 }
 
-func (c *Chat) Do() (ChatResponse, error) {
+func (c *Chat) Completion() (chatResponse, error) {
 	byt, err := json.Marshal(c)
 	if err != nil {
-		return ChatResponse{}, NewChatError(c.base.provider, "failed to marshal payload", err)
+		return chatResponse{}, NewChatError(c.base.provider, "failed to marshal payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(c.base.ctx, c.base.httpMethod.String(), c.base.url.String(), bytes.NewBuffer(byt))
 	if err != nil {
-		return ChatResponse{}, NewChatError(c.base.provider, "failed to build http request", err)
+		return chatResponse{}, NewChatError(c.base.provider, "failed to build http request", err)
 	}
 
 	c.base.httpClient.Transport = c.newTransportChain()
 	res, err := c.base.httpClient.Do(req)
 	if err != nil {
-		return ChatResponse{}, NewChatError(c.base.provider, "failed to send http request", err)
+		return chatResponse{}, NewChatError(c.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return ChatResponse{}, NewChatError(c.base.provider, "failed to read response body", err)
+		return chatResponse{}, NewChatError(c.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {
-		return ChatResponse{}, buildProviderError(c.base.provider, res)
+		return chatResponse{}, buildProviderError(c.base.provider, res)
 	}
 
-	completion, err := c.ParseResponse(byt)
+	completion, err := c.parseResponse(byt)
 	if err != nil {
-		return ChatResponse{}, NewChatError(c.base.provider, "failed to parse response payload: %w", err)
+		return chatResponse{}, NewChatError(c.base.provider, "failed to parse response payload: %w", err)
 	}
 
 	return completion, nil
