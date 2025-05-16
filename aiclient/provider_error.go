@@ -111,7 +111,7 @@ func buildElevenlabsError(res *http.Response) error {
 
 	// eleven labs error shape
 	var payload struct {
-		Details struct {
+		Detail struct {
 			Status  string `json:"status"`
 			Message string `json:"message"`
 		} `json:"detail"`
@@ -125,8 +125,8 @@ func buildElevenlabsError(res *http.Response) error {
 	// build error
 	return &elevenlabsError{
 		StatusCode: res.StatusCode,
-		Status:     payload.Details.Status,
-		Message:    payload.Details.Message,
+		Status:     payload.Detail.Status,
+		Message:    payload.Detail.Message,
 	}
 }
 
