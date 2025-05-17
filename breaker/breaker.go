@@ -9,20 +9,22 @@ import (
 	"github.com/alnah/fla/clock"
 )
 
+var (
+	closed   state = "closed"    // normal operation; everything flows
+	open     state = "opened"    // short‑circuiting; no calls allowed
+	halfOpen state = "half‑open" // probing; limited calls allowed
+)
+
 // ErrOpen is returned by Execute when the breaker is open and the operation is blocked.
 var ErrOpen = errors.New("circuit breaker: circuit is open")
 
-type operation func(ctx context.Context) error
+type Breaker interface {
+	Execute(context.Context, func(context.Context) error) error
+}
 
-type state struct{ slug string }
+type state string
 
-func (s state) String() string { return s.slug }
-
-var (
-	closed   = state{"closed"}    // normal operation; everything flows
-	open     = state{"opened"}    // short‑circuiting; no calls allowed
-	halfOpen = state{"half‑open"} // probing; limited calls allowed
-)
+func (s state) String() string { return string(s) }
 
 type settings struct {
 	failureThreshold int           // consecutive failures to trip from closed → open
@@ -32,10 +34,10 @@ type settings struct {
 	onStateChange    func(prev, next state)
 }
 
-// Breaker wraps an operation with failure tracking and state transitions.
+// breaker wraps an operation with failure tracking and state transitions.
 // It stops forwarding calls after repeated failures, waits for a configurable timeout,
 // then allows limited probes to detect recovery.
-type Breaker struct {
+type breaker struct {
 	s         settings
 	mu        sync.Mutex
 	state     state
@@ -51,32 +53,32 @@ const (
 	defaultOpenTimeout      = 30 * time.Second
 )
 
-type option func(*Breaker)
+type option func(*breaker)
 
 // WithFailureThreshold sets how many consecutive failures trigger
 // the breaker to open, blocking further calls.
-func WithFailureThreshold(n int) option { return func(b *Breaker) { b.s.failureThreshold = n } }
+func WithFailureThreshold(n int) option { return func(b *breaker) { b.s.failureThreshold = n } }
 
 // WithSuccessThreshold sets how many consecutive successes in half‑open
 // state are needed to close the breaker again.
-func WithSuccessThreshold(n int) option { return func(b *Breaker) { b.s.successThreshold = n } }
+func WithSuccessThreshold(n int) option { return func(b *breaker) { b.s.successThreshold = n } }
 
 // WithOpenTimeout sets how long the breaker remains open before
 // allowing a probe to check for recovery.
-func WithOpenTimeout(t time.Duration) option { return func(b *Breaker) { b.s.openTimeout = t } }
+func WithOpenTimeout(t time.Duration) option { return func(b *breaker) { b.s.openTimeout = t } }
 
 // WithClock injects a custom clock for testing or alternative time sources.
-func WithClock(c clock.Clock) option { return func(b *Breaker) { b.s.clock = c } }
+func WithClock(c clock.Clock) option { return func(b *breaker) { b.s.clock = c } }
 
 // WithOnStateChange registers a hook that is called asynchronously whenever
 // the breaker transitions to a different state.
 func WithOnStateChange(fn func(prev, next state)) option {
-	return func(b *Breaker) { b.s.onStateChange = fn }
+	return func(b *breaker) { b.s.onStateChange = fn }
 }
 
 // New constructs a Breaker with sensible defaults and applies any provided options to tune thresholds, timeouts, or the clock.
-func New(opts ...option) *Breaker {
-	b := &Breaker{
+func New(opts ...option) *breaker {
+	b := &breaker{
 		s: settings{
 			failureThreshold: defaultFailureThreshold,
 			successThreshold: defaultSuccessThreshold,
@@ -102,28 +104,28 @@ func New(opts ...option) *Breaker {
 }
 
 // State returns the breaker’s current state (closed, opened, or half‑open) in a thread‑safe manner.
-func (b *Breaker) State() state {
+func (b *breaker) State() state {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.state
 }
 
 // IsOpen reports whether the breaker is currently in the open state.
-func (b *Breaker) IsOpen() bool {
+func (b *breaker) IsOpen() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.state == open
 }
 
 // IsHalfOpen reports whether the breaker is currently in the half‑open state.
-func (b *Breaker) IsHalfOpen() bool {
+func (b *breaker) IsHalfOpen() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.state == halfOpen
 }
 
 // IsClosed reports whether the breaker is currently in the closed state.
-func (b *Breaker) IsClosed() bool {
+func (b *breaker) IsClosed() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.state == closed
@@ -132,7 +134,7 @@ func (b *Breaker) IsClosed() bool {
 // Execute runs the provided operation if the breaker allows it.
 // When the breaker is open, Execute returns ErrOpen immediately.
 // Successes reset failure count in closed state; failures count toward tripping the breaker open.
-func (b *Breaker) Execute(ctx context.Context, op operation) error {
+func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) error {
 	if op == nil {
 		return errors.New("breaker: nil operation")
 	}
@@ -147,7 +149,7 @@ func (b *Breaker) Execute(ctx context.Context, op operation) error {
 			b.mu.Unlock()
 			return ErrOpen
 		}
-		// first caller after the timeout transitions to half‑open *without* consuming a probe slot
+		// first caller after the timeout transitions to half‑open without consuming a probe slot
 		b.transitionLocked(halfOpen)
 		b.failures, b.successes = 0, 0
 		b.allowed = b.s.successThreshold
@@ -197,13 +199,13 @@ func (b *Breaker) Execute(ctx context.Context, op operation) error {
 	return err
 }
 
-func (b *Breaker) tripLocked() {
+func (b *breaker) tripLocked() {
 	b.openUntil = b.s.clock.Now().Add(b.s.openTimeout)
 	b.transitionLocked(open)
 	b.failures, b.successes, b.allowed = 0, 0, 0
 }
 
-func (b *Breaker) transitionLocked(next state) {
+func (b *breaker) transitionLocked(next state) {
 	if b.state == next {
 		return
 	}
