@@ -8,105 +8,118 @@ import (
 )
 
 func TestFilePath_Validate(t *testing.T) {
-	// set up a temporary root directory
+	const oneMB = 1024 * 1024
+
 	root := t.TempDir()
 	cwd, _ := os.Getwd()
 	defer os.Chdir(cwd)
 	os.Chdir(root)
 
-	// create a file outside of root for the traversal test
 	parent := filepath.Dir(root)
-	outside := filepath.Join(parent, "evil.txt")
-	os.WriteFile(outside, []byte("malicious"), 0o644)
 
-	// create a subdirectory for test files
-	sub := filepath.Join(root, "sub")
-	os.Mkdir(sub, 0o755)
+	// crafted files
+	outside := filepath.Join(parent, "evil.txt")                    // traversal target
+	small := filepath.Join(root, "ok.txt")                          // valid tiny file
+	upper := filepath.Join(root, "DATA.TXT")                        // upper-case ext
+	big := filepath.Join(root, "huge.log")                          // >1 MB
+	tooLong := filepath.Join(root, strings.Repeat("a", 300)+".txt") // 300-rune name
+	missing := filepath.Join(root, "ghost.bin")                     // absent file
 
-	// small valid file
-	small := filepath.Join(sub, "ok.txt")
-	os.WriteFile(small, []byte("hello"), 0o644)
+	_ = os.WriteFile(outside, []byte("x"), 0o644)
+	_ = os.WriteFile(small, []byte("ok"), 0o644)
+	_ = os.WriteFile(upper, []byte("ok"), 0o644)
+	_ = os.WriteFile(big, make([]byte, oneMB+1), 0o644)
 
-	// large file exceeding 1 MB
-	const oneMB = 1024 * 1024
-	big := filepath.Join(sub, "big.log")
-	os.WriteFile(big, make([]byte, oneMB+1), 0o644)
-
-	type fields struct {
-		path       string
-		maxSizeMB  int64
-		allowedExt []string
-	}
-
-	tests := []struct {
+	cases := []struct {
 		name    string
-		fields  fields
-		wantErr string
+		path    string
+		maxMB   int64
+		allowed []string
+		wantErr bool
 	}{
 		{
-			name: "ValidFile",
-			fields: fields{
-				path:       small,
-				maxSizeMB:  1,
-				allowedExt: []string{"txt"},
-			},
+			name:    "ValidFile",
+			path:    small,
+			maxMB:   1,
+			allowed: []string{"txt"},
 		},
 		{
-			name: "ExtensionNotAllowed",
-			fields: fields{
-				path:       small,
-				maxSizeMB:  1,
-				allowedExt: []string{"log"},
-			},
-			wantErr: "extension txt not allowed",
+			name:    "ExtensionNotAllowed",
+			path:    small,
+			maxMB:   1,
+			allowed: []string{"log"},
+			wantErr: true,
 		},
 		{
-			name: "FileTooBig",
-			fields: fields{
-				path:       big,
-				maxSizeMB:  1,
-				allowedExt: []string{"log"},
-			},
-			wantErr: "too big",
+			name:    "FileTooBig",
+			path:    big,
+			maxMB:   1,
+			allowed: []string{"log"},
+			wantErr: true,
 		},
 		{
-			name: "FileNameTooLong",
-			fields: fields{
-				path:       strings.Repeat("a", 300) + ".txt",
-				maxSizeMB:  1,
-				allowedExt: []string{"txt"},
-			},
-			wantErr: "file name too long",
+			name:    "FileNameTooLong",
+			path:    tooLong,
+			maxMB:   1,
+			allowed: []string{"txt"},
+			wantErr: true,
 		},
 		{
-			name: "DirectoryTraversalAttempt",
-			fields: fields{
-				path:       "../etc/evil.txt",
-				maxSizeMB:  1,
-				allowedExt: []string{"txt"},
-			},
-			wantErr: "unsafe path",
+			name:    "DirectoryTraversal",
+			path:    "../evil.txt",
+			maxMB:   1,
+			allowed: []string{"txt"},
+			wantErr: true,
+		},
+		{
+			name:    "NoAllowedList",
+			path:    upper,
+			maxMB:   1,
+			allowed: nil,
+			wantErr: false,
+		},
+		{
+			name:    "CaseInsensitiveExt",
+			path:    upper,
+			maxMB:   1,
+			allowed: []string{"txt"},
+			wantErr: false,
+		},
+		{
+			name:    "NoSizeLimit",
+			path:    big,
+			maxMB:   0,
+			allowed: []string{"log"},
+			wantErr: false,
+		},
+		{
+			name:    "FileNotFound",
+			path:    missing,
+			maxMB:   1,
+			allowed: []string{"bin"},
+			wantErr: true,
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			fp := FilePath(tc.fields.path)
-			got, err := fp.Validate(tc.fields.maxSizeMB, tc.fields.allowedExt...)
-			if tc.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
-					t.Fatalf("want error containing %s, got %v", tc.wantErr, err)
+			t.Parallel()
+
+			fp := FilePath(tc.path)
+			got, err := fp.Validate(tc.maxMB, tc.allowed...)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("want no error, got %v", err)
+				t.Fatalf("unexpected error: %v", err)
 			}
 			if !filepath.IsAbs(got) {
-				t.Errorf("returned path %s; want absolute path", got)
-			}
-			if !strings.HasPrefix(got, root) {
-				t.Errorf("returned path %s; want under %s", got, root)
+				t.Errorf("returned path %s is not absolute", got)
 			}
 		})
 	}

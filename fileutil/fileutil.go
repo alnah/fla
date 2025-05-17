@@ -18,11 +18,11 @@ type FilePath string
 //   - Checks file size ≤ maxSizeMB (if >0).
 //   - Returns the canonical absolute path.
 func (f FilePath) Validate(maxSizeMB int64, allowedExt ...string) (string, error) {
-	// clean, and extract extension
+	// clean and extract extension
 	clean := filepath.Clean(string(f))
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(clean), "."))
 
-	// build allowed set once
+	// build allowed set
 	allowedSet := make(map[string]struct{}, len(allowedExt))
 	for _, e := range allowedExt {
 		allowedSet[strings.ToLower(strings.TrimPrefix(e, "."))] = struct{}{}
@@ -35,28 +35,28 @@ func (f FilePath) Validate(maxSizeMB int64, allowedExt ...string) (string, error
 
 	// check filename length
 	base := filepath.Base(clean)
-	n := utf8.RuneCountInString(base)
-	if n > 255 {
-		return "", fmt.Errorf("file name too long: %d runes > %d", n, 255)
+	if utf8.RuneCountInString(base) > 255 {
+		return "", fmt.Errorf("file name too long: %d runes > 255", utf8.RuneCountInString(base))
 	}
 
-	// resolve directory
-	dir := filepath.Dir(clean)
-	absDir, err := filepath.Abs(dir)
+	// resolve directory and relative path
+	absDir, err := filepath.Abs(filepath.Dir(clean))
 	if err != nil {
 		return "", fmt.Errorf("abs dir: %w", err)
 	}
+	relPath := filepath.Base(clean)
 
-	// open directory and file via handle
-	root, err := os.Open(absDir)
+	// open root directory
+	root, err := os.OpenRoot(absDir)
 	if err != nil {
-		return "", fmt.Errorf("open directory %s: unsafe path", absDir)
+		return "", fmt.Errorf("open root directory %s: %w", absDir, err)
 	}
 	defer func() { _ = root.Close() }()
 
-	file, err := os.Open(clean)
+	// open file within root
+	file, err := root.Open(relPath)
 	if err != nil {
-		return "", fmt.Errorf("open file %s: %w", clean, err)
+		return "", fmt.Errorf("open file %s: %w", relPath, err)
 	}
 	defer func() { _ = file.Close() }()
 
