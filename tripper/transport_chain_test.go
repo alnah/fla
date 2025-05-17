@@ -53,6 +53,18 @@ func (s *stubRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return s.res, s.err
 }
 
+func TestTripperChain_Default(t *testing.T) {
+	next := Tripper(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBuffer(nil))}, nil
+	})
+
+	tripper := Chain(Default(next))
+	_, err := tripper.RoundTrip(&http.Request{})
+	if err != nil {
+		t.Fatalf("round trip: want no error, got %v", err)
+	}
+}
+
 func TestTripperChain_AddHeader(t *testing.T) {
 	next := Tripper(func(r *http.Request) (*http.Response, error) {
 		if got1 := r.Header.Get("Authorization"); got1 != "Bearer token" {
