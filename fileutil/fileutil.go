@@ -36,7 +36,7 @@ func (f FilePath) Validate(maxSizeMB int64, allowedExt ...string) (string, error
 	// check filename length
 	base := filepath.Base(clean)
 	if utf8.RuneCountInString(base) > 255 {
-		return "", fmt.Errorf("file name too long: %d runes > 255", utf8.RuneCountInString(base))
+		return "", fmt.Errorf("file name too long: max 255 runes, got %d", utf8.RuneCountInString(base))
 	}
 
 	// resolve directory and relative path
@@ -82,7 +82,7 @@ func checkSize(f *os.File, maxSizeMB int64) error {
 		return fmt.Errorf("stat file: %w", err)
 	}
 	if info.Size() > maxSizeMB*1024*1024 {
-		return fmt.Errorf("file too big: %.2f MB > %d MB", float64(info.Size())/1024.0/1024.0, maxSizeMB)
+		return fmt.Errorf("file too big: max %d MB", maxSizeMB)
 	}
 	return nil
 }

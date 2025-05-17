@@ -99,6 +99,20 @@ func TestFilePath_Validate(t *testing.T) {
 			allowed: []string{"bin"},
 			wantErr: true,
 		},
+		{
+			name:    "InvalidAbsDir",
+			path:    string([]byte{0}),
+			maxMB:   1,
+			allowed: []string{"txt"},
+			wantErr: true,
+		},
+		{
+			name:    "UnreadableRoot",
+			path:    "/nonexistent/path/file.txt",
+			maxMB:   1,
+			allowed: []string{"txt"},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -120,6 +134,14 @@ func TestFilePath_Validate(t *testing.T) {
 			}
 			if !filepath.IsAbs(got) {
 				t.Errorf("returned path %s is not absolute", got)
+			}
+		})
+		t.Run("ClosedFileStatFails", func(t *testing.T) {
+			f, _ := os.CreateTemp(t.TempDir(), "temp")
+			_ = f.Close()
+			err := checkSize(f, 1)
+			if err == nil {
+				t.Fatal("expected error from closed file")
 			}
 		})
 	}
