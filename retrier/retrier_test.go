@@ -80,8 +80,8 @@ func TestRetrier_ExhaustsAttempts(t *testing.T) {
 	if !errors.As(err, &re) {
 		t.Fatalf("error: want retrier error, got %v", err)
 	}
-	if re.Attempts != 3 {
-		t.Errorf("error: want 3 attempts, got %d", re.Attempts)
+	if re.attempts != 3 {
+		t.Errorf("error: want 3 attempts, got %d", re.attempts)
 	}
 }
 
