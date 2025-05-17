@@ -38,11 +38,11 @@ func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 	var err error
 	t.filePathSecure, err = t.applyDefaults().setProviderFlag().validate()
 	if err != nil {
-		return nil, NewSTTClientError(t.base.provider, "failed to build transcript client", err)
+		return nil, NewSTTClientError(t.base.provider, "failed to build speech-to-text client", err)
 	}
 	t.file, err = os.Open(t.filePathSecure)
 	if err != nil {
-		return nil, NewSTTClientError(t.base.provider, "failed to build transcript client", err)
+		return nil, NewSTTClientError(t.base.provider, "failed to build speech-to-text client", err)
 	}
 	return t, nil
 }

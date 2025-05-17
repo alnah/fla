@@ -124,7 +124,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 		provider      provider
 		url           url
 		apiKey        apiKey
-		aiModel       model
+		model         model
 		flagOpenAI    bool
 		flagAnthropic bool
 	}{
@@ -133,7 +133,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			provider:      ProviderOpenAI,
 			url:           URLChatOpenAI,
 			apiKey:        APIKeyEnvOpenAI,
-			aiModel:       ModelCheapOpenAI,
+			model:         ModelCheapOpenAI,
 			flagOpenAI:    true,
 			flagAnthropic: false,
 		},
@@ -142,7 +142,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			provider:      ProviderAnthropic,
 			url:           URLChatAnthropic,
 			apiKey:        APIKeyEnvAnthropic,
-			aiModel:       ModelCheapAnthropic,
+			model:         ModelCheapAnthropic,
 			flagOpenAI:    false,
 			flagAnthropic: true,
 		},
@@ -152,7 +152,7 @@ func TestChatClientNew_Set_ProviderFlag(t *testing.T) {
 			WithProvider[*ChatClient](tc.provider),
 			WithURL[*ChatClient](tc.url),
 			WithAPIKey[*ChatClient](tc.apiKey),
-			WithModel[*ChatClient](tc.aiModel),
+			WithModel[*ChatClient](tc.model),
 		)
 		if err != nil {
 			t.Fatalf("want no error, got %v", err)
@@ -294,6 +294,18 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name: "InvalidHTTPMethod",
+			chatBuilder: func() (*ChatClient, error) {
+				return NewChatClient(
+					WithProvider[*ChatClient](ProviderOpenAI),
+					WithURL[*ChatClient](URLChatOpenAI),
+					WithAPIKey[*ChatClient](APIKeyEnvOpenAI),
+					WithHTTPMethod[*ChatClient](httpMethod("INVALID")),
+				)
+			},
+			wantError: true,
+		},
+		{
 			name: "InvalidModel",
 			chatBuilder: func() (*ChatClient, error) {
 				return NewChatClient(
@@ -301,18 +313,6 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithURL[*ChatClient](URLChatOpenAI),
 					WithAPIKey[*ChatClient](APIKeyEnvOpenAI),
 					WithModel[*ChatClient](model("invalid")),
-				)
-			},
-			wantError: true,
-		},
-		{
-			name: "InvalidHTTPMethod",
-			chatBuilder: func() (*ChatClient, error) {
-				return NewChatClient(
-					WithProvider[*ChatClient](ProviderOpenAI),
-					WithURL[*ChatClient](URLChatOpenAI),
-					WithAPIKey[*ChatClient](APIKeyEnvOpenAI),
-					WithHTTPMethod[*ChatClient](httpMethod("INVALID")), // should fail
 				)
 			},
 			wantError: true,
@@ -602,12 +602,6 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 	}
 }
 
-type tripperware func(req *http.Request) (*http.Response, error)
-
-func (t tripperware) RoundTrip(req *http.Request) (*http.Response, error) {
-	return t(req)
-}
-
 func TestChatClient_Completion(t *testing.T) {
 	testCases := []struct {
 		name            string
@@ -672,7 +666,7 @@ func TestChatClient_Completion(t *testing.T) {
 					WithAPIKey[*ChatClient](APIKeyEnvOpenAI),
 					WithModel[*ChatClient](ModelCheapOpenAI),
 				)
-				// override chat.url with malformed url
+				// override url with malformed url
 				chat.base.url = "::::"
 				return chat, nil
 			},

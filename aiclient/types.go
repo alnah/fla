@@ -41,12 +41,12 @@ func (p provider) Validate() error {
 }
 
 const (
-	URLChatOpenAI           url = "https://api.openai.com/v1/chat/completions"
-	URLChatAnthropic        url = "https://api.anthropic.com/v1/messages"
-	URLSpeechOpenAI         url = "https://api.openai.com/v1/audio/speech"
-	URLSpeechElevenLabs     url = "https://api.elevenlabs.io/v1/text-to-speech"
-	URLTranscriptOpenAI     url = "https://api.openai.com/v1/audio/transcriptions"
-	URLTranscriptElevenLabs url = "https://api.elevenlabs.io/v1/speech-to-text"
+	URLChatOpenAI    url = "https://api.openai.com/v1/chat/completions"
+	URLChatAnthropic url = "https://api.anthropic.com/v1/messages"
+	URLTTSOpenAI     url = "https://api.openai.com/v1/audio/speech"
+	URLTTSElevenLabs url = "https://api.elevenlabs.io/v1/text-to-speech"
+	URLSTTOpenAI     url = "https://api.openai.com/v1/audio/transcriptions"
+	URLSTTElevenLabs url = "https://api.elevenlabs.io/v1/speech-to-text"
 )
 
 type url string
@@ -55,8 +55,8 @@ func (u url) String() string { return string(u) }
 func (u url) IsValid() bool {
 	switch u {
 	case URLChatOpenAI, URLChatAnthropic,
-		URLSpeechOpenAI, URLSpeechElevenLabs,
-		URLTranscriptOpenAI, URLTranscriptElevenLabs:
+		URLTTSOpenAI, URLTTSElevenLabs,
+		URLSTTOpenAI, URLSTTElevenLabs:
 		return true
 	default:
 		return false

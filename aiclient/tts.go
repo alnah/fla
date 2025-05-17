@@ -31,7 +31,7 @@ func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
 		opt(s)
 	}
 	if err := s.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to build speech client", err)
+		return nil, NewTTSClientError(s.base.provider, "failed to build text-to-speech client", err)
 	}
 	return s, nil
 }
