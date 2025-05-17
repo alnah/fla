@@ -17,13 +17,7 @@ func New() *Logger {
 	return NewWithHandler(handler)
 }
 
-func Test() *Logger {
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		AddSource: true,
-		Level:     slog.LevelError,
-	})
-	return NewWithHandler(handler)
-}
+func Test() *Logger { return New() }
 
 // NewWithHandler creates a Logger using the provided slog.Handler.
 // Useful for tests (inject a buffer) or alternate formats (JSON).
