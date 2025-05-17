@@ -67,7 +67,7 @@ func UseStatusClassifier(shouldError ShouldError, buildError BuildError) Tripper
 
 // UseCircuitBreaker wraps each request in a circuit breaker,
 // preventing calls when the downstream service is consistently failing.
-func UseCircuitBreaker(b *breaker.Breaker) Tripperware {
+func UseCircuitBreaker(b breaker.Breaker) Tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return Tripper(func(req *http.Request) (*http.Response, error) {
 			var res *http.Response
@@ -84,7 +84,7 @@ func UseCircuitBreaker(b *breaker.Breaker) Tripperware {
 
 // UseRetrier applies a retry policy around each request,
 // using the provided Retrier to handle transient errors according to rules.
-func UseRetrier(r *retrier.Retrier, isRetryable func(error) bool) Tripperware {
+func UseRetrier(r retrier.Retrier, isRetryable func(error) bool) Tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return Tripper(func(req *http.Request) (*http.Response, error) {
 			var res *http.Response
