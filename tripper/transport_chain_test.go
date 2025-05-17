@@ -53,13 +53,38 @@ func (s *stubRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return s.res, s.err
 }
 
-func TestTripperChain_Default(t *testing.T) {
+func TestChain_Default(t *testing.T) {
+	// build request because default is http.DefaultTransport and it will panic
+	// if the header is not properly defined
+	req, err := http.NewRequest("GET", "http://test.com", nil)
+	if err != nil {
+		t.Fatalf("failed to build request: %v", err)
+	}
+
+	rt := Chain(nil)
+	_, err = rt.RoundTrip(req)
+	if err != nil {
+		t.Errorf("round trip: want no error, got %v", err)
+	}
+}
+
+func TestChain_WithCustomTripper(t *testing.T) {
 	next := Tripper(func(r *http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBuffer(nil))}, nil
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(bytes.NewBuffer(nil)),
+		}, nil
 	})
 
-	tripper := Chain(Default(next))
-	_, err := tripper.RoundTrip(&http.Request{})
+	// build request because default is http.DefaultTransport and it will panic
+	// if the header is not properly defined
+	req, err := http.NewRequest("GET", "http://test.com", nil)
+	if err != nil {
+		t.Fatalf("failed to build request: %v", err)
+	}
+
+	rt := Chain(Default(next))
+	_, err = rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("round trip: want no error, got %v", err)
 	}
