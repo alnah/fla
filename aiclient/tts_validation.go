@@ -9,7 +9,7 @@ func (s *TTSClient) validate() error {
 	if s.base.ctx == nil {
 		return errors.New("context must be provided")
 	}
-	if s.base.logger == nil {
+	if s.base.log == nil {
 		return errors.New("logger must be set")
 	}
 	if s.base.httpClient == nil {

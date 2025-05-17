@@ -30,7 +30,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	}
 	ctx := context.Background()
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	logger := logger.New()
+	log := logger.Test()
 	httpMethodPost := httpMethod(http.MethodPost)
 	maxTokens := MaxTokens(8192)
 	chat, err := NewChatClient(
@@ -40,7 +40,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 		WithModel[*ChatClient](ModelCheapOpenAI),
 		WithContext[*ChatClient](ctx),
 		WithHTTPClient[*ChatClient](httpClient),
-		WithLogger[*ChatClient](logger),
+		WithLogger[*ChatClient](log),
 		WithHTTPMethod[*ChatClient](httpMethodPost),
 		WithTemperature(temperature),
 		WithMessages(messages),
@@ -86,8 +86,8 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	if chat.base.httpClient != httpClient {
 		t.Errorf("http client: want %v, got %v", httpClient, chat.base)
 	}
-	if chat.base.logger != logger {
-		t.Errorf("logger: want %v, got %v", logger, chat.base.logger)
+	if chat.base.log != log {
+		t.Errorf("logger: want %v, got %v", log, chat.base.log)
 	}
 	if chat.base.httpMethod != httpMethodPost {
 		t.Errorf("http method: want %v, got %v", httpMethodPost, chat.base.httpMethod)
@@ -106,7 +106,7 @@ func TestChatClientNew_Apply_Defaults(t *testing.T) {
 	}
 	testCases := map[string]any{
 		"ctx":         chat.base.ctx,
-		"logger":      chat.base.logger,
+		"logger":      chat.base.log,
 		"http client": chat.base.httpClient,
 		"http method": chat.base.httpMethod,
 		"max tokens":  chat.maxTokens,
@@ -208,7 +208,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithMaxTokens(MaxTokens(4096)),
 					WithHTTPClient[*ChatClient](http.DefaultClient),
 					WithHTTPMethod[*ChatClient](httpMethod(http.MethodPost)),
-					WithLogger[*ChatClient](logger.New()),
+					WithLogger[*ChatClient](logger.Test()),
 				)
 			},
 			wantError: false,
@@ -460,7 +460,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithModel[*ChatClient](ModelCheapOpenAI),
 				)
 				// override default logger
-				chat.base.logger = nil
+				chat.base.log = nil
 				return chat, chat.validate()
 			},
 			wantError: true,

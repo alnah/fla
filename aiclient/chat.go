@@ -47,8 +47,8 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 	if c.base.ctx == nil {
 		c.base.ctx = context.Background()
 	}
-	if c.base.logger == nil {
-		c.base.logger = logger.New()
+	if c.base.log == nil {
+		c.base.log = logger.New()
 	}
 	if c.base.httpClient == nil {
 		c.base.httpClient = &http.Client{Timeout: 30 * time.Second}

@@ -8,28 +8,30 @@ import (
 	"github.com/alnah/fla/tripper"
 )
 
-func (s *TTSClient) newTransportChain() http.RoundTripper {
+func (t *TTSClient) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
-		tripper.Default(s.base.httpClient.Transport),
+		tripper.Default(t.base.httpClient.Transport),
 		tripper.AddHeader("Content-Type", "application/json"),
-		func(next http.RoundTripper) http.RoundTripper {
-			if s.base.provider == ProviderOpenAI {
-				return tripper.AddHeader("Authorization", "Bearer "+s.base.apiKey.GetEnv())(next)
-			}
-			return tripper.AddHeader("xi-api-key", s.base.apiKey.GetEnv())(next)
-		},
+		t.addAuthHeader(),
 		tripper.AddHeader("User-Agent", "Fla/1.0"),
-		tripper.UseStatusClassifier(
-			func(code int) bool { return code == 429 || code >= 500 },
-			func(res *http.Response) error {
-				if s.useOpenAI {
-					return buildOpenaiError(res)
-				}
-				return buildElevenlabsError(res)
-			},
-		),
+		tripper.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, t.buildError()),
 		tripper.UseCircuitBreaker(breaker.New()),
 		tripper.UseRetrier(retrier.New(), isRetryable),
-		tripper.UseLogger(s.base.logger),
+		tripper.UseLogger(t.base.log),
 	)
+}
+
+func (t *TTSClient) addAuthHeader() tripper.Tripperware {
+	if t.base.provider == ProviderOpenAI {
+		return tripper.AddHeader("Authorization", "Bearer "+t.base.apiKey.GetEnv())
+	}
+	return tripper.AddHeader("xi-api-key", t.base.apiKey.GetEnv())
+}
+
+func (t *TTSClient) buildError() tripper.BuildError {
+	if t.useOpenAI {
+		return buildOpenaiError
+	}
+	return buildElevenlabsError
+
 }

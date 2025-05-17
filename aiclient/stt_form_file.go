@@ -8,28 +8,28 @@ import (
 	"path/filepath"
 )
 
-func (t *STTClient) newFormFileBody() error {
-	t.formFileBody = &bytes.Buffer{}
-	multipartWriter := multipart.NewWriter(t.formFileBody)
+func (s *STTClient) newFormFileBody() error {
+	s.formFileBody = &bytes.Buffer{}
+	multipartWriter := multipart.NewWriter(s.formFileBody)
 
 	// add file field
-	part, err := multipartWriter.CreateFormFile("file", filepath.Base(t.filePathSecure))
+	part, err := multipartWriter.CreateFormFile("file", filepath.Base(s.filePathSecure))
 	if err != nil {
 		return fmt.Errorf("failed to create form file: %w", err)
 	}
-	if _, err = io.Copy(part, t.file); err != nil {
+	if _, err = io.Copy(part, s.file); err != nil {
 		return fmt.Errorf("failed to copy file to form: %w", err)
 	}
 
 	// add text fields
-	if t.base.provider == ProviderOpenAI {
-		_ = multipartWriter.WriteField("model", t.base.model.String())
+	if s.base.provider == ProviderOpenAI {
+		_ = multipartWriter.WriteField("model", s.base.model.String())
 	}
-	if t.base.provider == ProviderElevenLabs {
-		_ = multipartWriter.WriteField("model_id", t.base.model.String())
+	if s.base.provider == ProviderElevenLabs {
+		_ = multipartWriter.WriteField("model_id", s.base.model.String())
 	}
-	_ = multipartWriter.WriteField("language", t.language.String())
-	t.contentType = multipartWriter.FormDataContentType()
+	_ = multipartWriter.WriteField("language", s.language.String())
+	s.contentType = multipartWriter.FormDataContentType()
 
 	// finalize multipart body
 	if err = multipartWriter.Close(); err != nil {

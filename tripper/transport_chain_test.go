@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -223,12 +222,7 @@ func TestChain_UseLogger(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// prepare a buffer to capture log output
-			var buf bytes.Buffer
-			handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{
-				AddSource: false,
-				Level:     slog.LevelDebug,
-			})
-			logger := logger.NewWithHandler(handler)
+			logger := logger.Test()
 
 			// wrap the stub RoundTripper
 			stub := &stubRoundTripper{resp: tt.stubResp, err: tt.stubErr}

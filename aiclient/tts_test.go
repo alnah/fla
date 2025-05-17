@@ -48,7 +48,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			log := logger.New()
+			log := logger.Test()
 			httpClient := http.DefaultClient
 			httpMethodPost := httpMethod(http.MethodPost)
 			tts, err := NewTTSClient(
@@ -71,8 +71,8 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 			if tts.base.ctx != ctx {
 				t.Errorf("ctx: want %v, got: %v", ctx, tts.base.ctx)
 			}
-			if tts.base.logger != log {
-				t.Errorf("logger: want %v, got: %v", log, tts.base.logger)
+			if tts.base.log != log {
+				t.Errorf("logger: want %v, got: %v", log, tts.base.log)
 			}
 			if tts.base.httpClient != httpClient {
 				t.Errorf("http client: want %v, got: %v", httpClient, tts.base.httpClient)
@@ -123,7 +123,7 @@ func TestTTSClientNew_Apply_Defaults(t *testing.T) {
 	}
 	testCases := map[string]any{
 		"ctx":         tts.base.ctx,
-		"logger":      tts.base.logger,
+		"logger":      tts.base.log,
 		"http client": tts.base.httpClient,
 		"http method": tts.base.httpMethod,
 	}
@@ -250,7 +250,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 			ttsBuilder: func() (*TTSClient, error) {
 				return NewTTSClient(
 					WithContext[*TTSClient](context.Background()),
-					WithLogger[*TTSClient](logger.New()),
+					WithLogger[*TTSClient](logger.Test()),
 					WithHTTPClient[*TTSClient](http.DefaultClient),
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderOpenAI),
@@ -269,7 +269,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 			ttsBuilder: func() (*TTSClient, error) {
 				return NewTTSClient(
 					WithContext[*TTSClient](context.Background()),
-					WithLogger[*TTSClient](logger.New()),
+					WithLogger[*TTSClient](logger.Test()),
 					WithHTTPClient[*TTSClient](http.DefaultClient),
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderElevenLabs),
@@ -617,7 +617,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 					WithText("test"),
 				)
 				// override default logger
-				tts.base.logger = nil
+				tts.base.log = nil
 				return tts, tts.validate()
 			},
 			wantError: true,

@@ -47,60 +47,60 @@ func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 	return t, nil
 }
 
-func (t *STTClient) applyDefaults() *STTClient {
-	if t.base.ctx == nil {
-		t.base.ctx = context.Background()
+func (s *STTClient) applyDefaults() *STTClient {
+	if s.base.ctx == nil {
+		s.base.ctx = context.Background()
 	}
-	if t.base.logger == nil {
-		t.base.logger = logger.New()
+	if s.base.log == nil {
+		s.base.log = logger.New()
 	}
-	if t.base.httpClient == nil {
-		t.base.httpClient = &http.Client{Timeout: 30 * time.Second}
+	if s.base.httpClient == nil {
+		s.base.httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
-	if t.base.httpMethod == "" {
-		t.base.httpMethod = httpMethod(http.MethodPost)
+	if s.base.httpMethod == "" {
+		s.base.httpMethod = httpMethod(http.MethodPost)
 	}
-	return t
+	return s
 }
 
-func (t *STTClient) setProviderFlag() *STTClient {
-	t.useOpenAI = strings.Contains(t.base.url.String(), ProviderOpenAI.String())
-	t.useElevenLabs = strings.Contains(t.base.url.String(), ProviderElevenLabs.String())
-	return t
+func (s *STTClient) setProviderFlag() *STTClient {
+	s.useOpenAI = strings.Contains(s.base.url.String(), ProviderOpenAI.String())
+	s.useElevenLabs = strings.Contains(s.base.url.String(), ProviderElevenLabs.String())
+	return s
 }
 
-func (t *STTClient) Transcript() (transcriptResponse, error) {
-	err := t.newFormFileBody()
+func (s *STTClient) Transcript() (transcriptResponse, error) {
+	err := s.newFormFileBody()
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(t.base.provider, "failed to build form file body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to build form file body", err)
 	}
 
-	req, err := http.NewRequestWithContext(t.base.ctx, t.base.httpMethod.String(), t.base.url.String(), t.formFileBody)
+	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), s.base.url.String(), s.formFileBody)
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(t.base.provider, "failed to build http request", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to build http request", err)
 	}
 
-	t.base.httpClient.Transport = t.newTransportChain()
-	res, err := t.base.httpClient.Do(req)
+	s.base.httpClient.Transport = s.newTransportChain()
+	res, err := s.base.httpClient.Do(req)
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(t.base.provider, "failed to send http request", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to send http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err := io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(t.base.provider, "failed to read response body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to read response body", err)
 	}
 
 	if res.StatusCode != 200 {
-		return transcriptResponse{}, buildProviderError(t.base.provider, res)
+		return transcriptResponse{}, buildProviderError(s.base.provider, res)
 	}
 
 	var transcript transcriptResponse
 	dec := json.NewDecoder(res.Body)
 	if err := dec.Decode(&transcript); err != nil {
-		return transcriptResponse{}, NewSTTClientError(t.base.provider, "failed to decode response body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to decode response body", err)
 	}
 	return transcript, nil
 }

@@ -8,28 +8,30 @@ import (
 	"github.com/alnah/fla/tripper"
 )
 
-func (t *STTClient) newTransportChain() http.RoundTripper {
+func (s *STTClient) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
-		tripper.Default(t.base.httpClient.Transport),
-		tripper.AddHeader("Content-Type", t.contentType),
-		func(next http.RoundTripper) http.RoundTripper {
-			if t.base.provider == ProviderOpenAI {
-				return tripper.AddHeader("Authorization", "Bearer "+t.base.apiKey.GetEnv())(next)
-			}
-			return tripper.AddHeader("xi-api-key", t.base.apiKey.GetEnv())(next)
-		},
+		tripper.Default(s.base.httpClient.Transport),
+		tripper.AddHeader("Content-Type", s.contentType),
+		s.addAuthHeader(),
 		tripper.AddHeader("User-Agent", "Fla/1.0"),
-		tripper.UseStatusClassifier(
-			func(code int) bool { return code == 429 || code >= 500 },
-			func(res *http.Response) error {
-				if t.useOpenAI {
-					return buildOpenaiError(res)
-				}
-				return buildElevenlabsError(res)
-			},
-		),
+		tripper.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, s.buildError()),
 		tripper.UseCircuitBreaker(breaker.New()),
 		tripper.UseRetrier(retrier.New(), isRetryable),
-		tripper.UseLogger(t.base.logger),
+		tripper.UseLogger(s.base.log),
 	)
+}
+
+func (s *STTClient) addAuthHeader() tripper.Tripperware {
+	if s.base.provider == ProviderOpenAI {
+		return tripper.AddHeader("Authorization", "Bearer "+s.base.apiKey.GetEnv())
+	}
+	return tripper.AddHeader("xi-api-key", s.base.apiKey.GetEnv())
+
+}
+
+func (s *STTClient) buildError() tripper.BuildError {
+	if s.useOpenAI {
+		return buildOpenaiError
+	}
+	return buildElevenlabsError
 }

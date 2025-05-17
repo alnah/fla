@@ -11,7 +11,7 @@ func WithContext[T hasBase](c context.Context) option[T] {
 	return func(t T) { (t).BaseClient().ctx = c }
 }
 func WithLogger[T hasBase](l *logger.Logger) option[T] {
-	return func(t T) { (t).BaseClient().logger = l }
+	return func(t T) { (t).BaseClient().log = l }
 }
 func WithProvider[T hasBase](p provider) option[T] {
 	return func(t T) { (t).BaseClient().provider = p }

@@ -15,7 +15,7 @@ type baseClient struct {
 	model    model
 	// infra fields
 	ctx        context.Context
-	logger     *logger.Logger
+	log        *logger.Logger
 	httpClient *http.Client
 	httpMethod httpMethod
 }

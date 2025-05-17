@@ -40,8 +40,8 @@ func (s *TTSClient) applyDefaults() *TTSClient {
 	if s.base.ctx == nil {
 		s.base.ctx = context.Background()
 	}
-	if s.base.logger == nil {
-		s.base.logger = logger.New()
+	if s.base.log == nil {
+		s.base.log = logger.New()
 	}
 	if s.base.httpClient == nil {
 		s.base.httpClient = &http.Client{Timeout: 10 * time.Minute}

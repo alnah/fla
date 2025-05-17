@@ -10,7 +10,7 @@ func (c *ChatClient) validate() error {
 	if c.base.ctx == nil {
 		return errors.New("context must be provided")
 	}
-	if c.base.logger == nil {
+	if c.base.log == nil {
 		return errors.New("logger must be set")
 	}
 	if c.base.httpClient == nil {
