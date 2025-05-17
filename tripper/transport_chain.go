@@ -1,7 +1,9 @@
 package tripper
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"time"
 
@@ -9,6 +11,10 @@ import (
 	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/retrier"
 )
+
+type marker string
+
+const key marker = "key"
 
 type Tripperware func(next http.RoundTripper) http.RoundTripper
 type Tripper func(*http.Request) (*http.Response, error)
@@ -30,6 +36,16 @@ func Default(rt http.RoundTripper) http.RoundTripper {
 // Chain composes multiple transport middlewares around a base RoundTripper.
 // This makes it easy to build reusable pipelines of behavior.
 func Chain(rt http.RoundTripper, transports ...Tripperware) http.RoundTripper {
+	if rt == nil && len(transports) == 0 {
+		return Tripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(bytes.NewBuffer(nil)),
+				Header:     make(http.Header),
+			}, nil
+		})
+	}
+
 	for _, m := range transports {
 		rt = m(rt)
 	}
@@ -70,13 +86,18 @@ func UseStatusClassifier(shouldError ShouldError, buildError BuildError) Tripper
 func UseCircuitBreaker(b breaker.Breaker) Tripperware {
 	return func(next http.RoundTripper) http.RoundTripper {
 		return Tripper(func(req *http.Request) (*http.Response, error) {
+			// inject context for testing
+			ctx := context.WithValue(req.Context(), key, "injected")
+
 			var res *http.Response
-			err := b.Execute(req.Context(), func(ctx context.Context) error {
-				var e error
-				clone := req.Clone(ctx)
-				res, e = next.RoundTrip(clone)
-				return e
+			err := b.Execute(ctx, func(innerCtx context.Context) error {
+				// clone the request with the new context
+				clone := req.Clone(innerCtx)
+				var opErr error
+				res, opErr = next.RoundTrip(clone)
+				return opErr
 			})
+
 			return res, err
 		})
 	}

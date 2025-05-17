@@ -15,14 +15,18 @@ import (
 )
 
 type stubBreaker struct {
-	open bool
+	open     bool
+	executed bool
+	sawCtx   context.Context
 }
 
-func (m *stubBreaker) Execute(ctx context.Context, op func(ctx context.Context) error) error {
-	if m.open {
-		return errors.New("circuit breaker is open")
+func (s *stubBreaker) Execute(ctx context.Context, op func(context.Context) error) error {
+	s.executed = true
+	if s.open {
+		return errors.New("breaker is open")
 	}
-	return nil
+	s.sawCtx = ctx
+	return op(ctx)
 }
 
 type stubRetrier struct {
@@ -185,29 +189,64 @@ func TestTripperChain_UseStatusClassifier_ErrorRetryAfter(t *testing.T) {
 	}
 }
 
-func TestChain_UseCircuitBreaker(t *testing.T) {
-	testCases := []struct {
-		name string
-		open bool
+func TestUseCircuitBreaker(t *testing.T) {
+	cases := []struct {
+		name         string
+		open         bool
+		wantExec     bool
+		wantErrPart  string
+		wantCtxValue any
 	}{
-		{name: "Open", open: true},
-		{name: "Closed", open: false},
+		{
+			name:         "ClosedCallThroughWithNewCtx",
+			open:         false,
+			wantExec:     true,
+			wantCtxValue: "injected",
+		},
+		{
+			name:        "OpenSkipCallAndError",
+			open:        true,
+			wantExec:    true,
+			wantErrPart: "breaker is open",
+		},
 	}
-	for _, tc := range testCases {
+
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			stubBreaker := &stubBreaker{open: tc.open}
+
+			var gotReq *http.Request
 			next := Tripper(func(r *http.Request) (*http.Response, error) {
-				return nil, errors.New("circuit breaker is open")
+				gotReq = r
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBuffer(nil))}, nil
 			})
 
-			circuitBreaker := &stubBreaker{tc.open}
-			tripper := UseCircuitBreaker(circuitBreaker)(next)
+			rt := UseCircuitBreaker(stubBreaker)(next)
 
-			_, err := tripper.RoundTrip(&http.Request{})
-			if tc.open && err == nil {
-				t.Fatal("round trip: want error, got nil")
+			req, _ := http.NewRequest(http.MethodGet, "http://test.com", nil)
+			res, err := rt.RoundTrip(req)
+
+			if !stubBreaker.executed {
+				t.Error("execute was not called")
 			}
-			if !tc.open && err != nil {
-				t.Fatalf("using circuit breaker: want no error, got %v", err)
+			if tc.wantErrPart != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErrPart) {
+					t.Fatalf("want error containing %q, got %v", tc.wantErrPart, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("want no error: got %v", err)
+			}
+			if gotReq == nil {
+				t.Fatal("underlying round trip was not called")
+			}
+			// make sure injected context got through
+			if gotReq.Context().Value(key) != tc.wantCtxValue {
+				t.Errorf("ctx value: want %v, got %v", tc.wantCtxValue, gotReq.Context().Value(key))
+			}
+			if res == nil {
+				t.Error("want res, got nil")
 			}
 		})
 	}
