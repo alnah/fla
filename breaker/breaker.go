@@ -106,7 +106,6 @@ func (b *breaker) evictOld(now time.Time) {
 // Execute runs the provided operation if the breaker allows it.
 // When the breaker is open, Execute returns ErrOpen immediately.
 // Successes reset failure count in closed state; failures count toward tripping the breaker open.
-
 func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) error {
 	if op == nil {
 		return errors.New("breaker: nil operation")

@@ -9,13 +9,13 @@ import (
 	"os"
 	"testing"
 
-	fu "github.com/alnah/fla/fileutil"
 	"github.com/alnah/fla/locale"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/pathutil"
 	"github.com/alnah/fla/transport"
 )
 
-func newTempFile(t testing.TB) fu.FilePath {
+func newTempFile(t testing.TB) pathutil.FilePath {
 	t.Helper()
 
 	tempFile, err := os.CreateTemp(".", "test_*.mp3")
@@ -27,7 +27,7 @@ func newTempFile(t testing.TB) fu.FilePath {
 		os.Remove(tempFile.Name())
 	})
 
-	return fu.FilePath(tempFile.Name())
+	return pathutil.FilePath(tempFile.Name())
 }
 
 func TestSTTClientNew_WithOptions(t *testing.T) {
@@ -122,7 +122,7 @@ func TestSTTClientNew_Set_ProviderFlag(t *testing.T) {
 		apiKey         apiKey
 		model          model
 		language       locale.ISO6391
-		filePath       fu.FilePath
+		filePath       pathutil.FilePath
 		flagOpenAI     bool
 		flagElevenLabs bool
 	}{

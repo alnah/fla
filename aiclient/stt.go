@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/alnah/fla/breaker"
-	fu "github.com/alnah/fla/fileutil"
 	"github.com/alnah/fla/locale"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/pathutil"
 	"github.com/alnah/fla/retrier"
 	"github.com/alnah/fla/transport"
 )
@@ -29,7 +29,7 @@ type STTClient struct {
 	base *baseClient
 	// api fields
 	file     *os.File
-	filePath fu.FilePath
+	filePath pathutil.FilePath
 	language locale.ISO6391
 	// provider fields
 	useOpenAI     bool
@@ -44,7 +44,7 @@ type STTClient struct {
 func (t *STTClient) BaseClient() *baseClient { return t.base }
 
 // WithFilePath specifies the audio file to transcribe.
-func WithFilePath(f fu.FilePath) option[*STTClient] {
+func WithFilePath(f pathutil.FilePath) option[*STTClient] {
 	return func(t *STTClient) { t.filePath = f }
 }
 
