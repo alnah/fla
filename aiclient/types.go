@@ -18,9 +18,14 @@ const (
 	ProviderElevenLabs provider = "elevenlabs"
 )
 
+// provider identifies which AI service (OpenAI, Anthropic, ElevenLabs) is in use,
+// enabling provider-specific behavior downstream.
 type provider string
 
+// String returns the provider’s name.
 func (p provider) String() string { return string(p) }
+
+// IsValid checks whether the provider is one of the supported constants.
 func (p provider) IsValid() bool {
 	switch p {
 	case ProviderOpenAI, ProviderAnthropic, ProviderElevenLabs:
@@ -29,6 +34,9 @@ func (p provider) IsValid() bool {
 		return false
 	}
 }
+
+// Validate ensures a provider has been set and is supported,
+// returning an error otherwise.
 func (p provider) Validate() error {
 	if p.String() == "" {
 		return fmt.Errorf("invalid provider: can't be empty")
@@ -49,9 +57,14 @@ const (
 	URLSTTElevenLabs url = "https://api.elevenlabs.io/v1/speech-to-text"
 )
 
+// url represents an API endpoint URL for a given provider,
+// enabling compile-time validation against known endpoints.
 type url string
 
+// String returns the endpoint URL.
 func (u url) String() string { return string(u) }
+
+// IsValid checks whether the URL matches one of the known endpoints.
 func (u url) IsValid() bool {
 	switch u {
 	case URLChatOpenAI, URLChatAnthropic,
@@ -62,6 +75,9 @@ func (u url) IsValid() bool {
 		return false
 	}
 }
+
+// Validate ensures a URL has been set and is supported,
+// returning an error otherwise.
 func (u url) Validate() error {
 	if u.String() == "" {
 		return fmt.Errorf("invalid url: can't be empty")
@@ -78,11 +94,21 @@ const (
 	APIKeyEnvElevenLabs apiKey = "ELEVENLABS_API_KEY" // #nosec G101
 )
 
+// apiKey names the environment variable holding the provider’s API key,
+// centralizing authentication lookup.
 type apiKey string
 
+// String returns the environment-variable name.
 func (e apiKey) String() string { return string(e) }
+
+// GetEnv retrieves the key’s value from the environment.
 func (e apiKey) GetEnv() string { return os.Getenv(e.String()) }
-func (e apiKey) IsValid() bool  { return e.GetEnv() != "" }
+
+// IsValid checks whether the environment-variable is set.
+func (e apiKey) IsValid() bool { return e.GetEnv() != "" }
+
+// Validate ensures the API key is present in the environment,
+// returning an error otherwise.
 func (e apiKey) Validate() error {
 	if e.String() == "" {
 		return fmt.Errorf("invalid api key: can't be empty")
@@ -93,10 +119,16 @@ func (e apiKey) Validate() error {
 	return nil
 }
 
+// httpMethod specifies which HTTP verb to use; currently only POST is supported.
 type httpMethod string
 
+// String returns the HTTP method.
 func (hm httpMethod) String() string { return string(hm) }
-func (hm httpMethod) IsValid() bool  { return hm.String() == http.MethodPost }
+
+// IsValid checks whether the method is POST.
+func (hm httpMethod) IsValid() bool { return hm.String() == http.MethodPost }
+
+// Validate ensures the method is POST, returning an error otherwise.
 func (hm httpMethod) Validate() error {
 	if !hm.IsValid() {
 		return errors.New("invalid http method: require POST")
@@ -110,8 +142,10 @@ const (
 	opSpeechToText   operation = "speech-to-text transcript"
 )
 
+// operation describes a high-level API action for error reporting.
 type operation string
 
+// String returns the operation’s human-readable name.
 func (o operation) String() string { return string(o) }
 
 const (
@@ -131,10 +165,17 @@ const (
 	ModelSTTElevenLabs model = "scribe_v1"
 )
 
+// model enumerates the supported AI model identifiers,
+// enforcing valid selection at build time.
 type model string
 
-func (a model) String() string               { return string(a) }
+// String returns the model’s identifier.
+func (a model) String() string { return string(a) }
+
+// MarshalJSON serializes the model into JSON.
 func (a model) MarshalJSON() ([]byte, error) { return json.Marshal(a.String()) }
+
+// IsValid checks whether the model is one of the supported set.
 func (a model) IsValid() bool {
 	switch a {
 	case ModelReasoningOpenAI, ModelFlagshipOpenAI, ModelCheapOpenAI,
@@ -146,6 +187,9 @@ func (a model) IsValid() bool {
 		return false
 	}
 }
+
+// Validate ensures a model has been set and is supported,
+// returning an error otherwise.
 func (a model) Validate() error {
 	if a.String() == "" {
 		return fmt.Errorf("invalid ai model: can't be empty")
@@ -166,12 +210,17 @@ func (a model) Validate() error {
 	return nil
 }
 
-// Temperature controls randomness in model outputs.
+// Temperature controls the randomness of model outputs;
+// valid ranges differ between providers and models.
 type Temperature float32
 
-func (t Temperature) Float32() float32             { return float32(t) }
+// Float32 returns the numeric value.
+func (t Temperature) Float32() float32 { return float32(t) }
+
+// MarshalJSON serializes the temperature into JSON.
 func (t Temperature) MarshalJSON() ([]byte, error) { return json.Marshal(t.Float32()) }
 
+// IsValid checks whether the temperature is within the allowed range for a model.
 func (t Temperature) IsValid(m model) bool {
 	switch m {
 	case ModelReasoningOpenAI, ModelFlagshipOpenAI, ModelCheapOpenAI:
@@ -183,6 +232,8 @@ func (t Temperature) IsValid(m model) bool {
 	}
 }
 
+// Validate ensures the temperature is valid for a given model,
+// returning an error otherwise.
 func (t Temperature) Validate(m model) error {
 	if !t.IsValid(m) {
 		switch m {
@@ -203,10 +254,17 @@ const (
 	RoleAssistant role = "assistant"
 )
 
+// role identifies the sender of a message in a chat:
+// system, user or assistant.
 type role string
 
-func (r role) String() string               { return string(r) }
+// String returns the role’s name.
+func (r role) String() string { return string(r) }
+
+// MarshalJSON serializes the role into JSON.
 func (r role) MarshalJSON() ([]byte, error) { return json.Marshal(r.String()) }
+
+// IsValid checks whether the role is one of the allowed values.
 func (r role) IsValid() bool {
 	switch r {
 	case RoleSystem, RoleUser, RoleAssistant:
@@ -215,6 +273,8 @@ func (r role) IsValid() bool {
 		return false
 	}
 }
+
+// Validate ensures a role is recognized, returning an error otherwise.
 func (r role) Validate() error {
 	if !r.IsValid() {
 		available := strings.Join([]string{
@@ -227,14 +287,18 @@ func (r role) Validate() error {
 	return nil
 }
 
+// Message binds a role to its textual content in a chat exchange.
 type Message struct {
 	Role    role   `json:"role"`
 	Content string `json:"content"`
 }
 
+// IsValid checks that a Message has both a valid role and non-empty content.
 func (m Message) IsValid() bool {
 	return m.Role.IsValid() && m.Content != ""
 }
+
+// Validate ensures the message is well-formed, returning an error otherwise.
 func (m Message) Validate() error {
 	if !m.Role.IsValid() {
 		return m.Role.Validate()
@@ -245,8 +309,10 @@ func (m Message) Validate() error {
 	return nil
 }
 
+// Messages is a slice of Message, validating each entry for correctness.
 type Messages []Message
 
+// Validate checks every Message in the slice, returning the first error encountered.
 func (ms Messages) Validate() error {
 	for _, m := range ms {
 		if err := m.Validate(); err != nil {
@@ -256,11 +322,19 @@ func (ms Messages) Validate() error {
 	return nil
 }
 
+// MaxTokens caps how many tokens the model may generate in a completion.
 type MaxTokens int
 
-func (mt MaxTokens) Int() int                     { return int(mt) }
+// Int returns the value as a native int.
+func (mt MaxTokens) Int() int { return int(mt) }
+
+// MarshalJSON serializes the max-tokens into JSON.
 func (mt MaxTokens) MarshalJSON() ([]byte, error) { return json.Marshal(mt.Int()) }
-func (mt MaxTokens) IsValid() bool                { return mt.Int() >= 1 }
+
+// IsValid checks that MaxTokens is at least 1.
+func (mt MaxTokens) IsValid() bool { return mt.Int() >= 1 }
+
+// Validate ensures the token limit is valid, returning an error otherwise.
 func (mt MaxTokens) Validate() error {
 	if !mt.IsValid() {
 		return fmt.Errorf("invalid max tokens: must be >= 1")
@@ -268,11 +342,19 @@ func (mt MaxTokens) Validate() error {
 	return nil
 }
 
+// Text wraps input strings for TTS and ensures they are non-empty.
 type Text string
 
-func (t Text) String() string               { return string(t) }
+// String returns the raw text.
+func (t Text) String() string { return string(t) }
+
+// MarshalJSON serializes the text into JSON.
 func (t Text) MarshalJSON() ([]byte, error) { return json.Marshal(t.String()) }
-func (t Text) IsValid() bool                { return t != "" }
+
+// IsValid checks that the string is not empty.
+func (t Text) IsValid() bool { return t != "" }
+
+// Validate ensures the text is non-empty, returning an error otherwise.
 func (t Text) Validate() error {
 	if !t.IsValid() {
 		return errors.New("invalid text: can't be empty")
@@ -280,6 +362,7 @@ func (t Text) Validate() error {
 	return nil
 }
 
+// voice identifies which TTS voice to use, varying by provider.
 type voice string
 
 // OpenAI
@@ -309,8 +392,13 @@ const (
 	VoiceElevenLabsPtFemaleBia   voice = "Eyspt3SYhZzXd1Jd3J8O"
 )
 
-func (v voice) String() string               { return string(v) }
+// String returns the voice’s ID.
+func (v voice) String() string { return string(v) }
+
+// MarshalJSON serializes the voice into JSON.
 func (v voice) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+
+// IsValid checks whether the voice is supported by a given provider.
 func (v voice) IsValid(p provider) bool {
 	switch p {
 	case ProviderOpenAI:
@@ -337,6 +425,8 @@ func (v voice) IsValid(p provider) bool {
 	}
 }
 
+// Validate ensures the voice is valid for its provider,
+// returning an error otherwise.
 func (v voice) Validate(p provider) error {
 	if v.String() == "" {
 		return errors.New("invalid voice: can't be empty")
@@ -377,16 +467,26 @@ func (v voice) Validate(p provider) error {
 	return nil
 }
 
+// Instructions conveys additional guidance to the TTS engine;
+// required for OpenAI’s TTS.
 type Instructions string
 
-func (i Instructions) String() string               { return string(i) }
+// String returns the instruction text.
+func (i Instructions) String() string { return string(i) }
+
+// MarshalJSON serializes the instructions into JSON.
 func (i Instructions) MarshalJSON() ([]byte, error) { return json.Marshal(i) }
+
+// IsValid checks whether instructions meet provider requirements.
 func (i Instructions) IsValid(p provider) bool {
 	if p == ProviderOpenAI && i.String() == "" {
 		return false
 	}
 	return true
 }
+
+// Validate ensures instructions are non-empty when required,
+// returning an error otherwise.
 func (i Instructions) Validate(p provider) error {
 	if !i.IsValid(p) {
 		return errors.New("invalid instructions: can't be empty")
@@ -394,10 +494,17 @@ func (i Instructions) Validate(p provider) error {
 	return nil
 }
 
+// Speed controls playback rate for ElevenLabs TTS,
+// constrained to a provider-defined range.
 type Speed float32
 
-func (s Speed) Float32() float32             { return float32(s) }
+// Float32 returns the numeric value.
+func (s Speed) Float32() float32 { return float32(s) }
+
+// MarshalJSON serializes the speed into JSON.
 func (s Speed) MarshalJSON() ([]byte, error) { return json.Marshal(s.Float32()) }
+
+// IsValid checks whether the speed is within the allowed range.
 func (s Speed) IsValid(p provider) bool {
 	if p == ProviderElevenLabs && (s.Float32() < 0.7 || s.Float32() > 1.2) {
 		return false
@@ -405,6 +512,8 @@ func (s Speed) IsValid(p provider) bool {
 	return true
 }
 
+// Validate ensures the speed is within bounds,
+// returning an error otherwise.
 func (s Speed) Validate(p provider) error {
 	if !s.IsValid(p) {
 		return fmt.Errorf("invalid speed: must be 0.7 <= s <= 1.2")
@@ -412,9 +521,14 @@ func (s Speed) Validate(p provider) error {
 	return nil
 }
 
+// ISO6391 represents a two-letter language code,
+// ensuring valid language tags for speech operations.
 type ISO6391 string
 
+// String returns the language code.
 func (i ISO6391) String() string { return string(i) }
+
+// IsValid checks against the ISO 639-1 pattern and registry.
 func (i ISO6391) IsValid() bool {
 	var iso6391Pattern = regexp.MustCompile(`^[A-Za-z]{2}$`)
 	s := strings.ToLower(i.String())
@@ -424,6 +538,9 @@ func (i ISO6391) IsValid() bool {
 	tag := language.Make(s)
 	return !tag.IsRoot()
 }
+
+// Validate ensures the language code is recognized,
+// returning an error otherwise.
 func (i ISO6391) Validate() error {
 	if !i.IsValid() {
 		return fmt.Errorf("invalid ISO 639-1 code: %q", i.String())

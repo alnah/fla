@@ -9,6 +9,34 @@ import (
 	"net/http"
 )
 
+// isRetryable determines whether an error should be retried,
+// based on HTTP status (e.g. 429, 5xx), network timeouts,
+// or context cancellation semantics.
+func isRetryable(err error) bool {
+	var (
+		openaiError     *openaiError
+		anthropicError  *anthropicError
+		elevenlabsError *elevenlabsError
+		netError        net.Error
+	)
+
+	switch {
+	case errors.As(err, &openaiError),
+		errors.As(err, &anthropicError),
+		errors.As(err, &elevenlabsError):
+		return openaiError.StatusCode == 429 || openaiError.StatusCode >= 500
+	case errors.Is(err, context.Canceled),
+		errors.Is(err, context.DeadlineExceeded):
+		return false
+	case errors.As(err, &netError):
+		return netError.Timeout()
+	default:
+		return false
+	}
+}
+
+// buildProviderError inspects an HTTP response’s status code and delegates
+// to the appropriate provider-specific builder to produce a rich error.
 func buildProviderError(provider provider, res *http.Response) error {
 	switch provider {
 	case ProviderOpenAI:
@@ -22,6 +50,8 @@ func buildProviderError(provider provider, res *http.Response) error {
 	}
 }
 
+// openaiError models an error response from OpenAI’s API,
+// preserving status, type, message and code for diagnostics.
 type openaiError struct {
 	StatusCode int
 	Message    string
@@ -34,6 +64,8 @@ func (e *openaiError) Error() string {
 	return fmt.Sprintf("openai error %d %s: %s", e.StatusCode, e.Type, e.Message)
 }
 
+// buildOpenaiError decodes OpenAI’s error payload into openaiError,
+// falling back to a generic status error if decoding fails.
 func buildOpenaiError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
@@ -62,6 +94,8 @@ func buildOpenaiError(res *http.Response) error {
 	}
 }
 
+// anthropicError models an error response from Anthropic’s API,
+// preserving status and message for diagnostics.
 type anthropicError struct {
 	StatusCode int
 	ErrType    string
@@ -72,6 +106,8 @@ func (e *anthropicError) Error() string {
 	return fmt.Sprintf("anthropic api error %d %s: %s", e.StatusCode, e.ErrType, e.Message)
 }
 
+// buildAnthropicError decodes Anthropic’s error payload into anthropicError,
+// falling back to a generic status error if decoding fails.
 func buildAnthropicError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
@@ -96,6 +132,8 @@ func buildAnthropicError(res *http.Response) error {
 	}
 }
 
+// elevenlabsError models an error response from ElevenLabs’ API,
+// preserving status and detail message for diagnostics.
 type elevenlabsError struct {
 	StatusCode int
 	Status     string
@@ -106,6 +144,8 @@ func (e *elevenlabsError) Error() string {
 	return fmt.Sprintf("elevenlabs api error %d %s: %s", e.StatusCode, e.Status, e.Message)
 }
 
+// buildElevenlabsError decodes ElevenLabs’ error payload into elevenlabsError,
+// falling back to a generic status error if decoding fails.
 func buildElevenlabsError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 
@@ -127,29 +167,5 @@ func buildElevenlabsError(res *http.Response) error {
 		StatusCode: res.StatusCode,
 		Status:     payload.Detail.Status,
 		Message:    payload.Detail.Message,
-	}
-}
-
-func isRetryable(err error) bool {
-	var (
-		openaiError     *openaiError
-		anthropicError  *anthropicError
-		elevenlabsError *elevenlabsError
-		netError        net.Error
-	)
-
-	switch {
-	case errors.As(err, &openaiError):
-		return openaiError.StatusCode == 429 || openaiError.StatusCode >= 500
-	case errors.As(err, &anthropicError):
-		return anthropicError.StatusCode == 429 || anthropicError.StatusCode >= 500
-	case errors.As(err, &elevenlabsError):
-		return elevenlabsError.StatusCode == 429 || elevenlabsError.StatusCode >= 500
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return false
-	case errors.As(err, &netError):
-		return netError.Timeout()
-	default:
-		return false
 	}
 }

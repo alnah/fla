@@ -17,6 +17,8 @@ import (
 	"github.com/alnah/fla/transport"
 )
 
+// TTSClient synthesizes text into speech, sharing
+// transport, error handling and retries across providers.
 type TTSClient struct {
 	// shared fields
 	base *baseClient
@@ -30,22 +32,31 @@ type TTSClient struct {
 	useElevenLabs bool
 }
 
+// BaseClient exposes underlying baseClient for inspection or extension.
 func (t *TTSClient) BaseClient() *baseClient { return t.base }
 
+// WithVoice selects the voice for synthesis.
 func WithVoice(v voice) option[*TTSClient] {
 	return func(s *TTSClient) { s.voice = v }
 }
 
+// WithText sets the input text to synthesize.
 func WithText(txt Text) option[*TTSClient] {
 	return func(s *TTSClient) { s.text = txt }
 }
+
+// WithInstructions provides additional guidance (OpenAI only).
 func WithInstructions(i Instructions) option[*TTSClient] {
 	return func(s *TTSClient) { s.instructions = i }
 }
+
+// WithSpeed sets playback rate (ElevenLabs only).
 func WithSpeed(sp Speed) option[*TTSClient] {
 	return func(s *TTSClient) { s.speed = sp }
 }
 
+// NewTTSClient constructs a TTSClient, applies defaults, validates
+// configuration, and selects the appropriate provider.
 func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
 	s := &TTSClient{base: &baseClient{}}
 	for _, opt := range options {
@@ -57,6 +68,44 @@ func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
 	return s, nil
 }
 
+// Audio performs the HTTP request and returns raw audio bytes,
+// wrapping any error with context.
+func (s *TTSClient) Audio() ([]byte, error) {
+	byt, err := json.Marshal(s)
+	if err != nil {
+		return nil, NewTTSClientError(s.base.provider, "failed to marshal payload", err)
+	}
+
+	url := s.base.url.String()
+	if s.base.provider == ProviderElevenLabs {
+		url += "/" + s.voice.String()
+	}
+	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), url, bytes.NewBuffer(byt))
+	if err != nil {
+		return nil, NewTTSClientError(s.base.provider, "failed to build http request", err)
+	}
+
+	s.base.httpClient.Transport = s.newTransportChain()
+	res, err := s.base.httpClient.Do(req)
+	if err != nil {
+		return nil, NewTTSClientError(s.base.provider, "failed to send http request", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	byt, err = io.ReadAll(res.Body)
+	res.Body = io.NopCloser(bytes.NewReader(byt))
+	if err != nil {
+		return nil, NewTTSClientError(s.base.provider, "failed to read response body", err)
+	}
+
+	if res.StatusCode != 200 {
+		return nil, buildProviderError(s.base.provider, res)
+	}
+
+	return byt, nil
+}
+
+// MarshalJSON builds provider-specific payload for the TTS API.
 func (s TTSClient) MarshalJSON() ([]byte, error) {
 	switch {
 	case s.useOpenAI:
@@ -92,41 +141,6 @@ func (s TTSClient) MarshalJSON() ([]byte, error) {
 	default:
 		return nil, errors.New("no provider configured")
 	}
-}
-
-func (s *TTSClient) Audio() ([]byte, error) {
-	byt, err := json.Marshal(s)
-	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to marshal payload", err)
-	}
-
-	url := s.base.url.String()
-	if s.base.provider == ProviderElevenLabs {
-		url += "/" + s.voice.String()
-	}
-	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), url, bytes.NewBuffer(byt))
-	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to build http request", err)
-	}
-
-	s.base.httpClient.Transport = s.newTransportChain()
-	res, err := s.base.httpClient.Do(req)
-	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to send http request", err)
-	}
-	defer func() { _ = res.Body.Close() }()
-
-	byt, err = io.ReadAll(res.Body)
-	res.Body = io.NopCloser(bytes.NewReader(byt))
-	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to read response body", err)
-	}
-
-	if res.StatusCode != 200 {
-		return nil, buildProviderError(s.base.provider, res)
-	}
-
-	return byt, nil
 }
 
 func (s *TTSClient) applyDefaults() *TTSClient {

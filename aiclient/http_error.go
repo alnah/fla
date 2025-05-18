@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// httpClientError represents an error in the HTTP client layer.
+// It captures which provider and operation were in flight, a human-friendly
+// message, and any underlying error to facilitate debugging.
 type httpClientError struct {
 	Provider  provider
 	Operation operation
@@ -12,6 +15,9 @@ type httpClientError struct {
 	Wrapped   error
 }
 
+// Error formats a descriptive string including failed operation, provider,
+// contextual message and wrapped error, so callers can quickly understand
+// what went wrong.
 func (e httpClientError) Error() string {
 	const prefix = "http client error"
 
@@ -62,10 +68,13 @@ func (e httpClientError) Error() string {
 	return result
 }
 
+// Unwrap yields the underlying error, enabling standard Go error chaining.
 func (e *httpClientError) Unwrap() error {
 	return e.Wrapped
 }
 
+// NewChatClientError wraps an error arising during a chat-completion call,
+// tagging it with the provider and a custom message for context.
 func NewChatClientError(pvd provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
 		Provider:  pvd,
@@ -75,6 +84,8 @@ func NewChatClientError(pvd provider, message string, wrapped error) *httpClient
 	}
 }
 
+// NewTTSClientError wraps an error arising during a text-to-speech call,
+// tagging it with the provider and a custom message for context.
 func NewTTSClientError(pvd provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
 		Provider:  pvd,
@@ -84,6 +95,8 @@ func NewTTSClientError(pvd provider, message string, wrapped error) *httpClientE
 	}
 }
 
+// NewSTTClientError wraps an error arising during a speech-to-text call,
+// tagging it with the provider and a custom message for context.
 func NewSTTClientError(pvd provider, message string, wrapped error) *httpClientError {
 	return &httpClientError{
 		Provider:  pvd,

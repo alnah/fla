@@ -21,6 +21,8 @@ import (
 	"github.com/alnah/fla/transport"
 )
 
+// STTClient uploads audio and returns a text transcription,
+// sharing middleware and error handling across providers.
 type STTClient struct {
 	// shared fields
 	base *baseClient
@@ -37,16 +39,21 @@ type STTClient struct {
 	formFileBody   *bytes.Buffer
 }
 
+// BaseClient exposes underlying baseClient for inspection or extension.
 func (t *STTClient) BaseClient() *baseClient { return t.base }
 
+// WithFilePath specifies the audio file to transcribe.
 func WithFilePath(f fu.FilePath) option[*STTClient] {
 	return func(t *STTClient) { t.filePath = f }
 }
 
+// WithLanguage sets the transcription language code.
 func WithLanguage(i ISO6391) option[*STTClient] {
 	return func(t *STTClient) { t.language = i }
 }
 
+// NewSTTClient prepares the audio file, applies defaults,
+// validates configuration, and returns the client or an error.
 func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 	t := &STTClient{base: &baseClient{}}
 	for _, opt := range options {
@@ -64,6 +71,8 @@ func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 	return t, nil
 }
 
+// Transcript uploads the file via multipart/form-data and returns
+// the transcription text, wrapping any errors with context.
 func (s *STTClient) Transcript() (transcriptResponse, error) {
 	err := s.newFormFileBody()
 	if err != nil {

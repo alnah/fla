@@ -19,9 +19,8 @@ import (
 
 const anthropicVersion string = "2023-06-01"
 
-// ChatClient wraps HTTP transport with middleware for different AI providers.
-// It automatically injects headers, error classification, circuit breaker,
-// retrier, and logging.
+// ChatClient issues chat‐completion requests, sharing
+// authentication, transport middleware, retries and error handling.
 type ChatClient struct {
 	// shared fields
 	base *baseClient
@@ -36,19 +35,26 @@ type ChatClient struct {
 
 }
 
+// BaseClient exposes underlying baseClient for inspection or extension.
 func (c *ChatClient) BaseClient() *baseClient { return c.base }
 
+// WithTemperature adjusts randomness in responses.
 func WithTemperature(t Temperature) option[*ChatClient] {
 	return func(c *ChatClient) { c.temperature = t }
 }
+
+// WithMessages sets the conversation history.
 func WithMessages(ms Messages) option[*ChatClient] {
 	return func(c *ChatClient) { c.messages = ms }
 }
+
+// WithMaxTokens caps the generated content length.
 func WithMaxTokens(mt MaxTokens) option[*ChatClient] {
 	return func(c *ChatClient) { c.maxTokens = mt }
 }
 
-// NewChatClient builds a ChatClient with default transport chain.
+// NewChatClient builds a ChatClient with default middleware,
+// applies options and validates the final configuration.
 func NewChatClient(opts ...option[*ChatClient]) (*ChatClient, error) {
 	c := &ChatClient{base: &baseClient{}}
 	for _, opt := range opts {
@@ -62,6 +68,8 @@ func NewChatClient(opts ...option[*ChatClient]) (*ChatClient, error) {
 	return c, nil
 }
 
+// Completion sends the chat request and returns the model’s response,
+// wrapping any errors with context.
 func (c *ChatClient) Completion() (chatResponse, error) {
 	byt, err := json.Marshal(c)
 	if err != nil {
