@@ -14,22 +14,31 @@ import (
 // or context cancellation semantics.
 func isRetryable(err error) bool {
 	var (
-		openaiError     *openaiError
-		anthropicError  *anthropicError
-		elevenlabsError *elevenlabsError
-		netError        net.Error
+		oe     *openaiError
+		ae     *anthropicError
+		ee     *elevenlabsError
+		netErr net.Error
 	)
 
 	switch {
-	case errors.As(err, &openaiError),
-		errors.As(err, &anthropicError),
-		errors.As(err, &elevenlabsError):
-		return openaiError.StatusCode == 429 || openaiError.StatusCode >= 500
-	case errors.Is(err, context.Canceled),
-		errors.Is(err, context.DeadlineExceeded):
+	// retry on HTTP 429 or any 5xx
+	case errors.As(err, &oe):
+		return oe.StatusCode == 429 || oe.StatusCode >= 500
+
+	case errors.As(err, &ae):
+		return ae.StatusCode == 429 || ae.StatusCode >= 500
+
+	case errors.As(err, &ee):
+		return ee.StatusCode == 429 || ee.StatusCode >= 500
+
+	// user cancelled or deadline exceeded are not retryable
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return false
-	case errors.As(err, &netError):
-		return netError.Timeout()
+
+	// network timeouts are retryable
+	case errors.As(err, &netErr):
+		return netErr.Timeout()
+
 	default:
 		return false
 	}
