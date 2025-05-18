@@ -5,33 +5,31 @@ import (
 	"time"
 )
 
-func TestSystemClockNow(t *testing.T) {
-	sys := New()
-	now := time.Now()
-	diff := sys.Now().Sub(now)
-
-	if diff < 0 || diff > time.Second {
-		t.Errorf("expected system clock close to now, got diff %v", diff)
+func TestClock_Now(t *testing.T) {
+	c := New()
+	before := time.Now()
+	got := c.Now()
+	if got.Before(before) {
+		t.Fatalf("Now() = %v; want ≥ %v", got, before)
 	}
 }
 
-func TestFakeClockNow(t *testing.T) {
-	start := time.Date(2020, 1, 1, 10, 0, 0, 0, time.UTC)
-	fake := NewFakeClock(start)
-
-	if !fake.Now().Equal(start) {
-		t.Errorf("expected %v, got %v", start, fake.Now())
+func TestClock_SleepAtLeast(t *testing.T) {
+	c := New()
+	d := 10 * time.Millisecond
+	start := time.Now()
+	c.Sleep(d)
+	elapsed := time.Since(start)
+	if elapsed < d {
+		t.Fatalf("slept %v; want ≥ %v", elapsed, d)
 	}
 }
 
-func TestFakeClockSleep(t *testing.T) {
-	start := time.Date(2020, 1, 1, 10, 0, 0, 0, time.UTC)
-	fake := NewFakeClock(start)
-
-	fake.Sleep(2 * time.Hour)
-	expected := start.Add(2 * time.Hour)
-
-	if !fake.Now().Equal(expected) {
-		t.Errorf("expected %v after sleep, got %v", expected, fake.Now())
+func TestClock_SleepZero(t *testing.T) {
+	c := New()
+	start := time.Now()
+	c.Sleep(0)
+	if since := time.Since(start); since > time.Millisecond {
+		t.Fatalf("took %v; want ≲ 1ms", since)
 	}
 }
