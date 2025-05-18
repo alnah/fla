@@ -6,327 +6,227 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/alnah/fla/clock"
 )
 
-func TestExecute_NilOperation(t *testing.T) {
-	b := New()
+// fakeClock implements a controllable clock for testing.
+type fakeClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func newFakeClock(start time.Time) *fakeClock {
+	return &fakeClock{now: start}
+}
+
+func (f *fakeClock) Now() time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.now
+}
+
+func (f *fakeClock) Add(d time.Duration) {
+	f.mu.Lock()
+	f.now = f.now.Add(d)
+	f.mu.Unlock()
+}
+
+func (f *fakeClock) Sleep(d time.Duration) {}
+
+// fakeMetrics collects counts of calls
+type fakeMetrics struct {
+	tripped  int
+	rejected int
+	success  int
+	failure  int
+}
+
+func (f *fakeMetrics) IncTripped()  { f.tripped++ }
+func (f *fakeMetrics) IncRejected() { f.rejected++ }
+func (f *fakeMetrics) IncSuccess()  { f.success++ }
+func (f *fakeMetrics) IncFailure()  { f.failure++ }
+
+func newTestBreaker(clock *fakeClock, metrics Metrics) *breaker {
+	return New(Config{
+		FailureThreshold: 2,
+		SuccessThreshold: 1,
+		OpenTimeout:      10 * time.Second,
+		FailureWindow:    1 * time.Minute,
+		BackoffMaxExp:    2,
+		MaxOpenTimeout:   1 * time.Minute,
+		Clock:            clock,
+		Metrics:          metrics,
+	}).(*breaker)
+}
+
+func TestExecute_NilOp(t *testing.T) {
+	b := newTestBreaker(newFakeClock(time.Now()), nil)
 	err := b.Execute(context.Background(), nil)
 	if err == nil || err.Error() != "breaker: nil operation" {
-		t.Errorf("want breaker: nil operation, got %v", err)
+		t.Fatalf("want error 'breaker: nil operation', got %v", err)
 	}
 }
 
-func TestThresholdValidation_Defaults(t *testing.T) {
-	b := New(WithFailureThreshold(0), WithSuccessThreshold(0), WithClock(nil))
-
-	if b.s.failureThreshold != defaultFailureThreshold {
-		t.Errorf("want failure threshold %d, got %d", defaultFailureThreshold, b.s.failureThreshold)
-	}
-	if b.s.successThreshold != defaultSuccessThreshold {
-		t.Errorf("want success threshold %d, got %d", defaultSuccessThreshold, b.s.successThreshold)
-	}
-	if b.s.clock == nil {
-		t.Error("want non-nil clock, got nil")
-	}
-}
-
-func TestClosed_ResetFailuresOnSuccess(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
-	b := New(WithFailureThreshold(3), WithClock(fc))
-
-	// first call fails
-	_ = b.Execute(context.Background(), func(ctx context.Context) error {
-		return errors.New("fail")
-	})
-
-	// second call succeeds → failure count should reset
-	if err := b.Execute(context.Background(), func(ctx context.Context) error { return nil }); err != nil {
-		t.Errorf("want nil, got %v", err)
-	}
-
-	// up to threshold-1 failures again should still be closed
-	for range 2 {
-		_ = b.Execute(context.Background(), func(ctx context.Context) error {
-			return errors.New("f")
-		})
-	}
-	if !b.IsClosed() {
-		t.Errorf("want closed, got %q", b.State())
-	}
-}
-
-func TestConcurrentExecutions(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
-	b := New(WithFailureThreshold(100), WithClock(fc))
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	successes, failures := 0, 0
-
-	for range 50 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err := b.Execute(context.Background(), func(ctx context.Context) error {
-				time.Sleep(1 * time.Millisecond)
-				return nil
-			})
-			mu.Lock()
-			if err != nil {
-				failures++
-			} else {
-				successes++
-			}
-			mu.Unlock()
-		}()
-	}
-	wg.Wait()
-
-	if failures != 0 {
-		t.Errorf("want 0 failures, got %d", failures)
-	}
-	if successes != 50 {
-		t.Errorf("want 50 successes, got %d", successes)
-	}
-}
-
-func TestBreaker_TripsOpenAfterFailures(t *testing.T) {
-	// configure breaker to open after 2 failures
+func TestBreaker_TripAndReset(t *testing.T) {
 	start := time.Now()
-	fc := clock.NewFakeClock(start)
-	b := New(
-		WithFailureThreshold(2),
-		WithOpenTimeout(5*time.Second),
-		WithClock(fc),
-	)
+	clk := newFakeClock(start)
+	metrics := &fakeMetrics{}
+	b := newTestBreaker(clk, metrics)
 
-	err1 := b.Execute(context.Background(), func(ctx context.Context) error {
-		return errors.New("failure1")
-	})
-	if err1 == nil || err1.Error() != "failure1" {
-		t.Errorf("error first execute: want \"failure1\", got %v", err1)
+	// First failure
+	err1 := b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail1") })
+	if err1 == nil || err1.Error() != "fail1" {
+		t.Fatalf("want fail1, got %v", err1)
+	}
+	if metrics.failure != 1 {
+		t.Errorf("want 1 failure, got %d", metrics.failure)
 	}
 
-	err2 := b.Execute(context.Background(), func(ctx context.Context) error {
-		return errors.New("failure2")
-	})
-	if err2 == nil || err2.Error() != "failure2" {
-		t.Errorf("error first execute: want \"failure2\", got %v", err2)
+	// Second failure should trip
+	err2 := b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail2") })
+	if err2 == nil || err2.Error() != "fail2" {
+		t.Fatalf("want fail2, got %v", err2)
+	}
+	if metrics.failure != 2 {
+		t.Errorf("want 2 failures, got %d", metrics.failure)
+	}
+	if metrics.tripped != 1 {
+		t.Errorf("want 1 trip, got %d", metrics.tripped)
 	}
 
-	err3 := b.Execute(context.Background(), func(ctx context.Context) error { return nil })
+	// Now breaker is open, next call rejected
+	err3 := b.Execute(context.Background(), func(_ context.Context) error { return nil })
 	if !errors.Is(err3, ErrOpen) {
-		t.Errorf("error first execute: want ErrOpen, got %v", err3)
+		t.Errorf("want ErrOpen, got %v", err3)
 	}
-	if !b.IsOpen() {
-		t.Errorf("breaker state: want \"open\", got %q", b.State())
+	if metrics.rejected != 1 {
+		t.Errorf("want 1 rejection, got %d", metrics.rejected)
+	}
+
+	// Advance time past open timeout
+	clk.Add(11 * time.Second)
+
+	// Probe allowed in half-open
+	err4 := b.Execute(context.Background(), func(_ context.Context) error { return nil })
+	if err4 != nil {
+		t.Fatalf("want no error, got %v", err4)
+	}
+	if metrics.success != 1 {
+		t.Errorf("want 1 success, got %d", metrics.success)
+	}
+
+	// After success threshold, breaker resets to closed
+	err5 := b.Execute(context.Background(), func(_ context.Context) error { return nil })
+	if err5 != nil {
+		t.Fatalf("want no error, got %v", err5)
+	}
+	if metrics.success != 2 {
+		t.Errorf("want 2 successes, got %d", metrics.success)
 	}
 }
 
-func TestBreaker_TransitionsToOpenAfterFailures(t *testing.T) {
-	startTime := time.Date(2025, 5, 6, 12, 0, 0, 0, time.UTC)
-	fakeClock := clock.NewFakeClock(startTime)
+func TestBreaker_BackoffMaxTimeout(t *testing.T) {
+	clk := newFakeClock(time.Now())
+	metrics := &fakeMetrics{}
+	b := newTestBreaker(clk, metrics)
 
-	b := New(
-		WithFailureThreshold(3),
-		WithOpenTimeout(10*time.Second),
-		WithClock(fakeClock),
-	)
-	for i := range 3 {
-		err := b.Execute(context.Background(), func(ctx context.Context) error {
-			return errors.New("simulated failure")
-		})
-		if err == nil {
-			t.Fatalf("error: want failure on iteration %d, got nil", i)
+	// Trip to exceed backoff exp threshold
+	// First trip
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail") })
+	clk.Add(11 * time.Second)
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail") })
+	// Second trip
+	clk.Add(11 * time.Second)
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail") })
+
+	// Now in open state; compute current untilOpen duration relative to now
+	dur := b.untilOpen.Sub(clk.Now())
+	if dur > b.cfg.MaxOpenTimeout {
+		t.Errorf("want open duration <= %v, got %v", b.cfg.MaxOpenTimeout, dur)
+	}
+}
+
+func TestFailureWindowEviction(t *testing.T) {
+	start := time.Now()
+	clk := newFakeClock(start)
+	metrics := &fakeMetrics{}
+	b := newTestBreaker(clk, metrics)
+
+	// First failure
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail1") })
+	// Advance beyond failure window so it's evicted
+	clk.Add(2 * time.Minute)
+
+	// Next failures count as first again
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail2") })
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail3") })
+
+	// Should trip on second since window reset
+	if metrics.tripped != 1 {
+		t.Errorf("want 1 trip, got %d", metrics.tripped)
+	}
+}
+
+func TestContextCancelNeutral(t *testing.T) {
+	clk := newFakeClock(time.Now())
+	b := newTestBreaker(clk, nil)
+
+	// Cancelled context should not count as failure in closed
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := b.Execute(ctx, func(_ context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("want context.Canceled, got %v", err)
+	}
+
+	// Should still allow subsequent calls
+	err2 := b.Execute(context.Background(), func(_ context.Context) error { return nil })
+	if err2 != nil {
+		t.Errorf("want no error, got %v", err2)
+	}
+}
+
+func TestOnStateChangeCalled(t *testing.T) {
+	clk := newFakeClock(time.Now())
+	// Channel to capture state changes
+	ch := make(chan struct{ from, to state }, 3)
+	b := New(Config{
+		FailureThreshold: 1,
+		OpenTimeout:      10 * time.Second,
+		FailureWindow:    time.Minute,
+		Clock:            clk,
+		OnStateChange: func(p, n state) {
+			ch <- struct{ from, to state }{p, n}
+		},
+	}).(*breaker)
+
+	// Trip to open
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return errors.New("fail") })
+	// Expect Closed->Open
+	select {
+	case evt := <-ch:
+		if evt.from != Closed || evt.to != Open {
+			t.Errorf("want (closed->open), got (%v->%v)", evt.from, evt.to)
 		}
+	case <-time.After(100 * time.Millisecond):
+		t.Error("timeout waiting for open event")
 	}
 
-	if !b.IsOpen() {
-		t.Errorf("breaker state: want \"open\", got %q", b.State())
-	}
-
-	err := b.Execute(context.Background(), func(ctx context.Context) error { return nil })
-	if !errors.Is(err, ErrOpen) {
-		t.Errorf("error: want ErrOpen, got %v", err)
-	}
-}
-
-func TestBreaker_BlocksWhileOpen(t *testing.T) {
-	// configure breaker to open after 1 failure
-	start := time.Now()
-	fc := clock.NewFakeClock(start)
-	b := New(
-		WithFailureThreshold(1),
-		WithOpenTimeout(10*time.Second),
-		WithClock(fc),
-	)
-
-	// trip to open
-	_ = b.Execute(context.Background(), func(ctx context.Context) error {
-		return errors.New("err")
-	})
-	if !b.IsOpen() {
-		t.Fatalf("breaker state: want \"open\", got %q", b.State())
-	}
-
-	called := false
-	err := b.Execute(context.Background(), func(ctx context.Context) error {
-		called = true
-		return nil
-	})
-	if !errors.Is(err, ErrOpen) {
-		t.Errorf("error first execute: want ErrOpen, got %v", err)
-	}
-	if called {
-		t.Errorf("error: operation should not be called while open")
-	}
-}
-
-func TestHalfOpen_FailedProbeTripsBackToOpen(t *testing.T) {
-	start := time.Now()
-	fc := clock.NewFakeClock(start)
-	b := New(
-		WithFailureThreshold(1),
-		WithSuccessThreshold(1),
-		WithOpenTimeout(1*time.Second),
-		WithClock(fc),
-	)
-
-	// trip to open
-	_ = b.Execute(context.Background(), func(ctx context.Context) error { return errors.New("boom1") })
-	if !b.IsOpen() {
-		t.Fatalf("want open, got %q", b.State())
-	}
-
-	// advance past timeout into half-open
-	fc.Sleep(2 * time.Second)
-
-	// failed probe should return the error and trip back to open
-	err := b.Execute(context.Background(), func(ctx context.Context) error { return errors.New("boom2") })
-	if err == nil || err.Error() != "boom2" {
-		t.Errorf("want \"boom2\", got %v", err)
-	}
-	if !b.IsOpen() {
-		t.Errorf("want open, got %q", b.State())
-	}
-}
-
-func TestBreaker_HalfOpenAfterTimeout(t *testing.T) {
-	// configure breaker to open after 1 failure and close after 1 success in half-open
-	start := time.Now()
-	fc := clock.NewFakeClock(start)
-	b := New(
-		WithFailureThreshold(1),
-		WithSuccessThreshold(1),
-		WithOpenTimeout(3*time.Second),
-		WithClock(fc),
-	)
-
-	// trip to open
-	_ = b.Execute(context.Background(), func(ctx context.Context) error {
-		return errors.New("boom")
-	})
-	if !b.IsOpen() {
-		t.Fatalf("breaker state: want \"open\", got %q", b.State())
-	}
-
-	// move past timeout
-	fc.Sleep(4 * time.Second)
-
-	// execute in half-open
-	err := b.Execute(context.Background(), func(ctx context.Context) error { return nil })
-	if err != nil {
-		t.Errorf("error: Execute in half-open: want nil, got %v", err)
-	}
-	if !b.IsClosed() {
-		t.Errorf("breaker state: want \"closed\", got %q", b.State())
-	}
-}
-
-func TestBreaker_TransitionsToHalfOpenAndBackToClosed(t *testing.T) {
-	startTime := time.Date(2025, 5, 6, 12, 0, 0, 0, time.UTC)
-	fakeClock := clock.NewFakeClock(startTime)
-
-	b := New(
-		WithFailureThreshold(1),
-		WithSuccessThreshold(2),
-		WithOpenTimeout(5*time.Second),
-		WithClock(fakeClock),
-	)
-
-	// trip to open
-	_ = b.Execute(context.Background(), func(ctx context.Context) error { return errors.New("boom") })
-
-	if !b.IsOpen() {
-		t.Fatalf("breaker state: want \"open\", got %q", b.State())
-	}
-
-	// advance past open timeout
-	fakeClock.Sleep(6 * time.Second)
-
-	// first successful probe
-	if err := b.Execute(context.Background(), func(ctx context.Context) error { return nil }); err != nil {
-		t.Fatalf("error: first probe: want no error, got %v", err)
-	}
-	if !b.IsHalfOpen() {
-		t.Errorf("breaker state: want \"half-open\", got %q", b.State())
-	}
-
-	// second successful probe -> closed
-	if err := b.Execute(context.Background(), func(ctx context.Context) error { return nil }); err != nil {
-		t.Fatalf("error: second probe: want no error, got %v", err)
-	}
-	if !b.IsClosed() {
-		t.Errorf("breaker state: want \"closed\", got %q", b.State())
-	}
-}
-
-func TestOnStateChange_Called(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
-	var mu sync.Mutex
-	calls := []string{}
-	onChange := func(prev, next state) {
-		mu.Lock()
-		calls = append(calls, prev.String()+"->"+next.String())
-		mu.Unlock()
-	}
-
-	b := New(
-		WithFailureThreshold(1),
-		WithSuccessThreshold(1),
-		WithOpenTimeout(1*time.Second),
-		WithClock(fc),
-		WithOnStateChange(onChange),
-	)
-
-	// closed -> opened
-	_ = b.Execute(context.Background(), func(ctx context.Context) error { return errors.New("fail") })
-	// advance past open timeout
-	fc.Sleep(2 * time.Second)
-	// opened -> half-open
-	_ = b.Execute(context.Background(), func(ctx context.Context) error { return nil })
-	// half-open -> closed
-	_ = b.Execute(context.Background(), func(ctx context.Context) error { return nil })
-
-	// give the async hooks a moment
-	time.Sleep(10 * time.Millisecond)
-
-	mu.Lock()
-	defer mu.Unlock()
-	want := map[string]bool{
-		closed.String() + "->" + open.String():     true,
-		open.String() + "->" + halfOpen.String():   true,
-		halfOpen.String() + "->" + closed.String(): true,
-	}
-	got := make(map[string]bool)
-	for _, c := range calls {
-		got[c] = true
-	}
-	for tran := range want {
-		if !got[tran] {
-			t.Errorf("want transition %q called, but it was not", tran)
+	// Advance to half-open and immediate reset on success
+	clk.Add(11 * time.Second)
+	_ = b.Execute(context.Background(), func(_ context.Context) error { return nil })
+	// Expect Open->HalfOpen then HalfOpen->Closed
+	exp := []struct{ from, to state }{{Open, HalfOpen}, {HalfOpen, Closed}}
+	for i, wantEvt := range exp {
+		select {
+		case evt := <-ch:
+			if evt.from != wantEvt.from || evt.to != wantEvt.to {
+				t.Errorf("[%d] want (%v->%v), got (%v->%v)", i, wantEvt.from, wantEvt.to, evt.from, evt.to)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Errorf("timeout waiting for event %d", i)
 		}
 	}
 }

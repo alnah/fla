@@ -15,7 +15,7 @@ func (t *TTSClient) newTransportChain() http.RoundTripper {
 		t.addAuthHeader(),
 		transport.AddHeader("User-Agent", "Fla/1.0"),
 		transport.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, t.buildError()),
-		transport.UseCircuitBreaker(breaker.New()),
+		transport.UseCircuitBreaker(breaker.New(breaker.ThirdPartyConfig())),
 		transport.UseRetrier(retrier.New(), isRetryable),
 		transport.UseLogger(t.base.log),
 	)
