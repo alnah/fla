@@ -5,40 +5,40 @@ import (
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/retrier"
-	"github.com/alnah/fla/tripper"
+	"github.com/alnah/fla/transport"
 )
 
 const anthropicVersion string = "2023-06-01"
 
 func (c *ChatClient) newTransportChain() http.RoundTripper {
-	return tripper.Chain(
+	return transport.Chain(
 		c.base.httpClient.Transport,
-		tripper.AddHeader("Content-Type", "application/json"),
+		transport.AddHeader("Content-Type", "application/json"),
 		c.addAuthHeader(),
 		c.addSpecHeader(),
-		tripper.AddHeader("User-Agent", "Fla/1.0"),
-		tripper.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, c.buildError()),
-		tripper.UseCircuitBreaker(breaker.New()),
-		tripper.UseRetrier(retrier.New(), isRetryable),
-		tripper.UseLogger(c.base.log),
+		transport.AddHeader("User-Agent", "Fla/1.0"),
+		transport.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, c.buildError()),
+		transport.UseCircuitBreaker(breaker.New()),
+		transport.UseRetrier(retrier.New(), isRetryable),
+		transport.UseLogger(c.base.log),
 	)
 }
 
-func (c *ChatClient) addAuthHeader() tripper.Middleware {
+func (c *ChatClient) addAuthHeader() transport.Middleware {
 	if c.base.provider == ProviderOpenAI {
-		return tripper.AddHeader("Authorization", "Bearer "+c.base.apiKey.GetEnv())
+		return transport.AddHeader("Authorization", "Bearer "+c.base.apiKey.GetEnv())
 	}
-	return tripper.AddHeader("x-api-key", c.base.apiKey.GetEnv())
+	return transport.AddHeader("x-api-key", c.base.apiKey.GetEnv())
 }
 
-func (c *ChatClient) addSpecHeader() tripper.Middleware {
+func (c *ChatClient) addSpecHeader() transport.Middleware {
 	if c.useAnthropic {
-		return tripper.AddHeader("anthropic-version", anthropicVersion)
+		return transport.AddHeader("anthropic-version", anthropicVersion)
 	}
-	return tripper.AddHeader("key", "")
+	return transport.AddHeader("key", "")
 }
 
-func (c *ChatClient) buildError() tripper.ErrorFactoryFunc {
+func (c *ChatClient) buildError() transport.ErrorFactoryFunc {
 	if c.useOpenAI {
 		return buildOpenaiError
 	}

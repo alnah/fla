@@ -5,31 +5,31 @@ import (
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/retrier"
-	"github.com/alnah/fla/tripper"
+	"github.com/alnah/fla/transport"
 )
 
 func (s *STTClient) newTransportChain() http.RoundTripper {
-	return tripper.Chain(
+	return transport.Chain(
 		s.base.httpClient.Transport,
-		tripper.AddHeader("Content-Type", s.contentType),
+		transport.AddHeader("Content-Type", s.contentType),
 		s.addAuthHeader(),
-		tripper.AddHeader("User-Agent", "Fla/1.0"),
-		tripper.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, s.buildError()),
-		tripper.UseCircuitBreaker(breaker.New()),
-		tripper.UseRetrier(retrier.New(), isRetryable),
-		tripper.UseLogger(s.base.log),
+		transport.AddHeader("User-Agent", "Fla/1.0"),
+		transport.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, s.buildError()),
+		transport.UseCircuitBreaker(breaker.New()),
+		transport.UseRetrier(retrier.New(), isRetryable),
+		transport.UseLogger(s.base.log),
 	)
 }
 
-func (s *STTClient) addAuthHeader() tripper.Middleware {
+func (s *STTClient) addAuthHeader() transport.Middleware {
 	if s.base.provider == ProviderOpenAI {
-		return tripper.AddHeader("Authorization", "Bearer "+s.base.apiKey.GetEnv())
+		return transport.AddHeader("Authorization", "Bearer "+s.base.apiKey.GetEnv())
 	}
-	return tripper.AddHeader("xi-api-key", s.base.apiKey.GetEnv())
+	return transport.AddHeader("xi-api-key", s.base.apiKey.GetEnv())
 
 }
 
-func (s *STTClient) buildError() tripper.ErrorFactoryFunc {
+func (s *STTClient) buildError() transport.ErrorFactoryFunc {
 	if s.useOpenAI {
 		return buildOpenaiError
 	}
