@@ -25,7 +25,7 @@ type Retrier interface {
 }
 
 // Retrier manages retrying an operation with backoff and jitter.
-type retrier struct {
+type expBackoff struct {
 	maxAttempts int
 	baseDelay   time.Duration
 	multiplier  float64
@@ -36,41 +36,41 @@ type retrier struct {
 }
 
 // option customizes a Retrier.
-type option func(*retrier)
+type option func(*expBackoff)
 
 // WithMaxAttempts sets how many times an operation will be tried (including the first).
 func WithMaxAttempts(n int) option {
-	return func(r *retrier) { r.maxAttempts = n }
+	return func(r *expBackoff) { r.maxAttempts = n }
 }
 
 // WithBaseDelay sets the initial backoff interval.
 func WithBaseDelay(d time.Duration) option {
-	return func(r *retrier) { r.baseDelay = d }
+	return func(r *expBackoff) { r.baseDelay = d }
 }
 
 // WithMultiplier sets the exponential growth factor.
 func WithMultiplier(m float64) option {
-	return func(r *retrier) { r.multiplier = m }
+	return func(r *expBackoff) { r.multiplier = m }
 }
 
 // WithMaxDelay caps the backoff interval.
 func WithMaxDelay(d time.Duration) option {
-	return func(r *retrier) { r.maxDelay = d }
+	return func(r *expBackoff) { r.maxDelay = d }
 }
 
 // WithJitter chooses how to randomize each interval.
 func WithJitter(j jitter) option {
-	return func(r *retrier) { r.jitter = j }
+	return func(r *expBackoff) { r.jitter = j }
 }
 
 // WithClock replaces the time source (useful for testing).
 func WithClock(c clock.Clock) option {
-	return func(r *retrier) { r.clock = c }
+	return func(r *expBackoff) { r.clock = c }
 }
 
 // WithOnRetry registers a hook before each retry attempt.
 func WithOnRetry(fn func(attempt int, err error, nextDelay time.Duration)) option {
-	return func(r *retrier) { r.onRetry = fn }
+	return func(r *expBackoff) { r.onRetry = fn }
 }
 
 const (
@@ -80,10 +80,10 @@ const (
 	defMaxDelay   = 30 * time.Second
 )
 
-// New constructs a retrier with defaults (3 attempts, 100ms base,
+// NewExpBackoffJitter constructs a retrier with defaults (3 attempts, 100ms base,
 // 2× multiplier, 30s max, FullJitter) and applies any opts.
-func New(opts ...option) *retrier {
-	r := &retrier{
+func NewExpBackoffJitter(opts ...option) *expBackoff {
+	r := &expBackoff{
 		maxAttempts: defAttempts,
 		baseDelay:   defBaseDelay,
 		multiplier:  defMultiplier,
@@ -117,7 +117,7 @@ func New(opts ...option) *retrier {
 }
 
 // Retry invokes op until it succeeds, is non-retryable, ctx cancels, or attempts exhausted.
-func (r *retrier) Retry(
+func (r *expBackoff) Retry(
 	ctx context.Context,
 	op func(opCtx context.Context) error,
 	isRetryable func(error) bool,
@@ -173,7 +173,7 @@ func (r *retrier) Retry(
 }
 
 // sleepCtx pauses up to d, but returns early if ctx is done.
-func (r *retrier) sleepCtx(ctx context.Context, d time.Duration) error {
+func (r *expBackoff) sleepCtx(ctx context.Context, d time.Duration) error {
 	const step = 10 * time.Millisecond
 	deadline := r.clock.Now().Add(d)
 	for {
@@ -194,7 +194,7 @@ func durationUntil(deadline, now time.Time) time.Duration {
 	return deadline.Sub(now)
 }
 
-func (r *retrier) nextDelay(prev time.Duration) time.Duration {
+func (r *expBackoff) nextDelay(prev time.Duration) time.Duration {
 	if prev >= r.maxDelay {
 		return r.maxDelay
 	}
@@ -205,7 +205,7 @@ func (r *retrier) nextDelay(prev time.Duration) time.Duration {
 	return time.Duration(next)
 }
 
-func (r *retrier) jitterDelay(d time.Duration) time.Duration {
+func (r *expBackoff) jitterDelay(d time.Duration) time.Duration {
 	return r.jitter(d)
 }
 

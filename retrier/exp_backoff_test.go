@@ -9,7 +9,7 @@ import (
 )
 
 func TestRetrier_SucceedsFirstTry(t *testing.T) {
-	r := New()
+	r := NewExpBackoffJitter()
 	if err := r.Retry(context.Background(), func(context.Context) error { return nil }, nil); err != nil {
 		t.Fatalf("want no error, got %v", err)
 	}
@@ -18,7 +18,7 @@ func TestRetrier_SucceedsFirstTry(t *testing.T) {
 func TestRetrier_EventualSuccess(t *testing.T) {
 	fake := NewFakeClock(time.Now())
 	attempts := 0
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(5),
 		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),
@@ -45,7 +45,7 @@ func TestRetrier_StopsOnNonRetryable(t *testing.T) {
 	fake := NewFakeClock(time.Now())
 	nonRetryable := errors.New("nope")
 	attempts := 0
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(5),
 		WithClock(fake),
 	)
@@ -65,7 +65,7 @@ func TestRetrier_StopsOnNonRetryable(t *testing.T) {
 
 func TestRetrier_ExhaustsAttempts(t *testing.T) {
 	fake := NewFakeClock(time.Now())
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(3),
 		WithClock(fake),
 		WithBaseDelay(1*time.Millisecond),
@@ -86,7 +86,7 @@ func TestRetrier_ExhaustsAttempts(t *testing.T) {
 
 func TestRetrier_ContextCancel(t *testing.T) {
 	fake := NewFakeClock(time.Now())
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(5),
 		WithClock(fake),
 		WithBaseDelay(1*time.Second),
@@ -108,7 +108,7 @@ func TestRetrier_ContextCancel(t *testing.T) {
 }
 
 func TestRetry_NilOperation(t *testing.T) {
-	r := New()
+	r := NewExpBackoffJitter()
 	err := r.Retry(context.Background(), nil, nil)
 	if err == nil || err.Error() != "retrier: nil operation" {
 		t.Errorf("expected nil-op error, got %v", err)
@@ -116,7 +116,7 @@ func TestRetry_NilOperation(t *testing.T) {
 }
 
 func TestNew_InvalidOptions(t *testing.T) {
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(0),
 		WithMultiplier(0.5),
 		WithBaseDelay(-1),
@@ -151,7 +151,7 @@ func TestRetry_OnRetryHook(t *testing.T) {
 		errMsg    string
 		nextDelay time.Duration
 	}
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(3),
 		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),
@@ -190,7 +190,7 @@ func TestRetry_OnRetryHook(t *testing.T) {
 }
 
 func TestNextDelay_TableDriven(t *testing.T) {
-	r := New(WithMaxDelay(50*time.Millisecond), WithMultiplier(3))
+	r := NewExpBackoffJitter(WithMaxDelay(50*time.Millisecond), WithMultiplier(3))
 	tests := []struct {
 		prev, want time.Duration
 	}{
@@ -228,7 +228,7 @@ func TestJitterFunctions(t *testing.T) {
 
 func TestRetry_ContextAlreadyCancelled(t *testing.T) {
 	fake := NewFakeClock(time.Now())
-	r := New(WithClock(fake))
+	r := NewExpBackoffJitter(WithClock(fake))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err := r.Retry(ctx, func(context.Context) error { return nil }, nil)
@@ -238,7 +238,7 @@ func TestRetry_ContextAlreadyCancelled(t *testing.T) {
 }
 
 func TestSleepCtx_CancelMidSleep(t *testing.T) {
-	r := New()
+	r := NewExpBackoffJitter()
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(30 * time.Millisecond)
@@ -256,7 +256,7 @@ func TestSleepCtx_CancelMidSleep(t *testing.T) {
 
 func TestRetry_Concurrent(t *testing.T) {
 	fake := NewFakeClock(time.Now())
-	r := New(
+	r := NewExpBackoffJitter(
 		WithMaxAttempts(5),
 		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),

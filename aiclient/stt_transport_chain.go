@@ -16,7 +16,7 @@ func (s *STTClient) newTransportChain() http.RoundTripper {
 		transport.AddHeader("User-Agent", "Fla/1.0"),
 		transport.UseStatusClassifier(func(sc int) bool { return sc == 429 || sc >= 500 }, s.buildError()),
 		transport.UseCircuitBreaker(breaker.New(breaker.ThirdPartyConfig())),
-		transport.UseRetrier(retrier.New(), isRetryable),
+		transport.UseRetrier(retrier.NewExpBackoffJitter(), isRetryable),
 		transport.UseLogger(s.base.log),
 	)
 }
