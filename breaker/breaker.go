@@ -174,16 +174,16 @@ func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) e
 		if m := b.cfg.Metrics; m != nil {
 			m.IncFailure()
 		}
-		now := b.now()
+		n := b.now()
 
 		switch b.state {
 		case HalfOpen:
-			b.trip(now)
+			b.trip(n)
 		case Closed:
-			b.evictOld(now)
-			b.failures = append(b.failures, now)
+			b.evictOld(n)
+			b.failures = append(b.failures, n)
 			if len(b.failures) >= b.cfg.FailureThreshold {
-				b.trip(now)
+				b.trip(n)
 			}
 		}
 		return err
