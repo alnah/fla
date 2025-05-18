@@ -13,7 +13,7 @@ func TestLogger_WriteTo_Stdout(t *testing.T) {
 		fn   func() *Logger
 	}{
 		{name: "New", fn: New},
-		{name: "Test", fn: Test},
+		{name: "Test", fn: NewTestLogger},
 	}
 	for _, tc := range testCases {
 		// save original stdout

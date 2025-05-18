@@ -10,7 +10,7 @@ import (
 
 func (t *TTSClient) newTransportChain() http.RoundTripper {
 	return tripper.Chain(
-		tripper.Default(t.base.httpClient.Transport),
+		t.base.httpClient.Transport,
 		tripper.AddHeader("Content-Type", "application/json"),
 		t.addAuthHeader(),
 		tripper.AddHeader("User-Agent", "Fla/1.0"),
@@ -21,14 +21,14 @@ func (t *TTSClient) newTransportChain() http.RoundTripper {
 	)
 }
 
-func (t *TTSClient) addAuthHeader() tripper.Tripperware {
+func (t *TTSClient) addAuthHeader() tripper.Middleware {
 	if t.base.provider == ProviderOpenAI {
 		return tripper.AddHeader("Authorization", "Bearer "+t.base.apiKey.GetEnv())
 	}
 	return tripper.AddHeader("xi-api-key", t.base.apiKey.GetEnv())
 }
 
-func (t *TTSClient) buildError() tripper.BuildError {
+func (t *TTSClient) buildError() tripper.ErrorFactoryFunc {
 	if t.useOpenAI {
 		return buildOpenaiError
 	}

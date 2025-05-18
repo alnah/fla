@@ -30,7 +30,7 @@ func TestChatClientNew_WithOptions(t *testing.T) {
 	}
 	ctx := context.Background()
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	log := logger.Test()
+	log := logger.NewTestLogger()
 	httpMethodPost := httpMethod(http.MethodPost)
 	maxTokens := MaxTokens(8192)
 	chat, err := NewChatClient(
@@ -208,7 +208,7 @@ func TestChatClientNew_Validate_Fields(t *testing.T) {
 					WithMaxTokens(MaxTokens(4096)),
 					WithHTTPClient[*ChatClient](http.DefaultClient),
 					WithHTTPMethod[*ChatClient](httpMethod(http.MethodPost)),
-					WithLogger[*ChatClient](logger.Test()),
+					WithLogger[*ChatClient](logger.NewTestLogger()),
 				)
 			},
 			wantError: false,

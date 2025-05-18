@@ -48,7 +48,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			log := logger.Test()
+			log := logger.NewTestLogger()
 			httpClient := http.DefaultClient
 			httpMethodPost := httpMethod(http.MethodPost)
 			tts, err := NewTTSClient(
@@ -250,7 +250,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 			ttsBuilder: func() (*TTSClient, error) {
 				return NewTTSClient(
 					WithContext[*TTSClient](context.Background()),
-					WithLogger[*TTSClient](logger.Test()),
+					WithLogger[*TTSClient](logger.NewTestLogger()),
 					WithHTTPClient[*TTSClient](http.DefaultClient),
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderOpenAI),
@@ -269,7 +269,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 			ttsBuilder: func() (*TTSClient, error) {
 				return NewTTSClient(
 					WithContext[*TTSClient](context.Background()),
-					WithLogger[*TTSClient](logger.Test()),
+					WithLogger[*TTSClient](logger.NewTestLogger()),
 					WithHTTPClient[*TTSClient](http.DefaultClient),
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderElevenLabs),

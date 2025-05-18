@@ -30,7 +30,7 @@ func newTempFile(t testing.TB) fu.FilePath {
 
 func TestSTTClientNew_WithOptions(t *testing.T) {
 	ctx := context.Background()
-	log := logger.Test()
+	log := logger.NewTestLogger()
 	httpClient := http.DefaultClient
 	httpMethodPost := httpMethod(http.MethodPost)
 	pvd := ProviderOpenAI
@@ -207,7 +207,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 			sttBuilder: func() (*STTClient, error) {
 				return NewSTTClient(
 					WithContext[*STTClient](context.Background()),
-					WithLogger[*STTClient](logger.Test()),
+					WithLogger[*STTClient](logger.NewTestLogger()),
 					WithHTTPClient[*STTClient](http.DefaultClient),
 					WithHTTPMethod[*STTClient](httpMethod(http.MethodPost)),
 					WithProvider[*STTClient](ProviderOpenAI),

@@ -17,7 +17,7 @@ func New() *Logger {
 	return NewWithHandler(handler)
 }
 
-func Test() *Logger { return New() }
+func NewTestLogger() *Logger { return New() }
 
 // NewWithHandler creates a Logger using the provided slog.Handler.
 // Useful for tests (inject a buffer) or alternate formats (JSON).
