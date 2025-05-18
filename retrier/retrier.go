@@ -26,34 +26,6 @@ func (e *RetrierError) Error() string {
 
 func (e *RetrierError) Unwrap() error { return e.wrapped }
 
-// jitter defines how we add randomness to a base backoff duration.
-type jitter func(time.Duration) time.Duration
-
-var (
-	// NoJitter applies a constant delay between retries.
-	NoJitter jitter = func(d time.Duration) time.Duration {
-		return d
-	}
-
-	// FullJitter applies a random delay up to the full backoff interval.
-	FullJitter jitter = func(d time.Duration) time.Duration {
-		if d <= 0 {
-			return 0
-		}
-		// crypto-secure random in [0, d]
-		return secureRandomDuration(int64(d) + 1)
-	}
-
-	// EqualJitter applies a random delay between half and the full interval.
-	EqualJitter jitter = func(d time.Duration) time.Duration {
-		if d <= 0 {
-			return 0
-		}
-		half := d / 2
-		return half + secureRandomDuration(int64(half)+1)
-	}
-)
-
 type Retrier interface {
 	Retry(ctx context.Context, op func(opCtx context.Context) error, isRetryable func(err error) bool) error
 }

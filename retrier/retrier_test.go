@@ -6,24 +6,21 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/alnah/fla/clock"
 )
 
 func TestRetrier_SucceedsFirstTry(t *testing.T) {
 	r := New()
-
 	if err := r.Retry(context.Background(), func(context.Context) error { return nil }, nil); err != nil {
 		t.Fatalf("want no error, got %v", err)
 	}
 }
 
 func TestRetrier_EventualSuccess(t *testing.T) {
-	fakeClock := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
 	attempts := 0
 	r := New(
 		WithMaxAttempts(5),
-		WithClock(fakeClock),
+		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),
 		WithJitter(NoJitter),
 	)
@@ -45,63 +42,68 @@ func TestRetrier_EventualSuccess(t *testing.T) {
 }
 
 func TestRetrier_StopsOnNonRetryable(t *testing.T) {
-	fakeClock := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
+	nonRetryable := errors.New("nope")
+	attempts := 0
 	r := New(
 		WithMaxAttempts(5),
-		WithClock(fakeClock),
+		WithClock(fake),
 	)
 
-	nonRetryable := errors.New("non-retryable")
-	attempts := 0
 	err := r.Retry(context.Background(), func(context.Context) error {
 		attempts++
 		return nonRetryable
 	}, func(err error) bool { return false })
 
 	if !errors.Is(err, nonRetryable) {
-		t.Fatalf("error: want non-retryable error, got %v", err)
+		t.Fatalf("want non-retryable, got %v", err)
 	}
 	if attempts != 1 {
-		t.Errorf("error: want 1 attempt, got %d", attempts)
+		t.Errorf("want 1 attempt, got %d", attempts)
 	}
 }
 
 func TestRetrier_ExhaustsAttempts(t *testing.T) {
-	fakeClock := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
 	r := New(
 		WithMaxAttempts(3),
-		WithClock(fakeClock),
+		WithClock(fake),
 		WithBaseDelay(1*time.Millisecond),
 		WithJitter(NoJitter),
 	)
 
-	err := r.Retry(context.Background(), func(context.Context) error { return errors.New("fail") }, nil)
+	err := r.Retry(context.Background(), func(context.Context) error {
+		return errors.New("always fail")
+	}, nil)
 	var re *RetrierError
 	if !errors.As(err, &re) {
-		t.Fatalf("error: want retrier error, got %v", err)
+		t.Fatalf("want RetrierError, got %v", err)
 	}
 	if re.attempts != 3 {
-		t.Errorf("error: want 3 attempts, got %d", re.attempts)
+		t.Errorf("want 3 attempts, got %d", re.attempts)
 	}
 }
 
 func TestRetrier_ContextCancel(t *testing.T) {
-	fakeClock := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
 	r := New(
 		WithMaxAttempts(5),
-		WithClock(fakeClock),
+		WithClock(fake),
 		WithBaseDelay(1*time.Second),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		fakeClock.Sleep(100 * time.Millisecond)
+		// simulate time passing before cancel
+		fake.Sleep(100 * time.Millisecond)
 		cancel()
 	}()
 
-	err := r.Retry(ctx, func(context.Context) error { return errors.New("fail") }, nil)
+	err := r.Retry(ctx, func(context.Context) error {
+		return errors.New("fail")
+	}, nil)
 	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("error: want context canceled, got %v", err)
+		t.Fatalf("want context.Canceled, got %v", err)
 	}
 }
 
@@ -109,7 +111,7 @@ func TestRetry_NilOperation(t *testing.T) {
 	r := New()
 	err := r.Retry(context.Background(), nil, nil)
 	if err == nil || err.Error() != "retrier: nil operation" {
-		t.Errorf("error: expected nil-op error, got %v", err)
+		t.Errorf("expected nil-op error, got %v", err)
 	}
 }
 
@@ -122,29 +124,28 @@ func TestNew_InvalidOptions(t *testing.T) {
 		WithJitter(nil),
 		WithClock(nil),
 	)
-
 	if r.maxAttempts != 1 {
-		t.Errorf("error: want max attempts %d, got %d", 1, r.maxAttempts)
+		t.Errorf("want maxAttempts=1, got %d", r.maxAttempts)
 	}
 	if r.multiplier != 1 {
-		t.Errorf("error: want multiplier %.1f, got %.1f", 1.0, r.multiplier)
+		t.Errorf("want multiplier=1.0, got %.1f", r.multiplier)
 	}
 	if r.baseDelay != 0 {
-		t.Errorf("error: want base delay %v, got %v", 0, r.baseDelay)
+		t.Errorf("want baseDelay=0, got %v", r.baseDelay)
 	}
 	if r.maxDelay != defaultMaxDelay {
-		t.Errorf("error: want max delay %v, got %v", defaultMaxDelay, r.maxDelay)
+		t.Errorf("want maxDelay=%v, got %v", defaultMaxDelay, r.maxDelay)
 	}
 	if r.jitter == nil {
-		t.Errorf("error jitter: want no nil")
+		t.Error("jitter should not be nil")
 	}
 	if r.clock == nil {
-		t.Errorf("error clock: want no nil")
+		t.Error("clock should not be nil")
 	}
 }
 
 func TestRetry_OnRetryHook(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
 	var calls []struct {
 		attempt   int
 		errMsg    string
@@ -152,7 +153,7 @@ func TestRetry_OnRetryHook(t *testing.T) {
 	}
 	r := New(
 		WithMaxAttempts(3),
-		WithClock(fc),
+		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),
 		WithMultiplier(2),
 		WithMaxDelay(100*time.Millisecond),
@@ -169,22 +170,21 @@ func TestRetry_OnRetryHook(t *testing.T) {
 	err := r.Retry(context.Background(), op, nil)
 	var re *RetrierError
 	if !errors.As(err, &re) {
-		t.Fatalf("error: want retrier error, got %v", err)
+		t.Fatalf("want RetrierError, got %v", err)
 	}
-
-	if len(calls) != r.maxAttempts-1 {
-		t.Errorf("error: want %d calls, got %d", r.maxAttempts-1, len(calls))
+	want := []time.Duration{10 * time.Millisecond, 20 * time.Millisecond}
+	if len(calls) != len(want) {
+		t.Fatalf("want %d OnRetry calls, got %d", len(want), len(calls))
 	}
-	expected := []time.Duration{10 * time.Millisecond, 20 * time.Millisecond}
 	for i, c := range calls {
 		if c.attempt != i+1 {
-			t.Errorf("error: call %d: got attempt %d, want %d", i, c.attempt, i+1)
+			t.Errorf("call %d: want attempt %d, got %d", i, i+1, c.attempt)
 		}
-		if c.nextDelay != expected[i] {
-			t.Errorf("error: call %d: got next delay %v, want %v", i, c.nextDelay, expected[i])
+		if c.nextDelay != want[i] {
+			t.Errorf("call %d: want delay %v, got %v", i, want[i], c.nextDelay)
 		}
 		if c.errMsg != "E" {
-			t.Errorf("error: call %d: got err msg %q, want %q", i, c.errMsg, "E")
+			t.Errorf("call %d: want errMsg=E, got %q", i, c.errMsg)
 		}
 	}
 }
@@ -194,14 +194,13 @@ func TestNextDelay_TableDriven(t *testing.T) {
 	tests := []struct {
 		prev, want time.Duration
 	}{
-		{prev: 10 * time.Millisecond, want: 30 * time.Millisecond},
-		{prev: 30 * time.Millisecond, want: 50 * time.Millisecond},
-		{prev: 100 * time.Millisecond, want: 50 * time.Millisecond},
+		{10 * time.Millisecond, 30 * time.Millisecond},
+		{30 * time.Millisecond, 50 * time.Millisecond}, // cap at maxDelay
+		{100 * time.Millisecond, 50 * time.Millisecond},
 	}
 	for _, tc := range tests {
-		got := r.nextDelay(tc.prev)
-		if got != tc.want {
-			t.Errorf("error next delay (%v): want %v, got %v", tc.prev, tc.want, got)
+		if got := r.nextDelay(tc.prev); got != tc.want {
+			t.Errorf("nextDelay(%v): want %v, got %v", tc.prev, tc.want, got)
 		}
 	}
 }
@@ -210,32 +209,31 @@ func TestJitterFunctions(t *testing.T) {
 	base := 100 * time.Millisecond
 
 	if d := NoJitter(base); d != base {
-		t.Errorf("error no jitter: want %v, got %v", base, d)
+		t.Errorf("NoJitter: want %v, got %v", base, d)
 	}
-
-	for range 10 {
+	for i := range 10 {
 		d := FullJitter(base)
 		if d < 0 || d > base {
-			t.Errorf("error full jitter: out of range: %v", d)
+			t.Errorf("FullJitter #%d out of range: %v", i, d)
 		}
 	}
-
 	half := base / 2
-	for range 10 {
+	for i := range 10 {
 		d := EqualJitter(base)
 		if d < half || d > base {
-			t.Errorf("error equal jitter: out of range: %v", d)
+			t.Errorf("EqualJitter #%d out of range: %v", i, d)
 		}
 	}
 }
 
 func TestRetry_ContextAlreadyCancelled(t *testing.T) {
-	r := New(WithClock(clock.NewFakeClock(time.Now())))
+	fake := NewFakeClock(time.Now())
+	r := New(WithClock(fake))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	err := r.Retry(ctx, func(context.Context) error { return nil }, nil)
 	if !errors.Is(err, context.Canceled) {
-		t.Errorf("error: want context canceled, got %v", err)
+		t.Errorf("want context.Canceled, got %v", err)
 	}
 }
 
@@ -249,25 +247,24 @@ func TestSleepCtx_CancelMidSleep(t *testing.T) {
 	start := time.Now()
 	err := r.sleepCtx(ctx, 100*time.Millisecond)
 	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("error sleep context: returned %v, want context.Canceled", err)
+		t.Fatalf("sleepCtx: want Canceled, got %v", err)
 	}
-	if dur := time.Since(start); dur >= 100*time.Millisecond {
-		t.Fatalf("error sleep context: did not stop early, waited %v", dur)
+	if d := time.Since(start); d >= 100*time.Millisecond {
+		t.Fatalf("sleepCtx: did not stop early, waited %v", d)
 	}
 }
 
 func TestRetry_Concurrent(t *testing.T) {
-	fc := clock.NewFakeClock(time.Now())
+	fake := NewFakeClock(time.Now())
 	r := New(
 		WithMaxAttempts(5),
-		WithClock(fc),
+		WithClock(fake),
 		WithBaseDelay(10*time.Millisecond),
 		WithJitter(NoJitter),
 	)
 	var wg sync.WaitGroup
-	op := func(ctx context.Context) error {
-		return errors.New("fail")
-	}
+	op := func(ctx context.Context) error { return errors.New("fail") }
+
 	for range 10 {
 		wg.Add(1)
 		go func() {
@@ -275,6 +272,29 @@ func TestRetry_Concurrent(t *testing.T) {
 			_ = r.Retry(context.Background(), op, nil)
 		}()
 	}
-	fc.Sleep(100 * time.Millisecond)
+
+	// advance through all retries
+	fake.Sleep(200 * time.Millisecond)
 	wg.Wait()
+}
+
+type FakeClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func NewFakeClock(t time.Time) *FakeClock {
+	return &FakeClock{now: t}
+}
+
+func (f *FakeClock) Now() time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.now
+}
+
+func (f *FakeClock) Sleep(d time.Duration) {
+	f.mu.Lock()
+	f.now = f.now.Add(d)
+	f.mu.Unlock()
 }
