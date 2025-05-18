@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/transport"
 )
 
 func TestTTSClientNew_WithOptions(t *testing.T) {
@@ -873,7 +874,7 @@ func TestTTSClient_Audio(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tts, _ := tc.ttsBuilder()
 			// mock response
-			tts.base.httpClient.Transport = tripperware(func(req *http.Request) (*http.Response, error) {
+			tts.base.httpClient.Transport = transport.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: tc.statusCode, Body: io.NopCloser(tc.body)}, tc.roundTripperErr
 			})
 

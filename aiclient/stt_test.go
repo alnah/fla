@@ -11,6 +11,7 @@ import (
 
 	fu "github.com/alnah/fla/fileutil"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/transport"
 )
 
 func newTempFile(t testing.TB) fu.FilePath {
@@ -746,7 +747,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tts, _ := tc.sttBuilder()
 			// mock response
-			tts.base.httpClient.Transport = tripperware(func(req *http.Request) (*http.Response, error) {
+			tts.base.httpClient.Transport = transport.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: tc.statusCode, Body: io.NopCloser(tc.body)}, tc.roundTripperErr
 			})
 

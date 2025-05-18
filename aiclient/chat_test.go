@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/transport"
 )
 
 func TestChatClientNew_WithOptions(t *testing.T) {
@@ -822,7 +823,7 @@ func TestChatClient_Completion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			chat, _ := tc.chatBuilder()
 			// mock response
-			chat.base.httpClient.Transport = tripperware(func(req *http.Request) (*http.Response, error) {
+			chat.base.httpClient.Transport = transport.RoundTripFunc(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: tc.statusCode, Body: io.NopCloser(tc.body)}, tc.roundTripperErr
 			})
 
