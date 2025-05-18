@@ -133,8 +133,8 @@ func TestNew_InvalidOptions(t *testing.T) {
 	if r.baseDelay != 0 {
 		t.Errorf("want baseDelay=0, got %v", r.baseDelay)
 	}
-	if r.maxDelay != defaultMaxDelay {
-		t.Errorf("want maxDelay=%v, got %v", defaultMaxDelay, r.maxDelay)
+	if r.maxDelay != defMaxDelay {
+		t.Errorf("want maxDelay=%v, got %v", defMaxDelay, r.maxDelay)
 	}
 	if r.jitter == nil {
 		t.Error("jitter should not be nil")

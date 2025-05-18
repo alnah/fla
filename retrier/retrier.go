@@ -3,7 +3,6 @@ package retrier
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 	"runtime"
@@ -14,20 +13,15 @@ import (
 	"github.com/alnah/fla/clock"
 )
 
-// RetrierError is returned when an operation fails after exhausting all retry attempts.
-type RetrierError struct {
-	attempts int   // total attempts made (≥ maxAttempts)
-	wrapped  error // last error encountered
-}
-
-func (e *RetrierError) Error() string {
-	return fmt.Sprintf("retrier: after %d attempt(s): %v", e.attempts, e.wrapped)
-}
-
-func (e *RetrierError) Unwrap() error { return e.wrapped }
-
+// Retrier defines a retry policy for invoking an operation until it succeeds,
+// is deemed non-retryable, the context expires, or the maximum number of attempts
+// is reached.
 type Retrier interface {
-	Retry(ctx context.Context, op func(opCtx context.Context) error, isRetryable func(err error) bool) error
+	Retry(
+		ctx context.Context,
+		op func(opCtx context.Context) error,
+		isRetryable func(err error) bool,
+	) error
 }
 
 // Retrier manages retrying an operation with backoff and jitter.
@@ -80,25 +74,25 @@ func WithOnRetry(fn func(attempt int, err error, nextDelay time.Duration)) optio
 }
 
 const (
-	defaultAttempts   = 3
-	defaultBaseDelay  = 100 * time.Millisecond
-	defaultMultiplier = 2.0
-	defaultMaxDelay   = 30 * time.Second
+	defAttempts   = 3
+	defBaseDelay  = 100 * time.Millisecond
+	defMultiplier = 2.0
+	defMaxDelay   = 30 * time.Second
 )
 
 // New constructs a retrier with defaults (3 attempts, 100ms base,
 // 2× multiplier, 30s max, FullJitter) and applies any opts.
 func New(opts ...option) *retrier {
 	r := &retrier{
-		maxAttempts: defaultAttempts,
-		baseDelay:   defaultBaseDelay,
-		multiplier:  defaultMultiplier,
-		maxDelay:    defaultMaxDelay,
+		maxAttempts: defAttempts,
+		baseDelay:   defBaseDelay,
+		multiplier:  defMultiplier,
+		maxDelay:    defMaxDelay,
 		jitter:      FullJitter,
 		clock:       clock.New(),
 	}
-	for _, o := range opts {
-		o(r)
+	for _, opt := range opts {
+		opt(r)
 	}
 	// sanitize
 	if r.maxAttempts < 1 {
@@ -111,7 +105,7 @@ func New(opts ...option) *retrier {
 		r.baseDelay = 0
 	}
 	if r.maxDelay <= 0 {
-		r.maxDelay = defaultMaxDelay
+		r.maxDelay = defMaxDelay
 	}
 	if r.jitter == nil {
 		r.jitter = NoJitter
@@ -123,7 +117,11 @@ func New(opts ...option) *retrier {
 }
 
 // Retry invokes op until it succeeds, is non-retryable, ctx cancels, or attempts exhausted.
-func (r *retrier) Retry(ctx context.Context, op func(opCtx context.Context) error, isRetryable func(error) bool) error {
+func (r *retrier) Retry(
+	ctx context.Context,
+	op func(opCtx context.Context) error,
+	isRetryable func(error) bool,
+) error {
 	if op == nil {
 		return errors.New("retrier: nil operation")
 	}
