@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	fu "github.com/alnah/fla/fileutil"
+	"github.com/alnah/fla/locale"
 	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/transport"
 )
@@ -39,7 +40,7 @@ func TestSTTClientNew_WithOptions(t *testing.T) {
 	apiKeyTest := APIKeyEnvOpenAI
 	modelTest := ModelSTTOpenAI
 	filePath := newTempFile(t)
-	language := ISO6391("fr")
+	language := locale.ISO6391("fr")
 	stt, err := NewSTTClient(
 		WithContext[*STTClient](ctx),
 		WithLogger[*STTClient](log),
@@ -83,7 +84,7 @@ func TestSTTClientNew_WithOptions(t *testing.T) {
 		t.Errorf("file path: want %v, got %v", filePath, stt.filePath)
 	}
 	if stt.language != language {
-		t.Errorf("language: want %v, got %v", ISO6391(language), stt.language)
+		t.Errorf("language: want %v, got %v", locale.ISO6391(language), stt.language)
 	}
 }
 
@@ -120,7 +121,7 @@ func TestSTTClientNew_Set_ProviderFlag(t *testing.T) {
 		url            url
 		apiKey         apiKey
 		model          model
-		language       ISO6391
+		language       locale.ISO6391
 		filePath       fu.FilePath
 		flagOpenAI     bool
 		flagElevenLabs bool

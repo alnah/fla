@@ -16,6 +16,7 @@ import (
 
 	"github.com/alnah/fla/breaker"
 	fu "github.com/alnah/fla/fileutil"
+	"github.com/alnah/fla/locale"
 	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/retrier"
 	"github.com/alnah/fla/transport"
@@ -29,7 +30,7 @@ type STTClient struct {
 	// api fields
 	file     *os.File
 	filePath fu.FilePath
-	language ISO6391
+	language locale.ISO6391
 	// provider fields
 	useOpenAI     bool
 	useElevenLabs bool
@@ -48,7 +49,7 @@ func WithFilePath(f fu.FilePath) option[*STTClient] {
 }
 
 // WithLanguage sets the transcription language code.
-func WithLanguage(i ISO6391) option[*STTClient] {
+func WithLanguage(i locale.ISO6391) option[*STTClient] {
 	return func(t *STTClient) { t.language = i }
 }
 
