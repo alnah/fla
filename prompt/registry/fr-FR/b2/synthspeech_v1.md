@@ -1,7 +1,7 @@
 ---json
 {
   "id": "synthspeech",
-  "lang": "fr",
+  "lang": "fr-FR",
   "level": "b2",
   "version": 1,
   "tags": ["tts", "audio", "speech"],

@@ -1,12 +1,12 @@
 ---json
 {
   "id": "version",
-  "lang": "pt",
+  "lang": "pt-BR",
   "level": "a1",
-  "version": 2,
+  "version": 1,
   "tags": [],
   "vars": ["input"]
 }
 ---
 
-Version 2 {{ .input }}
+Version 1 {{ .input }}

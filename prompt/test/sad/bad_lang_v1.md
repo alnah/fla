@@ -1,7 +1,7 @@
 ---json
 {
   "id": "bad_lang",
-  "lang": "zz",
+  "lang": "zz-ZZ",
   "level": "a1",
   "version": 1,
   "tags": [],

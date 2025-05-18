@@ -38,7 +38,7 @@ func (l level) IsValid(path string) error {
 	case A1, A2, B1, B2, C1, C2, AnyLevel:
 		return nil
 	default:
-		return fmt.Errorf("invalid level %q in %s", l, path)
+		return fmt.Errorf("invalid level %s in %s", l, path)
 	}
 }
 
@@ -127,12 +127,12 @@ func registry(fsys fs.FS) (*runtime, error) {
 //  3. same-lang wildcard-level ("_")
 //  4. error otherwise
 func (r *runtime) Prompt(lg locale.Lang, lvl level, id promptID, data map[string]any) (string, error) {
-	lang := lg.String()
+	lang := lg.ToIETF()
 	idStr := id.String()
 	levelStr := lvl.String()
 
 	// exact match
-	exactKey := strings.Join([]string{lang, levelStr, idStr}, "*")
+	exactKey := strings.Join([]string{lang.String(), levelStr, idStr}, "*")
 	if p, ok := r.prompts[exactKey]; ok {
 		var buf bytes.Buffer
 		if err := p.Template.Execute(&buf, data); err != nil {
@@ -145,7 +145,7 @@ func (r *runtime) Prompt(lg locale.Lang, lvl level, id promptID, data map[string
 	if idx, found := levelIndex[lvl]; found {
 		for i := idx - 1; i >= 0; i-- {
 			fbLevel := levelsOrdered[i].String()
-			fbKey := strings.Join([]string{lang, fbLevel, idStr}, "*")
+			fbKey := strings.Join([]string{lang.String(), fbLevel, idStr}, "*")
 			if p, ok := r.prompts[fbKey]; ok {
 				var buf bytes.Buffer
 				if err := p.Template.Execute(&buf, data); err != nil {

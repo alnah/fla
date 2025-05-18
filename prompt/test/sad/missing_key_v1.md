@@ -1,7 +1,7 @@
 ---json
 {
   "id": "missing_key",
-  "lang": "fr",
+  "lang": "fr-FR",
   "level": "a1",
   "version": 1,
   "tags": [],

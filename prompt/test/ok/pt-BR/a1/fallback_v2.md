@@ -1,9 +1,9 @@
 ---json
 {
   "id": "fallback",
-  "lang": "fr",
-  "level": "b2",
-  "version": 1,
+  "lang": "pt-BR",
+  "level": "a1",
+  "version": 2,
   "tags": [],
   "vars": ["input"]
 }
