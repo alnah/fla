@@ -58,7 +58,7 @@ func TestPromptLoading_Success(t *testing.T) {
 	rt, err := registry(okFS)
 	assertNoError(t, err)
 
-	data, err := rt.Prompt(locale.FR, A1, promptID("test"), map[string]any{"input": "is success"})
+	data, err := rt.Prompt(locale.LangFrFR, A1, promptID("test"), map[string]any{"input": "is success"})
 	assertNoError(t, err)
 	assertValue(t, data, "Test is success")
 }
@@ -86,7 +86,7 @@ func TestPromptLoading_MissingKey(t *testing.T) {
 	rt, err := registry(missingKeyFS)
 	assertNoError(t, err)
 
-	_, err = rt.Prompt(locale.FR, A1, promptID("missing_key"), map[string]any{"missing": "key"})
+	_, err = rt.Prompt(locale.LangFrFR, A1, promptID("missing_key"), map[string]any{"missing": "key"})
 	assertError(t, err)
 }
 
@@ -103,7 +103,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "OverrideVersion",
 			embedFS:  fallbackFS,
-			lang:     locale.PT,
+			lang:     locale.LangPtBR,
 			level:    A1,
 			promptID: promptID("version"),
 			input:    "ok",
@@ -112,7 +112,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "FallbackPrevLevelSameLang",
 			embedFS:  fallbackFS,
-			lang:     locale.FR,
+			lang:     locale.LangFrFR,
 			level:    C1,
 			promptID: promptID("fallback"),
 			input:    "b2 ok",
@@ -121,7 +121,7 @@ func TestPromptLoading_FallbackLogic(t *testing.T) {
 		{
 			name:     "WildcardAnyLevel",
 			embedFS:  fallbackFS,
-			lang:     locale.FR,
+			lang:     locale.LangFrFR,
 			level:    AnyLevel,
 			promptID: promptID("wildcard"),
 			input:    "ok",
@@ -143,6 +143,6 @@ func TestPromptLoading_NotFound(t *testing.T) {
 	rt, err := registry(fallbackFS)
 	assertNoError(t, err)
 
-	_, err = rt.Prompt(locale.PT, C2, promptID("not_found"), map[string]any{"input": "irrelevant"})
+	_, err = rt.Prompt(locale.LangPtBR, C2, promptID("not_found"), map[string]any{"input": "irrelevant"})
 	assertError(t, err)
 }
