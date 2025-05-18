@@ -14,46 +14,17 @@ func TestISO6391(t *testing.T) {
 		wantErr   bool
 	}
 	cases := []testCase{
-		{
-			code:      "en",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			code:      "EN",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			code:      "Fr",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			code:      "zz",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			code:      "e",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			code:      "eng",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			code:      "1n",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			code:      "",
-			wantValid: false,
-			wantErr:   true,
-		},
+		// valid
+		{code: "en", wantValid: true, wantErr: false},
+		{code: "EN", wantValid: true, wantErr: false},
+		{code: "Fr", wantValid: true, wantErr: false},
+
+		// invalid
+		{code: "zz", wantValid: false, wantErr: true},
+		{code: "e", wantValid: false, wantErr: true},
+		{code: "eng", wantValid: false, wantErr: true},
+		{code: "1n", wantValid: false, wantErr: true},
+		{code: "", wantValid: false, wantErr: true},
 	}
 
 	for _, tc := range cases {
@@ -84,41 +55,16 @@ func TestIETF(t *testing.T) {
 		wantErr   bool
 	}
 	cases := []testCase{
-		{
-			tag:       "en-US",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			tag:       "fr-FR",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			tag:       "pt-BR",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			tag:       "EN-us",
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			tag:       "xyz",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			tag:       "en_US",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			tag:       "",
-			wantValid: false,
-			wantErr:   true,
-		},
+		// valid
+		{tag: "en-US", wantValid: true, wantErr: false},
+		{tag: "fr-FR", wantValid: true, wantErr: false},
+		{tag: "pt-BR", wantValid: true, wantErr: false},
+		{tag: "en_US", wantValid: true, wantErr: false},
+		{tag: "EN-us", wantValid: true, wantErr: false},
+
+		// invalid
+		{tag: "xyz", wantValid: false, wantErr: true},
+		{tag: "", wantValid: false, wantErr: true},
 	}
 
 	for _, tc := range cases {
@@ -149,41 +95,16 @@ func TestLang(t *testing.T) {
 		wantErr   bool
 	}
 	cases := []testCase{
-		{
-			lang:      LangEnUS,
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			lang:      LangFrFR,
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			lang:      LangPtBR,
-			wantValid: true,
-			wantErr:   false,
-		},
-		{
-			lang:      "en-GB",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			lang:      "enus",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			lang:      "EN-US",
-			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			lang:      "",
-			wantValid: false,
-			wantErr:   true,
-		},
+		// valid
+		{lang: LangEnUS, wantValid: true, wantErr: false},
+		{lang: LangFrFR, wantValid: true, wantErr: false},
+		{lang: LangPtBR, wantValid: true, wantErr: false},
+
+		// invalid
+		{lang: "en-GB", wantValid: false, wantErr: true},
+		{lang: "enus", wantValid: false, wantErr: true},
+		{lang: "EN-US", wantValid: false, wantErr: true},
+		{lang: "", wantValid: false, wantErr: true},
 	}
 
 	for _, tc := range cases {
@@ -336,5 +257,50 @@ func TestLanguagePackageIntegrity(t *testing.T) {
 				t.Errorf("make: want non-root, got root")
 			}
 		})
+	}
+}
+
+func TestLang_Set_Type(t *testing.T) {
+	type testCase struct {
+		input     string
+		wantErr   bool
+		wantValue Lang
+	}
+
+	cases := []testCase{
+		// valid
+		{input: "en-US", wantErr: false, wantValue: LangEnUS},
+		{input: "fr-FR", wantErr: false, wantValue: LangFrFR},
+		{input: "pt-BR", wantErr: false, wantValue: LangPtBR},
+
+		// invalid
+		{input: "en-GB", wantErr: true},
+		{input: "enus", wantErr: true},
+		{input: "", wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			var l Lang
+			err := l.Set(tc.input)
+			gotErr := err != nil
+			if gotErr != tc.wantErr {
+				t.Errorf("set: wantErr %v, got %v", tc.wantErr, gotErr)
+			}
+			if !tc.wantErr {
+				// only check value when no error
+				if l != tc.wantValue {
+					t.Errorf("set: want %v, got %v", tc.wantValue, l)
+				}
+			}
+		})
+	}
+
+	// Test Type() always returns "Lang"
+	var l Lang
+	gotType := l.Type()
+	const wantType = "Lang"
+	if gotType != wantType {
+		t.Errorf("type: want %q, got %q", wantType, gotType)
 	}
 }

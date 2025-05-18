@@ -1,6 +1,3 @@
-// Package locale provides utilities for parsing, validating, and converting
-// between language identifiers, including two‐letter ISO 639-1 codes and
-// full IETF (BCP 47) tags, and a restricted set of supported language tags.
 package locale
 
 import (
@@ -47,11 +44,26 @@ func (l Lang) IsValid() bool {
 func (l Lang) Validate() error {
 	if !l.IsValid() {
 		return fmt.Errorf(
-			"unsupported Lang: %q (must be one of %q, %q, %q)",
+			"unsupported language: %s (must be one of %s, %s, %s)",
 			l.String(), LangFrFR, LangPtBR, LangEnUS,
 		)
 	}
 	return nil
+}
+
+// Set implements flag.Value (and pflag.Value) for overriding env vars, or binding flags.
+func (l *Lang) Set(s string) error {
+	candidate := Lang(s)
+	if err := candidate.Validate(); err != nil {
+		return fmt.Errorf("invalid language %s: %w", s, err)
+	}
+	*l = candidate
+	return nil
+}
+
+// Type returns a descriptive name of this flag’s type (used by pflag).
+func (l *Lang) Type() string {
+	return "Lang"
 }
 
 // ToISO6391 extracts the two‐letter ISO 639-1 code (lowercase) from the Lang tag.
@@ -112,19 +124,16 @@ func (l Lang) DisplayName(displayLang Lang) string {
 }
 
 // EnglishName returns the name of the language in English.
-// Shortcut for DisplayName(LangEnUS).
 func (l Lang) EnglishName() string {
 	return l.DisplayName(LangEnUS)
 }
 
 // FrenchName returns the name of the language in French.
-// Shortcut for DisplayName(LangFrFR).
 func (l Lang) FrenchName() string {
 	return l.DisplayName(LangFrFR)
 }
 
 // PortugueseName returns the name of the language in Portuguese (Brazil).
-// Shortcut for DisplayName(LangPtBR).
 func (l Lang) PortugueseName() string {
 	return l.DisplayName(LangPtBR)
 }
