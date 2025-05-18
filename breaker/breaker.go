@@ -16,7 +16,7 @@ var (
 )
 
 // ErrOpen is returned by Execute when the breaker is open and the operation is blocked.
-var ErrOpen = errors.New("circuit breaker: circuit is open")
+var ErrOpen = errors.New("circuit breaker is open")
 
 type Breaker interface {
 	Execute(ctx context.Context, opCtx func(context.Context) error) error
