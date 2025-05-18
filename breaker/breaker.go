@@ -10,16 +10,16 @@ import (
 )
 
 var (
-	closed   state = "closed"    // normal operation; everything flows
-	open     state = "opened"    // short‑circuiting; no calls allowed
-	halfOpen state = "half‑open" // probing; limited calls allowed
+	closed   state = "closed"    // everything flows
+	open     state = "open"      // no calls allowed
+	halfOpen state = "half‑open" // limited calls allowed
 )
 
 // ErrOpen is returned by Execute when the breaker is open and the operation is blocked.
 var ErrOpen = errors.New("circuit breaker: circuit is open")
 
 type Breaker interface {
-	Execute(context.Context, func(context.Context) error) error
+	Execute(ctx context.Context, opCtx func(context.Context) error) error
 }
 
 type state string
