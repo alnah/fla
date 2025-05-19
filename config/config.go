@@ -15,6 +15,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,7 +24,6 @@ import (
 	"time"
 
 	"github.com/alnah/fla/locale"
-	"github.com/alnah/fla/logger"
 )
 
 const (
@@ -63,7 +63,7 @@ type Config struct {
 	AI       AI          `json:"ai"`
 	Input    string      `json:"input"`
 	Output   string      `json:"output"`
-	log      *logger.Logger
+	log      *slog.Logger
 	mu       sync.RWMutex
 	dirpath  string
 	filename string
@@ -117,7 +117,7 @@ func filename() string {
 }
 
 // Load loads the JSON config (file → defaults → env).
-func Load(log *logger.Logger, dirpath, filename string) (*Config, error) {
+func Load(log *slog.Logger, dirpath, filename string) (*Config, error) {
 	var (
 		cfg *Config
 		err error
@@ -285,7 +285,7 @@ func readFileSecure(dirpath, filename string) ([]byte, error) {
 
 // readFile loads the file at path under its directory, creating a default "{}" if missing.
 // It wraps all reads in securePath to mitigate gosec G304 (CWE-22).
-func readFile(log *logger.Logger, dirpath, filename string) ([]byte, error) {
+func readFile(log *slog.Logger, dirpath, filename string) ([]byte, error) {
 	data, err := readFileSecure(dirpath, filename)
 	if err == nil {
 		return data, nil
@@ -312,7 +312,7 @@ func readFile(log *logger.Logger, dirpath, filename string) ([]byte, error) {
 	return nil, fmt.Errorf("reading config %q: %w", filepath.Join(dirpath, filename), err)
 }
 
-func parseJSON(log *logger.Logger, byt []byte, dirpath, filename string) (*Config, error) {
+func parseJSON(log *slog.Logger, byt []byte, dirpath, filename string) (*Config, error) {
 	var cfg Config
 	dec := json.NewDecoder(bytes.NewReader(byt))
 	dec.DisallowUnknownFields()
@@ -334,7 +334,7 @@ func appDir() (string, error) {
 	return filepath.Join(home, AppName), nil
 }
 
-func (c *Config) applyDefaults(log *logger.Logger, dirpath, filename string) error {
+func (c *Config) applyDefaults(log *slog.Logger, dirpath, filename string) error {
 	c.log = log
 	c.dirpath = dirpath
 	c.filename = filename

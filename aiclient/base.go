@@ -2,9 +2,8 @@ package aiclient
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
-
-	"github.com/alnah/fla/logger"
 )
 
 // baseClient holds common configuration and infrastructure fields
@@ -19,7 +18,7 @@ type baseClient struct {
 
 	// infrastructure-related deps
 	ctx        context.Context
-	log        *logger.Logger
+	log        *slog.Logger
 	httpClient *http.Client
 	httpMethod httpMethod
 }
@@ -42,7 +41,7 @@ func WithContext[T hasBase](c context.Context) option[T] {
 
 // WithLogger assigns a logger to the base client.
 // Enables structured and contextual logging.
-func WithLogger[T hasBase](l *logger.Logger) option[T] {
+func WithLogger[T hasBase](l *slog.Logger) option[T] {
 	return func(t T) { t.BaseClient().log = l }
 }
 

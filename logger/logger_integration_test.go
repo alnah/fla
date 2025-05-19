@@ -2,6 +2,7 @@ package logger
 
 import (
 	"bytes"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 func TestLogger_WriteTo_Stdout(t *testing.T) {
 	testCases := []struct {
 		name string
-		fn   func() *Logger
+		fn   func() *slog.Logger
 	}{
 		{name: "New", fn: New},
 		{name: "Test", fn: NewTestLogger},
