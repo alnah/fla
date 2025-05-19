@@ -267,9 +267,9 @@ func (c *ChatClient) newTransportChain() http.RoundTripper {
 
 func (c *ChatClient) addAuthHeader() transport.Middleware {
 	if c.base.provider == ProviderOpenAI {
-		return transport.AddHeader("Authorization", "Bearer "+c.base.apiKey.GetEnv())
+		return transport.AddHeader("Authorization", "Bearer "+c.base.apiKey.String())
 	}
-	return transport.AddHeader("x-api-key", c.base.apiKey.GetEnv())
+	return transport.AddHeader("x-api-key", c.base.apiKey.String())
 }
 
 func (c *ChatClient) addSpecHeader() transport.Middleware {

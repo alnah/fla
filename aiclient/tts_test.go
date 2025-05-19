@@ -17,7 +17,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 		name         string
 		provider     provider
 		url          url
-		apiKey       apiKey
+		apiKey       string
 		model        model
 		voice        voice
 		instructions Instructions
@@ -28,7 +28,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 			name:         "OpenAI",
 			provider:     ProviderOpenAI,
 			url:          URLTTSOpenAI,
-			apiKey:       APIKeyEnvOpenAI,
+			apiKey:       "api-key",
 			model:        ModelTTSOpenAI,
 			voice:        VoiceOpenAIFemaleAlloy,
 			instructions: "test", // openai only
@@ -38,7 +38,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 			name:     "ElevenLabs",
 			provider: ProviderElevenLabs,
 			url:      URLTTSElevenLabs,
-			apiKey:   APIKeyEnvElevenLabs,
+			apiKey:   "api-key",
 			model:    ModelTTSElevenLabs,
 			voice:    VoiceElevenLabsFrMaleGuillaume,
 			speed:    1, // elevenlabs only
@@ -87,7 +87,7 @@ func TestTTSClientNew_WithOptions(t *testing.T) {
 			if tts.base.url != tc.url {
 				t.Errorf("url: want %v, got: %v", tc.url, tts.base.url)
 			}
-			if tts.base.apiKey != tc.apiKey {
+			if tts.base.apiKey.String() != tc.apiKey {
 				t.Errorf("api key: want %v, got: %v", tc.apiKey, tts.base.apiKey)
 			}
 			if tts.base.model != tc.model {
@@ -113,7 +113,7 @@ func TestTTSClientNew_Apply_Defaults(t *testing.T) {
 	tts, err := NewTTSClient(
 		WithProvider[*TTSClient](ProviderOpenAI),
 		WithURL[*TTSClient](URLTTSOpenAI),
-		WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+		WithAPIKey[*TTSClient]("api-key"),
 		WithModel[*TTSClient](ModelTTSOpenAI),
 		WithVoice(VoiceOpenAIFemaleAlloy),
 		WithInstructions("test"),
@@ -140,7 +140,7 @@ func TestTTSClientNew_Set_ProviderFlag(t *testing.T) {
 		name           string
 		provider       provider
 		url            url
-		apiKey         apiKey
+		apiKey         string
 		model          model
 		voice          voice
 		instructions   Instructions
@@ -153,7 +153,7 @@ func TestTTSClientNew_Set_ProviderFlag(t *testing.T) {
 			name:           "OpenAI",
 			provider:       ProviderOpenAI,
 			url:            URLTTSOpenAI,
-			apiKey:         APIKeyEnvOpenAI,
+			apiKey:         "api-key",
 			model:          ModelTTSOpenAI,
 			voice:          VoiceOpenAIFemaleAlloy,
 			instructions:   "test",
@@ -165,7 +165,7 @@ func TestTTSClientNew_Set_ProviderFlag(t *testing.T) {
 			name:           "ElevenLabs",
 			provider:       ProviderElevenLabs,
 			url:            URLTTSElevenLabs,
-			apiKey:         APIKeyEnvElevenLabs,
+			apiKey:         "api-key",
 			model:          ModelTTSElevenLabs,
 			voice:          VoiceElevenLabsFrFemaleAudrey,
 			speed:          1,
@@ -222,7 +222,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -237,7 +237,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -256,7 +256,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -275,7 +275,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 					WithHTTPMethod[*TTSClient](httpMethod(http.MethodPost)),
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -290,7 +290,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					// no provider
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -305,7 +305,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					// no url
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -335,7 +335,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					// no model
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -350,7 +350,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					// no voice
 					WithInstructions("test"),
@@ -365,7 +365,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					// no instructions
@@ -380,7 +380,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					// no speed
@@ -395,7 +395,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -409,7 +409,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](provider("invalid")),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -424,7 +424,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](url("invlaid")),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -434,12 +434,12 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "InvalidAPIKey",
+			name: "EmptyAPIKey",
 			ttsBuilder: func() (*TTSClient, error) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](apiKey("NON_EXISTING_API_KEY")),
+					WithAPIKey[*TTSClient](""), // empty
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -455,7 +455,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 					WithHTTPMethod[*TTSClient](httpMethod("INVLAID")),
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -470,7 +470,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](model("invalid")),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -485,7 +485,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(voice("invalid")),
 					WithInstructions("test"),
@@ -500,7 +500,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(voice("invalid")),
 					WithSpeed(1),
@@ -515,7 +515,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions(""), // empty
@@ -530,7 +530,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(0.6),
@@ -545,7 +545,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1.3),
@@ -560,7 +560,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -575,7 +575,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				tts, _ := NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -593,7 +593,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				tts, _ := NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -611,7 +611,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				tts, _ := NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -629,7 +629,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				tts, _ := NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -648,7 +648,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSElevenLabs), // elevenlabs, want openai
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -663,7 +663,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSOpenAI), // openai, want elevenlabs
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -678,7 +678,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs), // elevenlabs, want openai
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -693,7 +693,7 @@ func TestTTSClientNew_Validate_Fields(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI), // openai, want elevenlabs
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -732,7 +732,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -749,7 +749,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -766,7 +766,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				tts, _ := NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -785,7 +785,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -802,7 +802,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -821,7 +821,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),
@@ -840,7 +840,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderOpenAI),
 					WithURL[*TTSClient](URLTTSOpenAI),
-					WithAPIKey[*TTSClient](APIKeyEnvOpenAI),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSOpenAI),
 					WithVoice(VoiceOpenAIFemaleAlloy),
 					WithInstructions("test"),
@@ -857,7 +857,7 @@ func TestTTSClient_Audio(t *testing.T) {
 				return NewTTSClient(
 					WithProvider[*TTSClient](ProviderElevenLabs),
 					WithURL[*TTSClient](URLTTSElevenLabs),
-					WithAPIKey[*TTSClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*TTSClient]("api-key"),
 					WithModel[*TTSClient](ModelTTSElevenLabs),
 					WithVoice(VoiceElevenLabsFrFemaleAudrey),
 					WithSpeed(1),

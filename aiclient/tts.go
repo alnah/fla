@@ -239,9 +239,9 @@ func (t *TTSClient) newTransportChain() http.RoundTripper {
 
 func (t *TTSClient) addAuthHeader() transport.Middleware {
 	if t.base.provider == ProviderOpenAI {
-		return transport.AddHeader("Authorization", "Bearer "+t.base.apiKey.GetEnv())
+		return transport.AddHeader("Authorization", "Bearer "+t.base.apiKey.String())
 	}
-	return transport.AddHeader("xi-api-key", t.base.apiKey.GetEnv())
+	return transport.AddHeader("xi-api-key", t.base.apiKey.String())
 }
 
 func (t *TTSClient) buildError() transport.ErrorFactoryFunc {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -85,33 +84,14 @@ func (u url) Validate() error {
 	return nil
 }
 
-const (
-	APIKeyEnvOpenAI     apiKey = "OPENAI_API_KEY"     // #nosec G101: safe env key
-	APIKeyEnvAnthropic  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101: safe env key
-	APIKeyEnvElevenLabs apiKey = "ELEVENLABS_API_KEY" // #nosec G101: safe env key
-)
+// internal type satisfying
+type rawAPIKey string
 
-// apiKey names the environment variable holding the provider’s API key,
-// centralizing authentication lookup.
-type apiKey string
-
-// String returns the environment-variable name.
-func (e apiKey) String() string { return string(e) }
-
-// GetEnv retrieves the key’s value from the environment.
-func (e apiKey) GetEnv() string { return os.Getenv(e.String()) }
-
-// IsValid checks whether the environment-variable is set.
-func (e apiKey) IsValid() bool { return e.GetEnv() != "" }
-
-// Validate ensures the API key is present in the environment,
-// returning an error otherwise.
-func (e apiKey) Validate() error {
-	if e.String() == "" {
-		return fmt.Errorf("invalid api key: can't be empty")
-	}
-	if !e.IsValid() {
-		return fmt.Errorf("invalid api key: please export %q env var", e.String())
+func (r rawAPIKey) String() string { return string(r) }
+func (r rawAPIKey) IsValid() bool  { return r != "" }
+func (r rawAPIKey) Validate() error {
+	if r == "" {
+		return errors.New("invalid api key: can't be empty")
 	}
 	return nil
 }

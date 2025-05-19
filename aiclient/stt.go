@@ -200,9 +200,9 @@ func (s *STTClient) newTransportChain() http.RoundTripper {
 
 func (s *STTClient) addAuthHeader() transport.Middleware {
 	if s.base.provider == ProviderOpenAI {
-		return transport.AddHeader("Authorization", "Bearer "+s.base.apiKey.GetEnv())
+		return transport.AddHeader("Authorization", "Bearer "+s.base.apiKey.String())
 	}
-	return transport.AddHeader("xi-api-key", s.base.apiKey.GetEnv())
+	return transport.AddHeader("xi-api-key", s.base.apiKey.String())
 
 }
 

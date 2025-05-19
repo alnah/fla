@@ -12,7 +12,7 @@ import (
 type baseClient struct {
 	// api specific configuration
 	provider provider
-	apiKey   apiKey
+	apiKey   rawAPIKey
 	url      url
 	model    model
 
@@ -56,8 +56,8 @@ func WithURL[T hasBase](u url) option[T] {
 }
 
 // WithAPIKey assigns the API key used for authenticating requests.
-func WithAPIKey[T hasBase](a apiKey) option[T] {
-	return func(t T) { t.BaseClient().apiKey = a }
+func WithAPIKey[T hasBase](a string) option[T] {
+	return func(t T) { t.BaseClient().apiKey = rawAPIKey(a) }
 }
 
 // WithModel selects the model used by the AI provider.

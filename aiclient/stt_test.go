@@ -37,7 +37,7 @@ func TestSTTClientNew_WithOptions(t *testing.T) {
 	httpMethodPost := httpMethod(http.MethodPost)
 	pvd := ProviderOpenAI
 	urlTest := URLSTTOpenAI
-	apiKeyTest := APIKeyEnvOpenAI
+	apiKeyTest := "api-key"
 	modelTest := ModelSTTOpenAI
 	filePath := newTempFile(t)
 	language := locale.ISO6391("fr")
@@ -74,7 +74,7 @@ func TestSTTClientNew_WithOptions(t *testing.T) {
 	if stt.base.url != urlTest {
 		t.Errorf("url: want %v, got %v", urlTest, stt.base.url)
 	}
-	if stt.base.apiKey != apiKeyTest {
+	if stt.base.apiKey != "api-key" {
 		t.Errorf("api key: want %v, got %v", apiKeyTest, stt.base.apiKey)
 	}
 	if stt.base.model != modelTest {
@@ -93,7 +93,7 @@ func TestSTTClientNew_Apply_Defaults(t *testing.T) {
 	tts, err := NewSTTClient(
 		WithProvider[*STTClient](ProviderOpenAI),
 		WithURL[*STTClient](URLSTTOpenAI),
-		WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+		WithAPIKey[*STTClient]("api-key"),
 		WithModel[*STTClient](ModelSTTOpenAI),
 		WithLanguage("fr"),
 		WithFilePath(filePath),
@@ -119,7 +119,7 @@ func TestSTTClientNew_Set_ProviderFlag(t *testing.T) {
 		name           string
 		provider       provider
 		url            url
-		apiKey         apiKey
+		apiKey         string
 		model          model
 		language       locale.ISO6391
 		filePath       pathutil.FilePath
@@ -130,7 +130,7 @@ func TestSTTClientNew_Set_ProviderFlag(t *testing.T) {
 			name:           "OpenAI",
 			provider:       ProviderOpenAI,
 			url:            URLSTTOpenAI,
-			apiKey:         APIKeyEnvOpenAI,
+			apiKey:         "api-key",
 			model:          ModelSTTOpenAI,
 			language:       "fr",
 			filePath:       newTempFile(t),
@@ -141,7 +141,7 @@ func TestSTTClientNew_Set_ProviderFlag(t *testing.T) {
 			name:           "ElevenLabs",
 			provider:       ProviderElevenLabs,
 			url:            URLSTTElevenLabs,
-			apiKey:         APIKeyEnvElevenLabs,
+			apiKey:         "api-key",
 			model:          ModelSTTElevenLabs,
 			language:       "fr",
 			filePath:       newTempFile(t),
@@ -196,7 +196,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -214,7 +214,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 					WithHTTPMethod[*STTClient](httpMethod(http.MethodPost)),
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -228,7 +228,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					// no provider
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -242,7 +242,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					// no url
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -270,7 +270,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					// no model
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -284,7 +284,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					// no language
 					WithFilePath(newTempFile(t)),
@@ -298,7 +298,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					// require file path
@@ -313,7 +313,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 					WithHTTPMethod[*STTClient](httpMethod("invalid")),
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -327,7 +327,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](provider("invalid")),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -341,7 +341,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](url("invalid")),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -350,12 +350,12 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "InvalidAPIKey",
+			name: "EmptyAPIKey",
 			sttBuilder: func() (*STTClient, error) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](apiKey("NON_EXISTING_API_KEY")),
+					WithAPIKey[*STTClient](""), // empty
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -369,7 +369,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](model("invalid")),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -383,7 +383,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("invalid"),
 					WithFilePath(newTempFile(t)),
@@ -397,7 +397,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath("./non/existing/file/path"),
@@ -411,7 +411,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				stt, _ := NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -429,7 +429,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				stt, _ := NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -447,7 +447,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				stt, _ := NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -465,7 +465,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				stt, _ := NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -483,7 +483,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTElevenLabs), // elevenlabs, want openai
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -496,7 +496,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTOpenAI), // openai, want elevenlabs
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -509,7 +509,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs), // elevenlabs, want openai
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -522,7 +522,7 @@ func TestSTTNew_Validate_Fields(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTElevenLabs),
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI), // openai, want elevenlabs
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -565,7 +565,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -582,7 +582,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTElevenLabs),
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -599,7 +599,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				chat, _ := NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -617,7 +617,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -633,7 +633,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -651,7 +651,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTElevenLabs),
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -669,7 +669,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -684,7 +684,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -700,7 +700,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTElevenLabs),
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -716,7 +716,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderOpenAI),
 					WithURL[*STTClient](URLSTTOpenAI),
-					WithAPIKey[*STTClient](APIKeyEnvOpenAI),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTOpenAI),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
@@ -732,7 +732,7 @@ func TestSTTClient_Transcrip(t *testing.T) {
 				return NewSTTClient(
 					WithProvider[*STTClient](ProviderElevenLabs),
 					WithURL[*STTClient](URLSTTElevenLabs),
-					WithAPIKey[*STTClient](APIKeyEnvElevenLabs),
+					WithAPIKey[*STTClient]("api-key"),
 					WithModel[*STTClient](ModelSTTElevenLabs),
 					WithLanguage("fr"),
 					WithFilePath(newTempFile(t)),
