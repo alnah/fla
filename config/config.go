@@ -346,7 +346,7 @@ func (c *Config) applyDefaults(log *logger.Logger, dirpath, filename string) err
 
 	// apply default language
 	if c.Language == "" {
-		c.Language = locale.FR
+		c.Language = locale.LangFrFR
 	}
 
 	// apply default input/ouput dirs
