@@ -11,13 +11,13 @@ import (
 // FilePath wraps a filesystem path and provides a validation helper.
 type FilePath string
 
-// Validate ensures a file is safe and sane to consume. It:
+// Secure ensures a file is safe and sane to consume. It:
 //   - Normalizes & canonicalizes the path.
 //   - Ensures the extension is in the allowed list (case-insensitive).
 //   - Opens the file via openRoot to avoid TOCTOU/traversal attacks.
 //   - Checks file size ≤ maxSizeMB (if >0).
 //   - Returns the canonical absolute path.
-func (f FilePath) Validate(maxSizeMB int64, allowedExt ...string) (string, error) {
+func (f FilePath) Secure(maxSizeMB int64, allowedExt ...string) (string, error) {
 	// clean and extract extension
 	clean := filepath.Clean(string(f))
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(clean), "."))

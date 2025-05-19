@@ -175,12 +175,12 @@ func (s *STTClient) validate() (string, error) {
 		if s.base.model != ModelSTTOpenAI {
 			return "", fmt.Errorf("model %s not supported by openai", s.base.model)
 		}
-		return s.filePath.Validate(25, allowed...)
+		return s.filePath.Secure(25, allowed...)
 	case s.useElevenLabs:
 		if s.base.model != ModelSTTElevenLabs {
 			return "", fmt.Errorf("model %s not supported by elevenlabs", s.base.model)
 		}
-		return s.filePath.Validate(25, allowed...)
+		return s.filePath.Secure(25, allowed...)
 	}
 	return "", nil
 }

@@ -11,29 +11,19 @@ import (
 func main() {
 	/********* Setup logger *********/
 	log := logger.New()
-
-	/********* Setup config *********/
-	path, err := config.Path()
+	cfg, err := config.NewLoader(config.WithLogger(log)).Load()
 	if err != nil {
-		log.Error("retrieving config path", "error", err.Error())
-		return
-	}
-	cfg, err := config.Load(log, path.DirPath, path.FileName)
-	if err != nil {
-		log.Error("loading config", "error", err.Error())
-		return
-	}
-	if err := cfg.EnsureIODirs(); err != nil {
-		log.Error("ensuring application directories", "error", err.Error())
+		log.Error("configuration loading", "error", err.Error())
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.AI.Timeout.Chat)
+	ctx, cancel := cfg.ChatContext(context.Background())
 	defer cancel()
 
+	/********* Setup chat client *********/
 	chat, err := ai.NewChatClient(
-		ai.WithContext[*ai.ChatClient](ctx),
 		ai.WithLogger[*ai.ChatClient](log),
+		ai.WithContext[*ai.ChatClient](ctx),
 		ai.WithProvider[*ai.ChatClient](ai.ProviderAnthropic),
 		ai.WithURL[*ai.ChatClient](ai.URLChatAnthropic),
 		ai.WithAPIKey[*ai.ChatClient](ai.APIKeyEnvAnthropic),
@@ -48,13 +38,15 @@ func main() {
 		}),
 	)
 	if err != nil {
-		log.Error("chat", "error", err.Error())
+		log.Error("chat client setup", "error", err.Error())
 		return
 	}
+
+	/********* Call completion *********/
 	completion, err := chat.Completion()
 	if err != nil {
-		log.Error("completion", "error", err.Error())
+		log.Error("chat completion", "error", err.Error())
 		return
 	}
-	log.Info("completion", "content", completion.Content())
+	log.Info("chat completion", "content", completion.Content())
 }

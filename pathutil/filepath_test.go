@@ -121,7 +121,7 @@ func TestFilePath_Validate(t *testing.T) {
 			t.Parallel()
 
 			fp := FilePath(tc.path)
-			got, err := fp.Validate(tc.maxMB, tc.allowed...)
+			got, err := fp.Secure(tc.maxMB, tc.allowed...)
 
 			if tc.wantErr {
 				if err == nil {

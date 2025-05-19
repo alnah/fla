@@ -74,7 +74,7 @@ func TestDirPath_Validate(t *testing.T) {
 			t.Parallel()
 
 			dp := DirPath(tc.path)
-			got, err := dp.Validate()
+			got, err := dp.Secure()
 
 			if tc.wantErr {
 				if err == nil {

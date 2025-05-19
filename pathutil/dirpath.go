@@ -10,13 +10,13 @@ import (
 // DirPath wraps a filesystem path and provides a validation helper.
 type DirPath string
 
-// Validate ensures a directory path is safe and sane to consume. It:
+// Secure ensures a directory path is safe and sane to consume. It:
 //   - Normalizes & canonicalizes the path.
 //   - Ensures the base name isn't too long.
 //   - Opens the parent directory via OpenRoot to avoid TOCTOU/traversal attacks.
 //   - Checks that the target exists and is a directory.
 //   - Returns the canonical absolute path.
-func (d DirPath) Validate() (string, error) {
+func (d DirPath) Secure() (string, error) {
 	// clean and normalize the path
 	clean := filepath.Clean(string(d))
 

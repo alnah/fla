@@ -86,9 +86,9 @@ func (u url) Validate() error {
 }
 
 const (
-	APIKeyEnvOpenAI     apiKey = "OPENAI_API_KEY"     // #nosec G101
-	APIKeyEnvAnthropic  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101
-	APIKeyEnvElevenLabs apiKey = "ELEVENLABS_API_KEY" // #nosec G101
+	APIKeyEnvOpenAI     apiKey = "OPENAI_API_KEY"     // #nosec G101: safe env key
+	APIKeyEnvAnthropic  apiKey = "ANTHROPIC_API_KEY"  // #nosec G101: safe env key
+	APIKeyEnvElevenLabs apiKey = "ELEVENLABS_API_KEY" // #nosec G101: safe env key
 )
 
 // apiKey names the environment variable holding the provider’s API key,
