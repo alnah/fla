@@ -17,8 +17,8 @@ import (
 
 // TODO: Decouple FS with fs.FS interface for testing.
 // TODO: Atomic file creation and permission.
-// TODO: Store the timeouts, and expose methods returning context.Context with :deadlines.
-// TODO: Slog errors:
+// TODO: Store the timeouts, and expose methods returning context.Context with deadlines.
+// TODO: Slog errors.
 
 const (
 	appName string = "fla"      // means "foreign language acquisition"
@@ -98,7 +98,7 @@ func load(configFilename, tempDirname string) (*Config, error) {
 	return c, nil
 }
 
-func (c *Config) ConfigPath() string {
+func (c *Config) Path() string {
 	return c.configFilePath
 }
 
@@ -190,6 +190,7 @@ func (c *Config) readConfigFile() ([]byte, error) {
 	if err == nil {
 		return data, nil
 	}
+	// TODO: (c *Config) writeConfigFile
 	if errors.Is(err, fs.ErrNotExist) {
 		if mkErr := ensureDir(dir); mkErr != nil {
 			return nil, fmt.Errorf("making configuration directory: %w", mkErr)
