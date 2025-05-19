@@ -160,9 +160,9 @@ func (l *loader) envOverride(cfg *Config) error {
 	}
 
 	// api keys
-	cfg.apiKey.openai = l.parseString(envAPIKeyOpenAI)
-	cfg.apiKey.anthropic = l.parseString(envAPIKeyAnthropic)
-	cfg.apiKey.elevenlabs = l.parseString(envAPIKeyElevenLabs)
+	cfg.APIKey.OpenAI = l.parseString(envAPIKeyOpenAI)
+	cfg.APIKey.Anthropic = l.parseString(envAPIKeyAnthropic)
+	cfg.APIKey.ElevenLabs = l.parseString(envAPIKeyElevenLabs)
 
 	return nil
 }

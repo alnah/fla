@@ -63,29 +63,29 @@ func (l *loader) Load() (*Config, error) {
 	// default config FS
 	if l.fs.config == nil {
 		if l.fs.config, err = defaultConfigFS(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
 		}
 	}
 	// ensure config dir
 	if err = l.fs.config.MkdirAll(".", fsys.PermUserRWX); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// default temp FS
 	if l.fs.temp == nil {
 		if l.fs.temp, err = defaultTempFS(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
 		}
 	}
 	// ensure temp dir
 	if err = l.fs.temp.MkdirAll(".", fsys.PermUserRWX); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// default home FS
 	if l.fs.home == nil {
 		if l.fs.home, err = defaultHomeFS(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
 		}
 	}
 	// no need to ensure home dir, it should exist in the os
@@ -93,19 +93,19 @@ func (l *loader) Load() (*Config, error) {
 	// default confif fime depending on environment type
 	l.filename, err = defaultConfigFilename()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// reading/initializing config file
 	byt, err := l.fs.config.ReadFile(l.filename)
 	if errors.Is(err, fs.ErrNotExist) {
 		if err := l.fs.config.WriteFile(l.filename, []byte("{}"), fsys.PermUserRW); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
 		}
 		byt, err = l.fs.config.ReadFile(l.filename)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// decoding config
@@ -113,18 +113,18 @@ func (l *loader) Load() (*Config, error) {
 	dec := json.NewDecoder(bytes.NewReader(byt))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 	if err := cfg.defaults(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 	if err := cfg.Lang.Validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// env overrides
 	if err = l.envOverride(&cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	// initializing home dirs
@@ -135,8 +135,8 @@ func (l *loader) Load() (*Config, error) {
 		cfg.Dir.Output.Teacher,
 		cfg.Dir.Output.Lessons,
 	} {
-		if err := l.ensureSpecDir(l.fs.home, dir); err != nil {
-			return nil, err
+		if err := l.ensureEmbedDir(l.fs.home, dir); err != nil {
+			return nil, fmt.Errorf("failed to load configuration: %w", err)
 		}
 	}
 
@@ -146,24 +146,24 @@ func (l *loader) Load() (*Config, error) {
 func (l *loader) UpdateConfigFile(cfg *Config) error {
 	byt, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal configuration: %w", err)
+		return fmt.Errorf("failed to marshal in-memory configuration for update: %w", err)
 	}
 	if err = l.fs.config.WriteFile(l.filename, byt, filesystem.PermUserRW); err != nil {
-		return err
+		return fmt.Errorf("failed to update configuration file: %w", err)
 	}
 	return nil
 }
 
-func (l *loader) ensureSpecDir(f fsys.FileSystem, path string) error {
+func (l *loader) ensureEmbedDir(f fsys.FileSystem, path string) error {
 	info, err := f.Stat(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return f.MkdirAll(path, fsys.PermUserRWX)
 		}
-		return fmt.Errorf("ensure spec directory path %s: stat failed: %w", path, err)
+		return fmt.Errorf("ensure embeded directory path %s: stat failed: %w", path, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("ensure spec directory failed: %s exists, but is not a directory", path)
+		return fmt.Errorf("ensure embed directory failed: %s exists, but is not a directory", path)
 	}
 	return nil
 }

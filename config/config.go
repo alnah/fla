@@ -41,16 +41,12 @@ type Config struct {
 		STT  time.Duration `json:"stt,string,omitempty"`  // speech-to-text transcript timeout
 	} `json:"timeout"`
 
-	apiKey struct {
-		openai     string
-		anthropic  string
-		elevenlabs string
+	APIKey struct {
+		OpenAI     string
+		Anthropic  string
+		ElevenLabs string
 	}
 }
-
-func (c *Config) APIKeyOpenAI() string     { return c.apiKey.openai }
-func (c *Config) APIKeyAnthropic() string  { return c.apiKey.anthropic }
-func (c *Config) APIKeyElevenLabs() string { return c.apiKey.elevenlabs }
 
 func (c *Config) ChatContext(parent context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, c.Timeout.Chat)

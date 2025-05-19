@@ -29,19 +29,19 @@ func (c *Config) defaults() error {
 	defaultVal(&c.Filename.Correction, "Correction")
 
 	// working directories
-	if err := defaultDir(&c.Dir.Input, "input"); err != nil {
+	if err := defaultEmbedDir(&c.Dir.Input, "input"); err != nil {
 		return err
 	}
-	if err := defaultDir(&c.Dir.Staging, "staging"); err != nil {
+	if err := defaultEmbedDir(&c.Dir.Staging, "staging"); err != nil {
 		return err
 	}
-	if err := defaultDir(&c.Dir.Output.Student, "student"); err != nil {
+	if err := defaultEmbedDir(&c.Dir.Output.Student, "student"); err != nil {
 		return err
 	}
-	if err := defaultDir(&c.Dir.Output.Teacher, "teacher"); err != nil {
+	if err := defaultEmbedDir(&c.Dir.Output.Teacher, "teacher"); err != nil {
 		return err
 	}
-	if err := defaultDir(&c.Dir.Output.Lessons, "lessons"); err != nil {
+	if err := defaultEmbedDir(&c.Dir.Output.Lessons, "lessons"); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func (c *Config) defaults() error {
 func defaultConfigFS() (filesystem.FileSystem, error) {
 	userConfigDir, err := user.ConfigDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create the config file system: %w", err)
 	}
 	configDir := filepath.Join(userConfigDir, appName)
 	return filesystem.New(configDir), nil
@@ -65,20 +65,16 @@ func defaultConfigFS() (filesystem.FileSystem, error) {
 func defaultTempFS() (filesystem.FileSystem, error) {
 	userCacheDir, err := user.CacheDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create the temp filesystem: %w", err)
 	}
-	envTempDir, err := defaultTempDir()
-	if err != nil {
-		return nil, err
-	}
-	tempDir := filepath.Join(userCacheDir, appName, envTempDir)
+	tempDir := filepath.Join(userCacheDir, appName, defaultTempDir())
 	return filesystem.New(tempDir), nil
 }
 
 func defaultHomeFS() (filesystem.FileSystem, error) {
 	_, err := user.HomeDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create the home filesystem: %w", err)
 	}
 	return filesystem.New("/"), nil
 }
@@ -94,14 +90,14 @@ func defaultConfigFilename() (string, error) {
 	}
 }
 
-func defaultTempDir() (string, error) {
+func defaultTempDir() string {
 	switch env.Type() {
 	case "dev":
-		return "temp_dev", nil
+		return "temp_dev"
 	case "test":
-		return "temp_test", nil
+		return "temp_test"
 	default:
-		return "temp", nil
+		return "temp"
 	}
 }
 
@@ -118,21 +114,21 @@ func defaultVal[T comparable](field *T, def T) {
 	}
 }
 
-func defaultDir(field *string, dirname string) error {
+func defaultEmbedDir(field *string, dirname string) error {
 	if *field == "" {
-		path, err := specDir(dirname)
+		path, err := embedDir(dirname)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create embed cli directory: %w", err)
 		}
 		*field = path
 	}
 	return nil
 }
 
-func specDir(dirname string) (string, error) {
+func embedDir(dirname string) (string, error) {
 	homeDir, err := user.HomeDir()
 	if err != nil {
-		return "", fmt.Errorf("spec directory path: failed to find user home directory: %w", err)
+		return "", fmt.Errorf("failed to find user home directory: %w", err)
 	}
 
 	target := filepath.Join(homeDir, appName, dirname)

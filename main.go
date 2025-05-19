@@ -26,7 +26,7 @@ func main() {
 		ai.WithContext[*ai.ChatClient](ctx),
 		ai.WithProvider[*ai.ChatClient](ai.ProviderAnthropic),
 		ai.WithURL[*ai.ChatClient](ai.URLChatAnthropic),
-		ai.WithAPIKey[*ai.ChatClient](ai.APIKeyEnvAnthropic),
+		ai.WithAPIKey[*ai.ChatClient](cfg.APIKey.Anthropic),
 		ai.WithModel[*ai.ChatClient](ai.ModelCheapAnthropic),
 		ai.WithMaxTokens(100),
 		ai.WithTemperature(0.2),

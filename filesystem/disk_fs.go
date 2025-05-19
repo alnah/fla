@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/alnah/fla/pathutil"
+	pu "github.com/alnah/fla/pathutil"
 )
 
 // DiskFS implements FileSystem using the OS filesystem with a root directory.
@@ -78,9 +78,10 @@ func (d *DiskFS) WriteFile(path string, data []byte, perm os.FileMode) (err erro
 	}
 
 	// optionally sync parent directory for durability
-	if dir, err = pathutil.DirPath(dir).Secure(); err != nil {
+	if dir, err = pu.DirPath(dir).Secure(); err != nil {
 		return err
 	}
+	// #nosec G304: `dir` has been canonicalized and secured via DirPath.Secure()
 	if dirF, derr := os.Open(dir); derr == nil {
 		_ = dirF.Sync()
 		_ = dirF.Close()
