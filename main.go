@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
 
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
@@ -10,11 +12,14 @@ import (
 
 func main() {
 	/********* Setup logger *********/
-	log := logger.New()
-	cfg, err := config.NewLoader(config.WithLogger(log)).Load()
+	log := logger.NewSlogger(os.Stdout, true, slog.LevelDebug)
+	cfg, err := config.New(config.WithLogger(log)).Load()
 	if err != nil {
-		log.Error("configuration loading", "error", err.Error())
+		log.Error("loading configuration", "error", err.Error())
 		return
+	}
+	if err := cfg.Save(); err != nil {
+		log.Error("updating configuratio", "error", err.Error())
 	}
 
 	ctx, cancel := cfg.ChatContext(context.Background())

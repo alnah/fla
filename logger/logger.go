@@ -5,19 +5,18 @@ import (
 	"os"
 )
 
-// New returns a Logger emitting human-readable text logs to stdout at debug level by default.
-func New() *slog.Logger {
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelDebug,
-	})
-	return NewWithHandler(handler)
+// Logger defines the core logging methods and context attachment
+// so callers can log at various levels and enrich entries with fields.
+type Logger interface {
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
+	With(args ...any) Logger
 }
 
-func NewTestLogger() *slog.Logger { return New() }
+var defaultLogger = NewSlogger(os.Stdout, true, slog.LevelError)
 
-// NewWithHandler creates a Logger using the provided slog.Handler.
-// Useful for tests (inject a buffer) or alternate formats (JSON).
-func NewWithHandler(h slog.Handler) *slog.Logger {
-	return slog.New(h)
-}
+// Default returns the package-level slogger configured to write human-readable
+// text logs to stdout with source information enabled at error level.
+func Default() *slogger { return defaultLogger }

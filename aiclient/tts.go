@@ -63,7 +63,7 @@ func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
 		opt(s)
 	}
 	if err := s.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to build text-to-speech client", err)
+		return nil, NewTTSClientError(s.base.provider, "building text-to-speech client", err)
 	}
 	return s, nil
 }
@@ -73,7 +73,7 @@ func NewTTSClient(options ...option[*TTSClient]) (*TTSClient, error) {
 func (s *TTSClient) Audio() ([]byte, error) {
 	byt, err := json.Marshal(s)
 	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to marshal payload", err)
+		return nil, NewTTSClientError(s.base.provider, "marshaling payload", err)
 	}
 
 	url := s.base.url.String()
@@ -82,20 +82,20 @@ func (s *TTSClient) Audio() ([]byte, error) {
 	}
 	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), url, bytes.NewBuffer(byt))
 	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to build http request", err)
+		return nil, NewTTSClientError(s.base.provider, "building http request", err)
 	}
 
 	s.base.httpClient.Transport = s.newTransportChain()
 	res, err := s.base.httpClient.Do(req)
 	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to send http request", err)
+		return nil, NewTTSClientError(s.base.provider, "sending http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return nil, NewTTSClientError(s.base.provider, "failed to read response body", err)
+		return nil, NewTTSClientError(s.base.provider, "reading response body", err)
 	}
 
 	if res.StatusCode != 200 {
@@ -148,7 +148,7 @@ func (s *TTSClient) applyDefaults() *TTSClient {
 		s.base.ctx = context.Background()
 	}
 	if s.base.log == nil {
-		s.base.log = logger.New()
+		s.base.log = logger.Default()
 	}
 	if s.base.httpClient == nil {
 		s.base.httpClient = &http.Client{Timeout: 10 * time.Minute}

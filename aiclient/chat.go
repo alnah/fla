@@ -62,7 +62,7 @@ func NewChatClient(opts ...option[*ChatClient]) (*ChatClient, error) {
 	}
 
 	if err := c.applyDefaults().setProviderFlag().validate(); err != nil {
-		return nil, NewChatClientError(c.base.provider, "failed to build chat client", err)
+		return nil, NewChatClientError(c.base.provider, "building chat client", err)
 	}
 
 	return c, nil
@@ -73,25 +73,25 @@ func NewChatClient(opts ...option[*ChatClient]) (*ChatClient, error) {
 func (c *ChatClient) Completion() (chatResponse, error) {
 	byt, err := json.Marshal(c)
 	if err != nil {
-		return chatResponse{}, NewChatClientError(c.base.provider, "failed to marshal payload", err)
+		return chatResponse{}, NewChatClientError(c.base.provider, "marshaling payload", err)
 	}
 
 	req, err := http.NewRequestWithContext(c.base.ctx, c.base.httpMethod.String(), c.base.url.String(), bytes.NewBuffer(byt))
 	if err != nil {
-		return chatResponse{}, NewChatClientError(c.base.provider, "failed to build http request", err)
+		return chatResponse{}, NewChatClientError(c.base.provider, "building http request", err)
 	}
 
 	c.base.httpClient.Transport = c.newTransportChain()
 	res, err := c.base.httpClient.Do(req)
 	if err != nil {
-		return chatResponse{}, NewChatClientError(c.base.provider, "failed to send http request", err)
+		return chatResponse{}, NewChatClientError(c.base.provider, "sending http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err = io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return chatResponse{}, NewChatClientError(c.base.provider, "failed to read response body", err)
+		return chatResponse{}, NewChatClientError(c.base.provider, "reading response body", err)
 	}
 
 	if res.StatusCode != 200 {
@@ -100,7 +100,7 @@ func (c *ChatClient) Completion() (chatResponse, error) {
 
 	completion, err := c.parseResponse(byt)
 	if err != nil {
-		return chatResponse{}, NewChatClientError(c.base.provider, "failed to parse response payload: %w", err)
+		return chatResponse{}, NewChatClientError(c.base.provider, "parsing response payload: %w", err)
 	}
 
 	return completion, nil
@@ -150,7 +150,7 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 		c.base.ctx = context.Background()
 	}
 	if c.base.log == nil {
-		c.base.log = logger.New()
+		c.base.log = logger.Default()
 	}
 	if c.base.httpClient == nil {
 		c.base.httpClient = &http.Client{Timeout: 30 * time.Second}
@@ -311,7 +311,7 @@ func (c *ChatClient) parseResponse(byt []byte) (chatResponse, error) {
 		}
 		var payload openaiPayload
 		if err := json.Unmarshal(byt, &payload); err != nil {
-			return chatResponse{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+			return chatResponse{}, fmt.Errorf("unmarshaling response body: %w", err)
 		}
 		if len(payload.Choices) == 0 {
 			return chatResponse{}, fmt.Errorf("no choices in OpenAI response")
@@ -326,7 +326,7 @@ func (c *ChatClient) parseResponse(byt []byte) (chatResponse, error) {
 		}
 		var payload anthropicPayload
 		if err := json.Unmarshal(byt, &payload); err != nil {
-			return chatResponse{}, fmt.Errorf("failed to unmarshal response body: %w", err)
+			return chatResponse{}, fmt.Errorf("unmarshaling response body: %w", err)
 		}
 		if len(payload.Content) == 0 {
 			return chatResponse{}, fmt.Errorf("no content in Anthropic response")

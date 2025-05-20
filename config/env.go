@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -46,16 +47,20 @@ const (
 	envAPIKeyElevenLabs string = "API_KEY_ELEVENLABS" // #nosec G101: safe env key
 )
 
+// Env defines how to read environment variables and distinguish environments.
 type Env interface {
-	Type() string
-	Get(key string) string
-	LookupEnv(key string) (string, bool)
+	Type() string                        // dev, test, or prod
+	Get(key string) string               // retrieve raw value
+	LookupEnv(key string) (string, bool) // detect presence
 }
 
+// configEnv uses the OS environment to implement Env,
+// so settings can be overridden without code changes.
 type configEnv struct{}
 
 var env = &configEnv{}
 
+// Type returns the CLI environment type to select appropriate defaults.
 func (e *configEnv) Type() string {
 	val := os.Getenv(envCLIType)
 	if val == "" {
@@ -64,133 +69,155 @@ func (e *configEnv) Type() string {
 	return val
 }
 
+// Get returns the value of key or empty if unset.
 func (e *configEnv) Get(key string) string {
 	return os.Getenv(key)
 }
 
+// LookupEnv checks if key is present and returns its value.
 func (e *configEnv) LookupEnv(key string) (string, bool) {
 	return os.LookupEnv(key)
 }
 
-func (l *loader) envOverride(cfg *Config) error {
-	// log level
+// envOverride applies environment variables to override any Config fields,
+// but only when the variable is actually present.
+func (l *manager) envOverride(cfg *Config) error {
+	var accErrors []error
+
+	// override log level if provided
 	if v, ok := l.env.LookupEnv(envCLILogLevel); ok {
 		var lvl slog.Level
-		err := lvl.UnmarshalText([]byte(v))
-		if err != nil {
-			return fmt.Errorf("parsing %s: %w", envCLILogLevel, err)
+		if err := lvl.UnmarshalText([]byte(v)); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envCLILogLevel, err))
+		} else {
+			cfg.LogLevel = &lvl
 		}
-		cfg.LogLevel = &lvl
 	}
 
-	// language
+	// override language tag if provided
 	if v, ok := l.env.LookupEnv(envCLILang); ok {
 		var langVal locale.Lang
 		if err := langVal.Set(v); err != nil {
-			return fmt.Errorf("parsing %s: %w", envCLILang, err)
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envCLILang, err))
+		} else {
+			cfg.Lang = &langVal
 		}
-		cfg.Lang = &langVal
 	}
 
-	// filename options: bool flags
-	if b, err := l.parseBool(envFilenameDate); err != nil {
-		return fmt.Errorf("parsing %s: %w", envFilenameDate, err)
-	} else {
-		cfg.Filename.Date = b
+	// parse boolean filename flags if provided
+	if s, ok := l.env.LookupEnv(envFilenameDate); ok {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envFilenameDate, err))
+		} else {
+			cfg.Filename.Date = b
+		}
 	}
-	if b, err := l.parseBool(envFilenameLevel); err != nil {
-		return fmt.Errorf("parsing %s: %w", envFilenameLevel, err)
-	} else {
-		cfg.Filename.Level = b
-	}
-
-	// filename options: string flags
-	cfg.Filename.Lesson = l.parseString(envFilenameLesson)
-	cfg.Filename.Preparation = l.parseString(envFilenamePreparation)
-	cfg.Filename.Plan = l.parseString(envFilenamePlan)
-	cfg.Filename.Reading = l.parseString(envFilenameReading)
-	cfg.Filename.Listening = l.parseString(envFilenameListening)
-	cfg.Filename.Watching = l.parseString(envFilenameWatching)
-	cfg.Filename.Correction = l.parseString(envFilenameCorrection)
-
-	// working directories
-	if d, err := l.parseDir(envInputDir); err != nil {
-		return fmt.Errorf("parsing %s: %w", envInputDir, err)
-	} else if d != "" {
-		cfg.Dir.Input = d
-	}
-	if d, err := l.parseDir(envStagingDir); err != nil {
-		return fmt.Errorf("parsing %s: %w", envStagingDir, err)
-	} else if d != "" {
-		cfg.Dir.Staging = d
-	}
-	if d, err := l.parseDir(envStudentDir); err != nil {
-		return fmt.Errorf("parsing %s: %w", envStudentDir, err)
-	} else if d != "" {
-
-		cfg.Dir.Output.Student = d
-	}
-	if d, err := l.parseDir(envTeacherDir); err != nil {
-		return fmt.Errorf("parsing %s: %w", envTeacherDir, err)
-	} else if d != "" {
-
-		cfg.Dir.Output.Teacher = d
-	}
-	if d, err := l.parseDir(envLessonsDir); err != nil {
-		return fmt.Errorf("parsing %s: %w", envLessonsDir, err)
-	} else if d != "" {
-		cfg.Dir.Output.Lessons = d
+	if s, ok := l.env.LookupEnv(envFilenameLevel); ok {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envFilenameLevel, err))
+		} else {
+			cfg.Filename.Level = b
+		}
 	}
 
-	// timeouts
-	if d, err := l.parseDuration(envTimeoutChat); err != nil {
-		return fmt.Errorf("parsing %s: %w", envTimeoutChat, err)
-	} else if d > 0 {
-		cfg.Timeout.Chat = d
+	// parse string filename tags if provided
+	if v, ok := l.env.LookupEnv(envFilenameLesson); ok {
+		cfg.Filename.Lesson = v
 	}
-	if d, err := l.parseDuration(envTimeoutTTS); err != nil {
-		return fmt.Errorf("parsing %s: %w", envTimeoutTTS, err)
-	} else if d > 0 {
-		cfg.Timeout.TTS = d
+	if v, ok := l.env.LookupEnv(envFilenamePreparation); ok {
+		cfg.Filename.Preparation = v
 	}
-	if d, err := l.parseDuration(envTimeoutSTT); err != nil {
-		return fmt.Errorf("parsing %s: %w", envTimeoutSTT, err)
-	} else if d > 0 {
-		cfg.Timeout.STT = d
+	if v, ok := l.env.LookupEnv(envFilenamePlan); ok {
+		cfg.Filename.Plan = v
+	}
+	if v, ok := l.env.LookupEnv(envFilenameReading); ok {
+		cfg.Filename.Reading = v
+	}
+	if v, ok := l.env.LookupEnv(envFilenameListening); ok {
+		cfg.Filename.Listening = v
+	}
+	if v, ok := l.env.LookupEnv(envFilenameWatching); ok {
+		cfg.Filename.Watching = v
+	}
+	if v, ok := l.env.LookupEnv(envFilenameCorrection); ok {
+		cfg.Filename.Correction = v
 	}
 
-	// api keys
-	cfg.APIKey.OpenAI = l.parseString(envAPIKeyOpenAI)
-	cfg.APIKey.Anthropic = l.parseString(envAPIKeyAnthropic)
-	cfg.APIKey.ElevenLabs = l.parseString(envAPIKeyElevenLabs)
+	// parse directory overrides if provided
+	if d, ok := l.env.LookupEnv(envInputDir); ok {
+		if path, err := pathutil.DirPath(d).Secure(); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envInputDir, err))
+		} else {
+			cfg.Dir.Input = path
+		}
+	}
+	if d, ok := l.env.LookupEnv(envStagingDir); ok {
+		if path, err := pathutil.DirPath(d).Secure(); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envStagingDir, err))
+		} else {
+			cfg.Dir.Staging = path
+		}
+	}
+	if d, ok := l.env.LookupEnv(envStudentDir); ok {
+		if path, err := pathutil.DirPath(d).Secure(); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envStudentDir, err))
+		} else {
+			cfg.Dir.Output.Student = path
+		}
+	}
+	if d, ok := l.env.LookupEnv(envTeacherDir); ok {
+		if path, err := pathutil.DirPath(d).Secure(); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTeacherDir, err))
+		} else {
+			cfg.Dir.Output.Teacher = path
+		}
+	}
+	if d, ok := l.env.LookupEnv(envLessonsDir); ok {
+		if path, err := pathutil.DirPath(d).Secure(); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envLessonsDir, err))
+		} else {
+			cfg.Dir.Output.Lessons = path
+		}
+	}
 
+	// parse timeouts if provided
+	if s, ok := l.env.LookupEnv(envTimeoutChat); ok {
+		if dur, err := time.ParseDuration(s); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutChat, err))
+		} else if dur > 0 {
+			cfg.Timeout.Chat = Duration(dur)
+		}
+	}
+	if s, ok := l.env.LookupEnv(envTimeoutTTS); ok {
+		if dur, err := time.ParseDuration(s); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutTTS, err))
+		} else if dur > 0 {
+			cfg.Timeout.TTS = Duration(dur)
+		}
+	}
+	if s, ok := l.env.LookupEnv(envTimeoutSTT); ok {
+		if dur, err := time.ParseDuration(s); err != nil {
+			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutSTT, err))
+		} else if dur > 0 {
+			cfg.Timeout.STT = Duration(dur)
+		}
+	}
+
+	// pull in API keys if provided
+	if v, ok := l.env.LookupEnv(envAPIKeyOpenAI); ok {
+		cfg.APIKey.OpenAI = v
+	}
+	if v, ok := l.env.LookupEnv(envAPIKeyAnthropic); ok {
+		cfg.APIKey.Anthropic = v
+	}
+	if v, ok := l.env.LookupEnv(envAPIKeyElevenLabs); ok {
+		cfg.APIKey.ElevenLabs = v
+	}
+
+	if len(accErrors) > 0 {
+		return fmt.Errorf("environment override errors: %w", errors.Join(accErrors...))
+	}
 	return nil
-}
-
-func (l *loader) parseBool(key string) (bool, error) {
-	if s, ok := l.env.LookupEnv(key); ok {
-		return strconv.ParseBool(s)
-	}
-	return false, nil
-}
-
-func (l *loader) parseString(key string) string {
-	if s, ok := l.env.LookupEnv(key); ok {
-		return s
-	}
-	return ""
-}
-
-func (l *loader) parseDir(key string) (string, error) {
-	if d, ok := l.env.LookupEnv(key); ok {
-		return pathutil.DirPath(d).Secure()
-	}
-	return "", nil
-}
-
-func (l *loader) parseDuration(key string) (time.Duration, error) {
-	if s, ok := l.env.LookupEnv(key); ok {
-		return time.ParseDuration(s)
-	}
-	return 0, nil
 }

@@ -2,11 +2,11 @@ package transport
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/alnah/fla/breaker"
+	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/retrier"
 )
 
@@ -128,7 +128,7 @@ func UseRetrier(r retrier.Retrier, isRetryable func(error) bool) Middleware {
 
 // UseLogger records timing and success or failure of each request.
 // It’s designed to add minimal overhead while giving visibility into your HTTP traffic.
-func UseLogger(log *slog.Logger) Middleware {
+func UseLogger(log logger.Logger) Middleware {
 	if log == nil {
 		return func(next http.RoundTripper) http.RoundTripper { return next }
 	}

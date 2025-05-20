@@ -63,11 +63,11 @@ func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 	var err error
 	t.filePathSecure, err = t.applyDefaults().setProviderFlag().validate()
 	if err != nil {
-		return nil, NewSTTClientError(t.base.provider, "failed to build speech-to-text client", err)
+		return nil, NewSTTClientError(t.base.provider, "building speech-to-text client", err)
 	}
 	t.file, err = os.Open(t.filePathSecure)
 	if err != nil {
-		return nil, NewSTTClientError(t.base.provider, "failed to build speech-to-text client", err)
+		return nil, NewSTTClientError(t.base.provider, "building speech-to-text client", err)
 	}
 	return t, nil
 }
@@ -77,25 +77,25 @@ func NewSTTClient(options ...option[*STTClient]) (*STTClient, error) {
 func (s *STTClient) Transcript() (transcriptResponse, error) {
 	err := s.newFormFileBody()
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to build form file body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "building form file body", err)
 	}
 
 	req, err := http.NewRequestWithContext(s.base.ctx, s.base.httpMethod.String(), s.base.url.String(), s.formFileBody)
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to build http request", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "building http request", err)
 	}
 
 	s.base.httpClient.Transport = s.newTransportChain()
 	res, err := s.base.httpClient.Do(req)
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to send http request", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "sending http request", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	byt, err := io.ReadAll(res.Body)
 	res.Body = io.NopCloser(bytes.NewReader(byt))
 	if err != nil {
-		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to read response body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "reading response body", err)
 	}
 
 	if res.StatusCode != 200 {
@@ -105,7 +105,7 @@ func (s *STTClient) Transcript() (transcriptResponse, error) {
 	var transcript transcriptResponse
 	dec := json.NewDecoder(res.Body)
 	if err := dec.Decode(&transcript); err != nil {
-		return transcriptResponse{}, NewSTTClientError(s.base.provider, "failed to decode response body", err)
+		return transcriptResponse{}, NewSTTClientError(s.base.provider, "reading response body", err)
 	}
 	return transcript, nil
 }
@@ -115,7 +115,7 @@ func (s *STTClient) applyDefaults() *STTClient {
 		s.base.ctx = context.Background()
 	}
 	if s.base.log == nil {
-		s.base.log = logger.New()
+		s.base.log = logger.Default()
 	}
 	if s.base.httpClient == nil {
 		s.base.httpClient = &http.Client{Timeout: 30 * time.Second}
@@ -220,10 +220,10 @@ func (s *STTClient) newFormFileBody() error {
 	// add file field
 	part, err := multipartWriter.CreateFormFile("file", filepath.Base(s.filePathSecure))
 	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
+		return fmt.Errorf("creating form file: %w", err)
 	}
 	if _, err = io.Copy(part, s.file); err != nil {
-		return fmt.Errorf("failed to copy file to form: %w", err)
+		return fmt.Errorf("copying file to form: %w", err)
 	}
 
 	// add text fields
@@ -238,7 +238,7 @@ func (s *STTClient) newFormFileBody() error {
 
 	// finalize multipart body
 	if err = multipartWriter.Close(); err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
+		return fmt.Errorf("closing multipart writer: %w", err)
 	}
 
 	return nil
