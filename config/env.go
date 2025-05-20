@@ -82,142 +82,210 @@ func (e *configEnv) LookupEnv(key string) (string, bool) {
 // envOverride applies environment variables to override any Config fields,
 // but only when the variable is actually present.
 func (l *manager) envOverride(cfg *Config) error {
-	var accErrors []error
-
-	// override log level if provided
-	if v, ok := l.env.LookupEnv(envCLILogLevel); ok {
-		var lvl slog.Level
-		if err := lvl.UnmarshalText([]byte(v)); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envCLILogLevel, err))
-		} else {
-			cfg.LogLevel = &lvl
-		}
+	type overrider struct {
+		key   string
+		apply func(string) error
 	}
 
-	// override language tag if provided
-	if v, ok := l.env.LookupEnv(envCLILang); ok {
-		var langVal locale.Lang
-		if err := langVal.Set(v); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envCLILang, err))
-		} else {
-			cfg.Lang = &langVal
+	overrides := []overrider{
+		// log level
+		{
+			key: envCLILogLevel,
+			apply: func(v string) error {
+				var lvl slog.Level
+				if err := lvl.UnmarshalText([]byte(v)); err != nil {
+					return fmt.Errorf("parsing %s: %w", envCLILogLevel, err)
+				}
+				cfg.LogLevel = &lvl
+				return nil
+			},
+		},
+		// language tag
+		{
+			key: envCLILang,
+			apply: func(v string) error {
+				var langVal locale.Lang
+				if err := langVal.Set(v); err != nil {
+					return fmt.Errorf("parsing %s: %w", envCLILang, err)
+				}
+				cfg.Lang = &langVal
+				return nil
+			},
+		},
+		// filename boolean flags
+		{
+			key: envFilenameDate,
+			apply: func(v string) error {
+				b, err := strconv.ParseBool(v)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envFilenameDate, err)
+				}
+				cfg.Filename.Date = b
+				return nil
+			},
+		},
+		{
+			key: envFilenameLevel,
+			apply: func(v string) error {
+				b, err := strconv.ParseBool(v)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envFilenameLevel, err)
+				}
+				cfg.Filename.Level = b
+				return nil
+			},
+		},
+		// filename string tags
+		{
+			key:   envFilenameLesson,
+			apply: func(v string) error { cfg.Filename.Lesson = v; return nil },
+		},
+		{
+			key:   envFilenamePreparation,
+			apply: func(v string) error { cfg.Filename.Preparation = v; return nil },
+		},
+		{
+			key:   envFilenamePlan,
+			apply: func(v string) error { cfg.Filename.Plan = v; return nil },
+		},
+		{
+			key:   envFilenameReading,
+			apply: func(v string) error { cfg.Filename.Reading = v; return nil },
+		},
+		{
+			key:   envFilenameListening,
+			apply: func(v string) error { cfg.Filename.Listening = v; return nil },
+		},
+		{
+			key:   envFilenameWatching,
+			apply: func(v string) error { cfg.Filename.Watching = v; return nil },
+		},
+		{
+			key:   envFilenameCorrection,
+			apply: func(v string) error { cfg.Filename.Correction = v; return nil },
+		},
+		// directory overrides (with Secure)
+		{
+			key: envInputDir,
+			apply: func(v string) error {
+				p, err := pathutil.DirPath(v).Secure()
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envInputDir, err)
+				}
+				cfg.Dir.Input = p
+				return nil
+			},
+		},
+		{
+			key: envStagingDir,
+			apply: func(v string) error {
+				p, err := pathutil.DirPath(v).Secure()
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envStagingDir, err)
+				}
+				cfg.Dir.Staging = p
+				return nil
+			},
+		},
+		{
+			key: envStudentDir,
+			apply: func(v string) error {
+				p, err := pathutil.DirPath(v).Secure()
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envStudentDir, err)
+				}
+				cfg.Dir.Output.Student = p
+				return nil
+			},
+		},
+		{
+			key: envTeacherDir,
+			apply: func(v string) error {
+				p, err := pathutil.DirPath(v).Secure()
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envTeacherDir, err)
+				}
+				cfg.Dir.Output.Teacher = p
+				return nil
+			},
+		},
+		{
+			key: envLessonsDir,
+			apply: func(v string) error {
+				p, err := pathutil.DirPath(v).Secure()
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envLessonsDir, err)
+				}
+				cfg.Dir.Output.Lessons = p
+				return nil
+			},
+		},
+		// timeout overrides
+		{
+			key: envTimeoutChat,
+			apply: func(v string) error {
+				d, err := time.ParseDuration(v)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envTimeoutChat, err)
+				}
+				if d > 0 {
+					cfg.Timeout.Chat = Duration(d)
+				}
+				return nil
+			},
+		},
+		{
+			key: envTimeoutTTS,
+			apply: func(v string) error {
+				d, err := time.ParseDuration(v)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envTimeoutTTS, err)
+				}
+				if d > 0 {
+					cfg.Timeout.TTS = Duration(d)
+				}
+				return nil
+			},
+		},
+		{
+			key: envTimeoutSTT,
+			apply: func(v string) error {
+				d, err := time.ParseDuration(v)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", envTimeoutSTT, err)
+				}
+				if d > 0 {
+					cfg.Timeout.STT = Duration(d)
+				}
+				return nil
+			},
+		},
+		// API keys
+		{
+			key:   envAPIKeyOpenAI,
+			apply: func(v string) error { cfg.APIKey.OpenAI = v; return nil },
+		},
+		{
+			key:   envAPIKeyAnthropic,
+			apply: func(v string) error { cfg.APIKey.Anthropic = v; return nil },
+		},
+		{
+			key:   envAPIKeyElevenLabs,
+			apply: func(v string) error { cfg.APIKey.ElevenLabs = v; return nil },
+		},
+	}
+
+	var errs []error
+	for _, o := range overrides {
+		if v, ok := l.env.LookupEnv(o.key); ok {
+			if err := o.apply(v); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 
-	// parse boolean filename flags if provided
-	if s, ok := l.env.LookupEnv(envFilenameDate); ok {
-		b, err := strconv.ParseBool(s)
-		if err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envFilenameDate, err))
-		} else {
-			cfg.Filename.Date = b
-		}
-	}
-	if s, ok := l.env.LookupEnv(envFilenameLevel); ok {
-		b, err := strconv.ParseBool(s)
-		if err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envFilenameLevel, err))
-		} else {
-			cfg.Filename.Level = b
-		}
-	}
-
-	// parse string filename tags if provided
-	if v, ok := l.env.LookupEnv(envFilenameLesson); ok {
-		cfg.Filename.Lesson = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenamePreparation); ok {
-		cfg.Filename.Preparation = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenamePlan); ok {
-		cfg.Filename.Plan = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenameReading); ok {
-		cfg.Filename.Reading = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenameListening); ok {
-		cfg.Filename.Listening = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenameWatching); ok {
-		cfg.Filename.Watching = v
-	}
-	if v, ok := l.env.LookupEnv(envFilenameCorrection); ok {
-		cfg.Filename.Correction = v
-	}
-
-	// parse directory overrides if provided
-	if d, ok := l.env.LookupEnv(envInputDir); ok {
-		if path, err := pathutil.DirPath(d).Secure(); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envInputDir, err))
-		} else {
-			cfg.Dir.Input = path
-		}
-	}
-	if d, ok := l.env.LookupEnv(envStagingDir); ok {
-		if path, err := pathutil.DirPath(d).Secure(); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envStagingDir, err))
-		} else {
-			cfg.Dir.Staging = path
-		}
-	}
-	if d, ok := l.env.LookupEnv(envStudentDir); ok {
-		if path, err := pathutil.DirPath(d).Secure(); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envStudentDir, err))
-		} else {
-			cfg.Dir.Output.Student = path
-		}
-	}
-	if d, ok := l.env.LookupEnv(envTeacherDir); ok {
-		if path, err := pathutil.DirPath(d).Secure(); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTeacherDir, err))
-		} else {
-			cfg.Dir.Output.Teacher = path
-		}
-	}
-	if d, ok := l.env.LookupEnv(envLessonsDir); ok {
-		if path, err := pathutil.DirPath(d).Secure(); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envLessonsDir, err))
-		} else {
-			cfg.Dir.Output.Lessons = path
-		}
-	}
-
-	// parse timeouts if provided
-	if s, ok := l.env.LookupEnv(envTimeoutChat); ok {
-		if dur, err := time.ParseDuration(s); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutChat, err))
-		} else if dur > 0 {
-			cfg.Timeout.Chat = Duration(dur)
-		}
-	}
-	if s, ok := l.env.LookupEnv(envTimeoutTTS); ok {
-		if dur, err := time.ParseDuration(s); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutTTS, err))
-		} else if dur > 0 {
-			cfg.Timeout.TTS = Duration(dur)
-		}
-	}
-	if s, ok := l.env.LookupEnv(envTimeoutSTT); ok {
-		if dur, err := time.ParseDuration(s); err != nil {
-			accErrors = append(accErrors, fmt.Errorf("parsing %s: %w", envTimeoutSTT, err))
-		} else if dur > 0 {
-			cfg.Timeout.STT = Duration(dur)
-		}
-	}
-
-	// pull in API keys if provided
-	if v, ok := l.env.LookupEnv(envAPIKeyOpenAI); ok {
-		cfg.APIKey.OpenAI = v
-	}
-	if v, ok := l.env.LookupEnv(envAPIKeyAnthropic); ok {
-		cfg.APIKey.Anthropic = v
-	}
-	if v, ok := l.env.LookupEnv(envAPIKeyElevenLabs); ok {
-		cfg.APIKey.ElevenLabs = v
-	}
-
-	if len(accErrors) > 0 {
-		return fmt.Errorf("environment override errors: %w", errors.Join(accErrors...))
+	if len(errs) > 0 {
+		return fmt.Errorf("environment override errors: %w", errors.Join(errs...))
 	}
 	return nil
 }
