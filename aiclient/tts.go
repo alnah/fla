@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
@@ -151,7 +150,7 @@ func (s *TTSClient) applyDefaults() *TTSClient {
 		s.base.log = logger.Default()
 	}
 	if s.base.httpClient == nil {
-		s.base.httpClient = &http.Client{Timeout: 10 * time.Minute}
+		s.base.httpClient = &http.Client{Timeout: TTSTimeout}
 	}
 	if s.base.httpMethod == "" {
 		s.base.httpMethod = httpMethod(http.MethodPost)

@@ -3,11 +3,16 @@ package config
 import (
 	"log/slog"
 	"path/filepath"
-	"time"
 
+	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/filesystem"
 	"github.com/alnah/fla/locale"
+	"github.com/alnah/fla/storage/cache"
 )
+
+// RedisStoreLogicalDBs defines the number of logical databases used in the Redis store to prevent key namespace collisions.
+// All databases share the same memory, resources, and threads. With 16 DBs, indices range from 0 to 15.
+const RedisStoreLogicalDBs int = 16
 
 // defaults assigns sensible fallbacks so users need only override what matters.
 func (c *Config) defaults() error {
@@ -45,10 +50,16 @@ func (c *Config) defaults() error {
 		return err
 	}
 
-	// timeouts guard external dependencies
-	defaultVal(&c.Timeout.Chat, Duration(30*time.Second))
-	defaultVal(&c.Timeout.TTS, Duration(5*time.Minute))
-	defaultVal(&c.Timeout.STT, Duration(30*time.Second))
+	// ai clients' timeouts
+	defaultVal(&c.AI.Timeout.Chat, Duration(ai.ChatTimeout))
+	defaultVal(&c.AI.Timeout.TTS, Duration(ai.TTSTimeout))
+	defaultVal(&c.AI.Timeout.STT, Duration(ai.STTTimeout))
+
+	// redis cache store
+	defaultVal(&c.Cache.Timeout.Pool, Duration(cache.RedisPoolTimeout))
+	defaultVal(&c.Cache.Timeout.Dial, Duration(cache.RedisDialTimeout))
+	defaultVal(&c.Cache.Timeout.Write, Duration(cache.RedisWriteTimeout))
+	defaultVal(&c.Cache.Timeout.Write, Duration(cache.RedisWriteTimeout))
 
 	return nil
 }
@@ -62,16 +73,6 @@ func defaultConfigFS() (filesystem.FileSystem, error) {
 	}
 	configDir := filepath.Join(userConfigDir, appName)
 	return filesystem.New(configDir), nil
-}
-
-// defaultTempFS returns a FileSystem for transient data to avoid clutter.
-func defaultTempFS() (filesystem.FileSystem, error) {
-	userCacheDir, err := user.CacheDir()
-	if err != nil {
-		return nil, err
-	}
-	tempDir := filepath.Join(userCacheDir, appName, defaultTempDir())
-	return filesystem.New(tempDir), nil
 }
 
 // defaultHomeFS gives full filesystem access for embedding lesson directories.
@@ -93,19 +94,6 @@ func defaultConfigFilename() (string, error) {
 		return "config.test.json", nil
 	default:
 		return "config.json", nil
-	}
-}
-
-// defaultTempDir picks a temp folder name reflecting the environment,
-// preventing accidental data mix-up.
-func defaultTempDir() string {
-	switch env.Type() {
-	case "dev":
-		return "temp_dev"
-	case "test":
-		return "temp_test"
-	default:
-		return "temp"
 	}
 }
 

@@ -12,6 +12,9 @@ import (
 	"github.com/alnah/fla/logger"
 )
 
+// TODO: testing against config
+// TODO: checking if prompt registry will not benefit of my custom filesystem
+// TODO: now prompt registry does integration test, it should do unit tests with my own filesystem
 const appName = "fla" // short for Foreign Language Acquisition
 
 // ConfigManager defines how to load and persist application settings.
@@ -27,7 +30,6 @@ type manager struct {
 	userDirs UserDirs      // user directory locations
 	fs       struct {
 		config fsys.FileSystem // where config.json lives
-		temp   fsys.FileSystem // for transient files
 		home   fsys.FileSystem // to embed lesson dirs
 	}
 	filename string // name of the JSON file in config FS
@@ -36,28 +38,23 @@ type manager struct {
 type option func(*manager)
 
 // WithEnv lets you swap in a fake or test environment.
-func WithEnv(e Env) func(*manager) { return func(l *manager) { l.env = e } }
+func WithEnv(e Env) func(*manager) { return func(m *manager) { m.env = e } }
 
 // WithUserDirs lets you override where to find user dirs.
-func WithUserDirs(u UserDirs) func(*manager) { return func(l *manager) { l.userDirs = u } }
+func WithUserDirs(u UserDirs) func(*manager) { return func(m *manager) { m.userDirs = u } }
 
 // WithConfigFS assigns a custom filesystem for config storage.
 func WithConfigFS(f fsys.FileSystem) func(*manager) {
-	return func(l *manager) { l.fs.config = f }
-}
-
-// WithTempFS assigns a custom filesystem for temporary data.
-func WithTempFS(f fsys.FileSystem) func(*manager) {
-	return func(l *manager) { l.fs.temp = f }
+	return func(m *manager) { m.fs.config = f }
 }
 
 // WithHomeFS assigns a filesystem for embedding lesson content.
 func WithHomeFS(f fsys.FileSystem) func(*manager) {
-	return func(l *manager) { l.fs.home = f }
+	return func(m *manager) { m.fs.home = f }
 }
 
 // WithLogger provides visibility into loading steps.
-func WithLogger(s logger.Logger) func(*manager) { return func(l *manager) { l.log = s } }
+func WithLogger(s logger.Logger) func(*manager) { return func(m *manager) { m.log = s } }
 
 // New constructs a manager with optional overrides,
 // preparing to Load or Update configuration.
@@ -92,16 +89,6 @@ func (m *manager) Load() (*manager, error) {
 	}
 	if err = m.fs.config.MkdirAll(".", fsys.PermUserRWX); err != nil {
 		return nil, NewConfigError("creating filesystem directory", err)
-	}
-
-	// prepare temp FS
-	if m.fs.temp == nil {
-		if m.fs.temp, err = defaultTempFS(); err != nil {
-			return nil, NewConfigError("loading temporary filesystem", err)
-		}
-	}
-	if err = m.fs.temp.MkdirAll(".", fsys.PermUserRWX); err != nil {
-		return nil, NewConfigError("creating temporary filesystem directory", err)
 	}
 
 	// prepare home FS

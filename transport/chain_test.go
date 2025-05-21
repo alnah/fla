@@ -408,6 +408,10 @@ type stubBreaker struct {
 	sawCtx   context.Context
 }
 
+func (s *stubBreaker) Success()
+
+func (s *stubBreaker) Fail()
+
 func (s *stubBreaker) Execute(
 	ctx context.Context,
 	op func(context.Context) error,

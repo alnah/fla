@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
@@ -153,7 +152,7 @@ func (c *ChatClient) applyDefaults() *ChatClient {
 		c.base.log = logger.Default()
 	}
 	if c.base.httpClient == nil {
-		c.base.httpClient = &http.Client{Timeout: 30 * time.Second}
+		c.base.httpClient = &http.Client{Timeout: ChatTimeout}
 	}
 	if c.base.httpMethod == "" {
 		c.base.httpMethod = httpMethod(http.MethodPost)

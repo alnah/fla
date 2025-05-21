@@ -14,7 +14,7 @@ type Duration time.Duration
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
-		return fmt.Errorf("Duration should be a string, got %s: %w", string(b), err)
+		return fmt.Errorf("duration should be a string, got %s: %w", string(b), err)
 	}
 	dur, err := time.ParseDuration(s)
 	if err != nil {

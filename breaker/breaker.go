@@ -3,6 +3,7 @@ package breaker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ const (
 )
 
 // ErrOpen is returned when the breaker rejects a call while open.
-var ErrOpen = errors.New("circuit breaker is open")
+var ErrOpen = errors.New("circuit breaker: is open")
 
 // Metrics exposes optional counters.
 type Metrics interface {
@@ -37,6 +38,8 @@ const (
 
 type Breaker interface {
 	Execute(ctx context.Context, opCtx func(context.Context) error) error
+	Success()
+	Fail()
 }
 
 // breaker wraps an operation with failure tracking and state transitions.
@@ -103,12 +106,46 @@ func (b *breaker) evictOld(now time.Time) {
 	b.failures = b.failures[i:]
 }
 
+// Success records a successful call.
+func (b *breaker) Success() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	switch b.state {
+	case HalfOpen:
+		b.successes++
+		if b.successes >= b.cfg.SuccessThreshold {
+			b.reset()
+		}
+	case Closed:
+		b.failures = b.failures[:0]
+	}
+}
+
+// Fail records a failed call.
+func (b *breaker) Fail() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	now := b.now()
+	switch b.state {
+	case HalfOpen:
+		b.trip(now)
+	case Closed:
+		b.evictOld(now)
+		b.failures = append(b.failures, now)
+		if len(b.failures) >= b.cfg.FailureThreshold {
+			b.trip(now)
+		}
+	}
+}
+
 // Execute runs the provided operation if the breaker allows it.
 // When the breaker is open, Execute returns ErrOpen immediately.
 // Successes reset failure count in closed state; failures count toward tripping the breaker open.
 func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) error {
 	if op == nil {
-		return errors.New("breaker: nil operation")
+		return errors.New("circuit breaker: nil operation")
 	}
 
 	// admission
@@ -167,7 +204,7 @@ func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) e
 		return nil
 
 	case cancelled && b.state != HalfOpen:
-		return err // neutral
+		return fmt.Errorf("circuit breaker: %w", err)
 
 	default: // failure
 		if m := b.cfg.Metrics; m != nil {
@@ -185,7 +222,7 @@ func (b *breaker) Execute(ctx context.Context, op func(context.Context) error) e
 				b.trip(n)
 			}
 		}
-		return err
+		return fmt.Errorf("circuit breaker: %w", err)
 	}
 }
 

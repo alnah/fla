@@ -8,6 +8,7 @@ import (
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/config"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/storage/cache"
 )
 
 func main() {
@@ -24,15 +25,37 @@ func main() {
 
 	ctx, cancel := cfg.ChatContext(context.Background())
 	defer cancel()
+	/********* Setup cache store *********/
+	rc, err := cache.NewRedisCache().
+		WithAddress(cfg.Cache.Address).
+		WithPassword(cfg.Cache.Password).
+		WithLogger(log).
+		Build()
+
+	if err != nil {
+		log.Error("redis cache", "error", err.Error())
+		return
+	}
+	err = rc.Set(context.Background(), "hello", "world", 0)
+	if err != nil {
+		log.Error("redis cache", "error", err.Error())
+		return
+	}
+	result, err := rc.Get(context.Background(), "hello")
+	if err != nil {
+		log.Error("redis cache", "error", err.Error())
+		return
+	}
+	log.Info("redis", "result", result)
 
 	/********* Setup chat client *********/
 	chat, err := ai.NewChatClient(
 		ai.WithLogger[*ai.ChatClient](log),
 		ai.WithContext[*ai.ChatClient](ctx),
-		ai.WithProvider[*ai.ChatClient](ai.ProviderAnthropic),
-		ai.WithURL[*ai.ChatClient](ai.URLChatAnthropic),
-		ai.WithAPIKey[*ai.ChatClient](cfg.APIKey.Anthropic),
-		ai.WithModel[*ai.ChatClient](ai.ModelCheapAnthropic),
+		ai.WithProvider[*ai.ChatClient](ai.ProviderOpenAI),
+		ai.WithURL[*ai.ChatClient](ai.URLChatOpenAI),
+		ai.WithAPIKey[*ai.ChatClient](cfg.AI.APIKey.OpenAI),
+		ai.WithModel[*ai.ChatClient](ai.ModelCheapOpenAI),
 		ai.WithMaxTokens(100),
 		ai.WithTemperature(0.2),
 		ai.WithMessages(ai.Messages{

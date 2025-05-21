@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/locale"
@@ -118,7 +117,7 @@ func (s *STTClient) applyDefaults() *STTClient {
 		s.base.log = logger.Default()
 	}
 	if s.base.httpClient == nil {
-		s.base.httpClient = &http.Client{Timeout: 30 * time.Second}
+		s.base.httpClient = &http.Client{Timeout: STTTimeout}
 	}
 	if s.base.httpMethod == "" {
 		s.base.httpMethod = httpMethod(http.MethodPost)
