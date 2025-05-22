@@ -149,17 +149,17 @@ func (rc *RedisCache) Set(ctx context.Context, key string, value any, ttl time.D
 
 // Get implements CacheClient.Get.
 // Returns ErrCacheMiss if key does not exist.
-func (rc *RedisCache) Get(ctx context.Context, key string) (string, error) {
+func (rc *RedisCache) Get(ctx context.Context, key string) (result, error) {
 	if err := rc.client.Options().Limiter.Allow(); err != nil {
-		return "", NewRedisCacheError("getting", err)
+		return nil, NewRedisCacheError("getting", err)
 	}
-	val, err := rc.client.Get(ctx, key).Result()
+	val, err := rc.client.Get(ctx, key).Bytes()
 	rc.client.Options().Limiter.ReportResult(err)
 	if err == redis.Nil {
-		return "", NewRedisCacheError("getting", ErrCacheMiss)
+		return nil, NewRedisCacheError("getting", ErrCacheMiss)
 	}
 	if err != nil {
-		return "", NewRedisCacheError("getting", err)
+		return nil, NewRedisCacheError("getting", err)
 	}
 	return val, nil
 }
