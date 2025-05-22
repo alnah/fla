@@ -41,12 +41,12 @@ func main() {
 		log.Error("redis cache", "error", err.Error())
 		return
 	}
-	result, err := rc.Get(context.Background(), "hello")
+	val, err := rc.Get(context.Background(), "hello")
 	if err != nil {
 		log.Error("redis cache", "error", err.Error())
 		return
 	}
-	log.Info("redis", "result", result)
+	log.Info("redis", "result", val.String())
 
 	/********* Setup chat client *********/
 	chat, err := ai.NewChatClient(

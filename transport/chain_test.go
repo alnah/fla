@@ -406,11 +406,12 @@ type stubBreaker struct {
 	open     bool
 	executed bool
 	sawCtx   context.Context
+	success  bool
 }
 
-func (s *stubBreaker) Success()
+func (s *stubBreaker) Success() { s.success = true }
 
-func (s *stubBreaker) Fail()
+func (s *stubBreaker) Fail() { s.success = false }
 
 func (s *stubBreaker) Execute(
 	ctx context.Context,
