@@ -2,8 +2,11 @@ package cache
 
 import (
 	"errors"
-	"fmt"
+	"strings"
 )
+
+// ErrCacheMiss represents a key not found error.
+var ErrCacheMiss = errors.New("key not found")
 
 // CacheError represents a generic cache holding the component e.g. "redis", the
 // failed operation e.g. "initializing", and the error cause.
@@ -15,7 +18,29 @@ type CacheError struct {
 
 // Error returns the error string.
 func (e *CacheError) Error() string {
-	return fmt.Sprintf("%s cache: %s: %v", e.Component, e.Operation, e.Cause)
+	parts := []string{}
+
+	if e.Component != "" {
+		parts = append(parts, e.Component+" cache")
+	}
+
+	if e.Operation != "" {
+		if len(parts) > 0 {
+			parts[len(parts)-1] += ": " + e.Operation
+		} else {
+			parts = append(parts, e.Operation)
+		}
+	}
+
+	if e.Cause != nil && e.Cause.Error() != "" {
+		parts = append(parts, e.Cause.Error())
+	}
+
+	if len(parts) == 0 {
+		return "cache error"
+	}
+
+	return strings.Join(parts, ": ")
 }
 
 // Unwrap returns the error cause.
@@ -32,6 +57,3 @@ func NewCacheError(component, operation string, err error) *CacheError {
 func NewRedisCacheError(operation string, err error) *CacheError {
 	return NewCacheError("redis", operation, err)
 }
-
-// ErrCacheMiss represents a key not found error.
-var ErrCacheMiss = errors.New("key not found")

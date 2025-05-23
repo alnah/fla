@@ -3,30 +3,30 @@ package cache
 import (
 	"context"
 	"errors"
-	"fmt"
 	"runtime"
 	"time"
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/storage"
 	"github.com/redis/go-redis/v9"
 )
 
 // CacheConfig holds all settings for a RedisCache instance.
 type CacheConfig struct {
-	Addr            string
-	Password        string
-	Databases       int
+	Addr            storage.Address
+	Password        storage.Password
+	LogicalDBs      storage.LogicalDBs
 	PoolSize        int
 	MinIdleConns    int
-	PoolTimeout     time.Duration
-	DialTimeout     time.Duration
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
+	PoolTimeout     storage.Timeout
+	DialTimeout     storage.Timeout
+	ReadTimeout     storage.Timeout
+	WriteTimeout    storage.Timeout
 	MaxRetries      int
-	MinRetryBackoff time.Duration
-	MaxRetryBackoff time.Duration
-	DefaultTTL      time.Duration
+	MinRetryBackoff storage.Timeout
+	MaxRetryBackoff storage.Timeout
+	DefaultTTL      storage.Timeout
 	Limiter         breaker.Breaker
 	Logger          logger.Logger
 }
@@ -36,7 +36,7 @@ type CacheConfig struct {
 // It provides key/value cache backed by Redis.
 type CacheBuilder struct{ cfg CacheConfig }
 
-// NewRedisCache returns a RedisCache initialized with sensible defaults.
+// NewCache returns a Redis cache initialized with sensible defaults.
 //
 // It embeds a default logger and initializes a *redis.Client with sensible defaults:
 //   - DB is set to 16 if unset
@@ -48,10 +48,10 @@ type CacheBuilder struct{ cfg CacheConfig }
 //
 // Use With* options to override any settings.
 // Returns an error if address and passwords are missing.
-func NewRedisCache() *CacheBuilder {
+func NewCache() *CacheBuilder {
 	return &CacheBuilder{
 		cfg: CacheConfig{
-			Databases:       RedisLogicalDBs,
+			LogicalDBs:      RedisLogicalDBs,
 			PoolSize:        10 * runtime.NumCPU(),
 			MinIdleConns:    runtime.NumCPU(),
 			PoolTimeout:     RedisPoolTimeout,
@@ -72,48 +72,39 @@ func NewRedisCache() *CacheBuilder {
 type RedisCache struct {
 	log        logger.Logger
 	client     *redis.Client
-	defaultTTL time.Duration
+	defaultTTL storage.Timeout
 }
 
-// Build constructs the RedisCache from the accumulated configuration.
-// Returns an error if mandatory fields (Addr) are missing.
+// Build validates the configuration, initializes a Redis client,
+// and returns a ready-to-use Cache or an error.
 func (b *CacheBuilder) Build() (*RedisCache, error) {
 	cfg := b.cfg
 
-	if cfg.Addr == "" {
-		return nil, NewRedisCacheError("build", errors.New("address is missing"))
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 
-	if cfg.Password == "" {
-		cfg.Logger.Warn("redis cache", "initialization", "password is missing")
-	}
-
-	// Create underlying Redis client
-	client := redis.NewClient(&redis.Options{
-		Addr:            cfg.Addr,
-		Password:        cfg.Password,
-		DB:              cfg.Databases,
+	rc := redis.NewClient(&redis.Options{
+		Addr:            cfg.Addr.String(),
+		Password:        cfg.Password.String(),
+		DB:              cfg.LogicalDBs.Int(),
 		PoolSize:        cfg.PoolSize,
 		MinIdleConns:    cfg.MinIdleConns,
-		PoolTimeout:     cfg.PoolTimeout,
-		DialTimeout:     cfg.DialTimeout,
-		ReadTimeout:     cfg.ReadTimeout,
-		WriteTimeout:    cfg.WriteTimeout,
+		PoolTimeout:     cfg.PoolTimeout.Duration(),
+		DialTimeout:     cfg.ReadTimeout.Duration(),
+		ReadTimeout:     cfg.ReadTimeout.Duration(),
+		WriteTimeout:    cfg.WriteTimeout.Duration(),
 		MaxRetries:      cfg.MaxRetries,
-		MinRetryBackoff: cfg.MinRetryBackoff,
-		MaxRetryBackoff: cfg.MaxRetryBackoff,
+		MinRetryBackoff: cfg.MinRetryBackoff.Duration(),
+		MaxRetryBackoff: cfg.MaxRetryBackoff.Duration(),
 		Limiter:         NewLimiter(cfg.Limiter),
 	})
+	// starting health check
+	startHealthCheck(context.Background(), rc, logger.Default(), 1*time.Minute)
 
-	// test connection
-	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, NewRedisCacheError("build", fmt.Errorf("ping failed: %w", err))
-	}
-
-	// wrap in our RedisCache
 	return &RedisCache{
 		log:        cfg.Logger,
-		client:     client,
+		client:     rc,
 		defaultTTL: cfg.DefaultTTL,
 	}, nil
 }
@@ -124,14 +115,13 @@ func (rc *RedisCache) Shutdown() error {
 	return rc.client.Close()
 }
 
-// Set implements CacheClient.Set.
-// If ttl <= 0, falls back to rc.defaultTTL.
-// Wraps every call with the circuit-breaker.
+// Set stores a value with optional TTL, defaulting if ttl<=0.
+// It uses a circuit-breaker to guard Redis traffic.
 func (rc *RedisCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	// choose expiration
 	exp := ttl
 	if exp <= 0 {
-		exp = rc.defaultTTL
+		exp = rc.defaultTTL.Duration()
 	}
 	// admission
 	if err := rc.client.Options().Limiter.Allow(); err != nil {
@@ -147,9 +137,8 @@ func (rc *RedisCache) Set(ctx context.Context, key string, value any, ttl time.D
 	return nil
 }
 
-// Get implements CacheClient.Get.
-// Returns ErrCacheMiss if key does not exist.
-func (rc *RedisCache) Get(ctx context.Context, key string) (result, error) {
+// Get retrieves bytes for key or ErrCacheMiss if not found.
+func (rc *RedisCache) Get(ctx context.Context, key string) (Result, error) {
 	if err := rc.client.Options().Limiter.Allow(); err != nil {
 		return nil, NewRedisCacheError("getting", err)
 	}
@@ -164,8 +153,7 @@ func (rc *RedisCache) Get(ctx context.Context, key string) (result, error) {
 	return val, nil
 }
 
-// Delete implements CacheClient.Delete.
-// Returns true if the key was present.
+// Delete removes a key, returning true if it existed.
 func (rc *RedisCache) Delete(ctx context.Context, key string) (bool, error) {
 	if err := rc.client.Options().Limiter.Allow(); err != nil {
 		return false, NewRedisCacheError("deleting", err)
@@ -178,8 +166,7 @@ func (rc *RedisCache) Delete(ctx context.Context, key string) (bool, error) {
 	return n > 0, nil
 }
 
-// Exists implements CacheClient.Exists.
-// Returns true if the key exists.
+// Exists checks presence of key without modifying state.
 func (rc *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	if err := rc.client.Options().Limiter.Allow(); err != nil {
 		return false, NewRedisCacheError("checking existence", err)
@@ -190,4 +177,92 @@ func (rc *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 		return false, NewRedisCacheError("checking existence", err)
 	}
 	return n > 0, NewRedisCacheError("checking existence", err)
+}
+
+// validate checks all fields of CacheConfig without using reflection.
+func (c CacheConfig) validate() error {
+	var accError []error
+
+	if err := c.Addr.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: address", err))
+	}
+	if err := c.Password.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: password", err))
+	}
+	if err := c.LogicalDBs.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: number of logical databses", err))
+	}
+	if err := c.PoolTimeout.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: pool timeout", err))
+	}
+	if err := c.DialTimeout.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: dial timeout", err))
+	}
+	if err := c.ReadTimeout.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: read timeout", err))
+	}
+	if err := c.WriteTimeout.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: write timeout", err))
+	}
+	if err := c.MinRetryBackoff.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: min retry backoff", err))
+	}
+	if err := c.MaxRetryBackoff.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: max retry backoff", err))
+	}
+	if err := c.DefaultTTL.Validate(); err != nil {
+		accError = append(accError, NewRedisCacheError("validating: default ttl", err))
+	}
+	if c.MaxRetries < 0 {
+		accError = append(accError, NewRedisCacheError("validating: max retries: must be greater than 0", nil))
+	}
+	if c.PoolSize <= 0 {
+		accError = append(accError, NewRedisCacheError("validating: pool size: must be greater than or equal to 0", nil))
+	}
+	if c.MinIdleConns < 0 {
+		accError = append(accError, NewRedisCacheError("validating: min idle connections: must be greater than or equal to 0", nil))
+	}
+	if c.MinIdleConns > c.PoolSize {
+		accError = append(accError, NewRedisCacheError("validating: min idle connections can't be greater than pool size", nil))
+	}
+	if c.Limiter == nil {
+		accError = append(accError, NewRedisCacheError("validating: limiter can't be nil", nil))
+	}
+	if c.Logger == nil {
+		accError = append(accError, NewRedisCacheError("validating: logger can't be nil", nil))
+	}
+
+	return errors.Join(accError...)
+}
+
+// startHealthCheck spawns a goroutine that pings Redis every interval.
+// On failure, it logs and triggers reconnection via Process.
+func startHealthCheck(ctx context.Context, client *redis.Client, logger logger.Logger, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				// prepare the PING command
+				cmd := redis.NewStringCmd(ctx, "PING")
+
+				// send it (Process returns error directly)
+				if err := client.Process(ctx, cmd); err != nil {
+					logger.Warn("redis health-check", "ping failed", err)
+					continue
+				}
+
+				// inspect the result of the command
+				if res, err := cmd.Result(); err != nil {
+					logger.Error("redis health-check", "reconnect failed", err)
+				} else {
+					logger.Info("redis health-check", "reconnected successfully, PING=", res)
+				}
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }

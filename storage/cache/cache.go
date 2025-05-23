@@ -5,24 +5,32 @@ import (
 	"time"
 )
 
-// TODO: perform health check peridically (perhaps once every few seconds)
-// TODO: implement OpenTelemetry
+// Cache defines a generic key/value store interface.
+// It abstracts backing implementations (e.g., Redis) and
+// supports basic operations, optional TTLs, and graceful shutdown.
 type Cache interface {
-	// Set stores a value under key, with optional TTL.
-	// If ttl==0, use the default TTL configured on the client.
+	// Set stores a value under key with an optional TTL.
+	// A zero TTL uses the client's default expiration.
 	Set(ctx context.Context, key string, value any, ttl time.Duration) error
-	// Get returns the stored string or a CacheError.
-	Get(ctx context.Context, key string) (result, error)
-	// Delete removes the key; returns true if it was present.
+
+	// Get retrieves a value by key, returning ErrCacheMiss if absent.
+	Get(ctx context.Context, key string) (Result, error)
+
+	// Delete removes the key; returns true if the key existed.
 	Delete(ctx context.Context, key string) (bool, error)
-	// Exists reports whether the key exists.
+
+	// Exists reports whether a key is present without side effects.
 	Exists(ctx context.Context, key string) (bool, error)
-	// Shutdown closes the cache client.
+
+	// Shutdown releases resources and closes any open connections.
 	Shutdown() error
 }
 
-type result []byte
+// Result wraps raw bytes from Cache.Get and provides convenience methods.
+type Result []byte
 
-func (r result) String() string { return string(r) }
+// String returns the result as a UTF-8 string.
+func (r Result) String() string { return string(r) }
 
-func (r result) Bytes() []byte { return r }
+// Bytes returns the raw byte slice.
+func (r Result) Bytes() []byte { return r }

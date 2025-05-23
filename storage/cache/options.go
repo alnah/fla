@@ -5,6 +5,7 @@ import (
 
 	"github.com/alnah/fla/breaker"
 	"github.com/alnah/fla/logger"
+	"github.com/alnah/fla/storage"
 )
 
 // WithLogger sets the Logger used by RedisCache to l.
@@ -16,22 +17,22 @@ func (b *CacheBuilder) WithLogger(l logger.Logger) *CacheBuilder {
 
 // WithAddress sets the Redis server address to s.
 // The address should be in the form "host:port" (e.g. "localhost:6379") and must be non-empty.
-func (b *CacheBuilder) WithAddress(addr string) *CacheBuilder {
-	b.cfg.Addr = addr
+func (b *CacheBuilder) WithAddress(s string) *CacheBuilder {
+	b.cfg.Addr, _ = storage.ParseAddress(s) // don't check err because it's going be validated afterward anyway
 	return b
 }
 
 // WithPassword sets the password for the Redis connection to s.
 // If the server requires AUTH, this value must match the server’s requirepass setting.
-func (b *CacheBuilder) WithPassword(pw string) *CacheBuilder {
-	b.cfg.Password = pw
+func (b *CacheBuilder) WithPassword(s string) *CacheBuilder {
+	b.cfg.Password = storage.Password(s)
 	return b
 }
 
 // WithDatabase selects logical database n (0–15) on the Redis server.
 // Calling this overrides any DB value previously set in the client options.
-func (b *CacheBuilder) WithDatabase(db int) *CacheBuilder {
-	b.cfg.Databases = db
+func (b *CacheBuilder) WithDatabase(n int) *CacheBuilder {
+	b.cfg.LogicalDBs = storage.LogicalDBs(n)
 	return b
 }
 
@@ -52,10 +53,10 @@ func (b *CacheBuilder) WithMinIdleConns(n int) *CacheBuilder {
 // WithTimeouts sets all four timeouts: PoolTimeout, DialTimeout, ReadTimeout, WriteTimeout
 // to the specified values. Use this to override the package’s default safe timeouts in one call.
 func (b *CacheBuilder) WithTimeouts(pool, dial, read, write time.Duration) *CacheBuilder {
-	b.cfg.PoolTimeout = pool
-	b.cfg.DialTimeout = dial
-	b.cfg.ReadTimeout = read
-	b.cfg.WriteTimeout = write
+	b.cfg.PoolTimeout = storage.Timeout(pool)
+	b.cfg.DialTimeout = storage.Timeout(dial)
+	b.cfg.ReadTimeout = storage.Timeout(read)
+	b.cfg.WriteTimeout = storage.Timeout(write)
 	return b
 }
 
@@ -70,14 +71,14 @@ func (b *CacheBuilder) WithLimiter(l breaker.Breaker) *CacheBuilder {
 // A value of 0 disables retries entirely.
 func (b *CacheBuilder) WithRetries(max int, minBackoff, maxBackoff time.Duration) *CacheBuilder {
 	b.cfg.MaxRetries = max
-	b.cfg.MinRetryBackoff = minBackoff
-	b.cfg.MaxRetryBackoff = maxBackoff
+	b.cfg.MinRetryBackoff = storage.Timeout(minBackoff)
+	b.cfg.MaxRetryBackoff = storage.Timeout(maxBackoff)
 	return b
 }
 
 // WithTTL sets the default time-to-live for entries to t.
 // All Set calls without an explicit expiration will use this TTL.
 func (b *CacheBuilder) WithTTL(ttl time.Duration) *CacheBuilder {
-	b.cfg.DefaultTTL = ttl
+	b.cfg.DefaultTTL = storage.Timeout(ttl)
 	return b
 }

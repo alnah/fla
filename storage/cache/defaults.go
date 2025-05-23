@@ -1,20 +1,24 @@
 package cache
 
-import "time"
+import (
+	"time"
+
+	"github.com/alnah/fla/storage"
+)
 
 // Redis cache
 const (
 	// global ttl
-	RedisDefaultTTL time.Duration = 15 * time.Second
+	RedisDefaultTTL = storage.Timeout(15 * time.Second)
 	// logical databases
-	RedisLogicalDBs int = 15
+	RedisLogicalDBs storage.LogicalDBs = 15
 	// timeouts
-	RedisPoolTimeout  time.Duration = 30 * time.Second
-	RedisDialTimeout  time.Duration = 5 * time.Second
-	RedisWriteTimeout time.Duration = 3 * time.Second
-	RedisReadTimeout  time.Duration = 3 * time.Second
+	RedisPoolTimeout  = storage.Timeout(30 * time.Second)
+	RedisDialTimeout  = storage.Timeout(5 * time.Second)
+	RedisWriteTimeout = storage.Timeout(3 * time.Second)
+	RedisReadTimeout  = storage.Timeout(3 * time.Second)
 	// retry mechanism
-	RedisMaxRetries      int           = 5
-	RedisMinRetryBackoff time.Duration = 100 * time.Millisecond
-	RedisMaxRetryBackoff time.Duration = 500 * time.Millisecond
+	RedisMaxRetries      int = 5
+	RedisMinRetryBackoff     = storage.Timeout(100 * time.Millisecond)
+	RedisMaxRetryBackoff     = storage.Timeout(500 * time.Millisecond)
 )
