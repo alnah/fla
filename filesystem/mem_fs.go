@@ -28,6 +28,9 @@ func NewMemFS() FileSystem {
 	}
 }
 
+// Root returns a dummy root path.
+func (m *memFS) Root() string { return "." }
+
 // ReadFile returns a copy of the stored bytes for path or ErrNotExist.
 // Copying prevents tests from accidentally mutating internal state.
 func (m *memFS) ReadFile(p string) ([]byte, error) {

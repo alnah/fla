@@ -23,6 +23,9 @@ func New(root string) *DiskFS {
 	return &DiskFS{root: root, fs: os.DirFS(root)}
 }
 
+// Root returns the root path.
+func (d *DiskFS) Root() string { return d.root }
+
 // ReadFile loads a file’s bytes from under root for reliable access.
 func (d *DiskFS) ReadFile(path string) ([]byte, error) {
 	return fs.ReadFile(d.fs, path)

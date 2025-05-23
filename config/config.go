@@ -13,7 +13,7 @@ import (
 // can drive file naming, directories, timeouts, and API keys from one source.
 type Config struct {
 	LogLevel *slog.Level  `json:"loglevel,omitempty"` // control verbosity for diagnosing issues
-	Lang     *locale.Lang `json:"lang,omitempty"`     // set locale to adapt content language
+	Lang     *locale.Lang `json:"language,omitempty"` // set locale to adapt content language
 
 	// Filename prefixes and flags ensure outputs follow a consistent naming scheme.
 	Filename struct {
@@ -82,8 +82,8 @@ func (c *Config) STTContext(parent context.Context) (context.Context, context.Ca
 	return context.WithTimeout(parent, c.AI.Timeout.STT.ToTimeDuration())
 }
 
-// CacheTimeout derives a context with the configured Cache timeout.
+// CacheContext derives a context with the configured Cache timeout.
 // Should be used for blocking operations.
-func (c *Config) CacheTimeout(parent context.Context) (context.Context, context.CancelFunc) {
+func (c *Config) CacheContext(parent context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, cache.RedisWriteTimeout+cache.RedisReadTimeout+100*time.Millisecond)
 }

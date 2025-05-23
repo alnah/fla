@@ -12,6 +12,7 @@ const (
 // FileSystem abstracts file operations so code can swap in-memory
 // or disk-based implementations without changing callers.
 type FileSystem interface {
+	Root() string
 	ReadFile(path string) ([]byte, error)
 	WriteFile(path string, data []byte, perm os.FileMode) error
 	MkdirAll(path string, perm os.FileMode) error
