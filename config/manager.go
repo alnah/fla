@@ -22,16 +22,28 @@ type ConfigManager interface {
 }
 
 type Manager struct {
-	*Config
-	log      logger.Logger // optional logger for visibility
-	env      Env           // source of environment overrides
-	userDirs UserDirs      // user directory locations
-	FS       struct {
-		Config fsys.FileSystem // where config.json lives
-		Home   fsys.FileSystem // to embed lesson dirs
+	// in-memory config
+	Config *Config
+
+	// config filepath
+	Filepath string
+
+	// file systems
+	FS struct {
+		Config fsys.FileSystem // config file
+		Home   fsys.FileSystem // embed directories
 	}
-	Filename string // name of the JSON file in config FS
-	Filepath string // path of the JSON file
+
+	// logger
+	log logger.Logger // logger
+
+	// testing purpose
+	env      Env      // for testing purpose
+	userDirs UserDirs // for testing purpose
+
+	// internal
+	filename   string // name of the JSON file
+	fieldsMeta []fieldMeta
 }
 
 type option func(*Manager)
@@ -55,9 +67,9 @@ func WithHomeFS(f fsys.FileSystem) func(*Manager) {
 // WithLogger provides visibility into loading steps.
 func WithLogger(s logger.Logger) func(*Manager) { return func(m *Manager) { m.log = s } }
 
-// New constructs a manager with optional overrides,
+// NewConfigManager constructs a manager with optional overrides,
 // preparing to Load or Update configuration.
-func New(opts ...option) *Manager {
+func NewConfigManager(opts ...option) *Manager {
 	l := &Manager{
 		env:      env,
 		userDirs: &user,
@@ -98,20 +110,20 @@ func (m *Manager) Load() (*Manager, error) {
 	}
 
 	// determine filename
-	m.Filename, err = defaultConfigFilename()
+	m.filename, err = defaultConfigFilename()
 	if err != nil {
 		return nil, newConfigError("building filename", err)
 	}
 	// determine filepath
-	m.Filepath = filepath.Join(m.FS.Config.Root(), m.Filename)
+	m.Filepath = filepath.Join(m.FS.Config.Root(), m.filename)
 
 	// read or initialize JSON
-	byt, err := m.FS.Config.ReadFile(m.Filename)
+	byt, err := m.FS.Config.ReadFile(m.filename)
 	if errors.Is(err, fs.ErrNotExist) {
-		if err := m.FS.Config.WriteFile(m.Filename, []byte("{}"), fsys.PermUserRW); err != nil {
+		if err := m.FS.Config.WriteFile(m.filename, []byte("{}"), fsys.PermUserRW); err != nil {
 			return nil, newConfigError("creating json file", err)
 		}
-		byt, err = m.FS.Config.ReadFile(m.Filename)
+		byt, err = m.FS.Config.ReadFile(m.filename)
 	}
 	if err != nil {
 		return nil, newConfigError("reading json file", err)
@@ -131,8 +143,11 @@ func (m *Manager) Load() (*Manager, error) {
 		return nil, newConfigError("validating language", err)
 	}
 
+	// builds field metas
+	m.fieldsMeta = fields(&cfg)
+
 	// env vars overrides
-	if err := m.envOverride(&cfg); err != nil {
+	if err := m.OverrideEnvBak(&cfg); err != nil {
 		return nil, newConfigError("overriding environment variables", err)
 	}
 
@@ -160,7 +175,7 @@ func (m *Manager) Save() error {
 	if err != nil {
 		return newConfigError("marshaling configuration for update", err)
 	}
-	if err = m.FS.Config.WriteFile(m.Filename, byt, fsys.PermUserRW); err != nil {
+	if err = m.FS.Config.WriteFile(m.filename, byt, fsys.PermUserRW); err != nil {
 		return newConfigError("writing configuration file", err)
 	}
 	return nil

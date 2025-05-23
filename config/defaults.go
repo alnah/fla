@@ -1,12 +1,12 @@
 package config
 
 import (
-	"log/slog"
 	"path/filepath"
 
 	ai "github.com/alnah/fla/aiclient"
 	"github.com/alnah/fla/filesystem"
 	"github.com/alnah/fla/locale"
+	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/storage/cache"
 )
 
@@ -17,10 +17,9 @@ const RedisStoreLogicalDBs int = 16
 // defaults assigns sensible fallbacks so users need only override what matters.
 func (c *Config) defaults() error {
 	// ensure there's always a log level
-	defaultPtr(&c.LogLevel, slog.LevelError)
-
+	defaultVal(&c.LogLevel, logger.LevelInfo)
 	// default to French lessons unless overridden
-	defaultPtr(&c.Lang, locale.LangFrFR)
+	defaultVal(&c.Lang, locale.LangFrFR)
 
 	// embed date and level in filenames by default
 	defaultVal(&c.Filename.Date, true)

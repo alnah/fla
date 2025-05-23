@@ -15,6 +15,9 @@ type Logger interface {
 	With(args ...any) Logger
 }
 
+// LogLevel is an alias of slog.Level, allowing method extensions.
+type LogLevel slog.Level
+
 var defaultLogger = NewSlogger(os.Stdout, true, slog.LevelError)
 
 // Default returns the package-level slogger configured to write human-readable

@@ -137,3 +137,24 @@ func (l Lang) FrenchName() string {
 func (l Lang) PortugueseName() string {
 	return l.DisplayName(LangPtBR)
 }
+
+// ParseLang converts s into a Lang by normalizing case, checking
+// the xx-XX pattern, and validating against the supported set.
+func ParseLang(s string) (Lang, error) {
+	// normalize separators and case:
+	t := strings.TrimSpace(strings.ReplaceAll(s, "_", "-"))
+	parts := strings.SplitN(t, "-", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid language tag %s", s)
+	}
+	languageCode := strings.ToLower(parts[0])
+	regionCode := strings.ToUpper(parts[1])
+	candidate := Lang(languageCode + "-" + regionCode)
+
+	// validate against your supported constants
+	if err := candidate.Validate(); err != nil {
+		return "", fmt.Errorf("unsupported language %s: %w", candidate, err)
+	}
+
+	return candidate, nil
+}

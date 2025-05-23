@@ -21,13 +21,13 @@ type CLIDeps struct {
 
 func New(reader io.Reader, writer io.Writer, errWriter io.Writer) (*CLIDeps, error) {
 	logger := logger.NewSlogger(os.Stdout, false, slog.LevelDebug)
-	manager, err := config.New(config.WithLogger(logger)).Load()
+	manager, err := config.NewConfigManager(config.WithLogger(logger)).Load()
 	if err != nil {
 		return nil, err
 	}
-	cache, err := cache.NewRedisCache().
-		WithAddress(manager.Cache.Address).
-		WithPassword(manager.Cache.Password).Build()
+	cache, err := cache.NewCache().
+		WithAddress(manager.Config.Cache.Address).
+		WithPassword(manager.Config.Cache.Password).Build()
 	if err != nil {
 		return nil, err
 	}

@@ -2,18 +2,18 @@ package config
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/alnah/fla/locale"
+	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/storage/cache"
 )
 
 // Config groups all user-tweakable settings so the application
 // can drive file naming, directories, timeouts, and API keys from one source.
 type Config struct {
-	LogLevel *slog.Level  `json:"loglevel,omitempty"` // control verbosity for diagnosing issues
-	Lang     *locale.Lang `json:"language,omitempty"` // set locale to adapt content language
+	LogLevel logger.LogLevel `json:"loglevel,omitempty"` // control verbosity for diagnosing issues
+	Lang     locale.Lang     `json:"language,omitempty"` // set locale to adapt content language
 
 	// Filename prefixes and flags ensure outputs follow a consistent naming scheme.
 	Filename struct {
@@ -38,6 +38,7 @@ type Config struct {
 			Lessons string `json:"lessons,omitempty"` // catch-all directory
 		} `json:"output"`
 	} `json:"directories"`
+
 	// AI holds the timeouts, and the api keys
 	AI struct {
 		// Timeout values protect against hung external calls.
@@ -53,6 +54,7 @@ type Config struct {
 			ElevenLabs string `json:"-"`
 		} `json:"-"`
 	} `json:"ai"`
+
 	// Cache holds configuration parameters for the Cache client.
 	Cache struct {
 		Address  string `json:"-"`
@@ -85,5 +87,8 @@ func (c *Config) STTContext(parent context.Context) (context.Context, context.Ca
 // CacheContext derives a context with the configured Cache timeout.
 // Should be used for blocking operations.
 func (c *Config) CacheContext(parent context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, cache.RedisWriteTimeout+cache.RedisReadTimeout+100*time.Millisecond)
+	return context.WithTimeout(
+		parent,
+		cache.RedisWriteTimeout.Duration()+cache.RedisReadTimeout.Duration()+100*time.Millisecond,
+	)
 }

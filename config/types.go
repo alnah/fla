@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-// Env defines how to read environment variables and distinguish environments.
+// Env defines how to read environment variables and distinguish environments. Useful
+// for testing.
 type Env interface {
 	Type() string                        // dev, test, or prod
 	Get(key string) string               // retrieve raw value

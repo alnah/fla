@@ -4,25 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 	"unicode/utf8"
 
 	"github.com/alnah/fla/locale"
+	"github.com/alnah/fla/logger"
 	"github.com/alnah/fla/pathutil"
 	"github.com/urfave/cli-altsrc/v3"
 	json "github.com/urfave/cli-altsrc/v3/json"
 	"github.com/urfave/cli/v3"
 )
 
+// TODO: do I need to validate, if I parse following the "don't validate, parse"
+
 var ErrFilenameTag = errors.New("must be <= 50 characters")
 
 const (
 	// general
-	envType     string = "CLI_ENV_TYPE"  // dev, test, prod
-	envLanguage string = "CLI_IETF_LANG" // fr-FR, pt-BR, en-US
-	envLogLevel string = "CLI_LOG_LEVEL" // debug, error, warn, info
+	envType       string = "CLI_ENV_TYPE"  // dev, test, prod
+	envSourceLang string = "CLI_IETF_LANG" // fr-FR, pt-BR, en-US
+	envLogLevel   string = "CLI_LOG_LEVEL" // debug, error, warn, info
 
 	// filename tags
 	envFilenameDate        string = "FILENAME_DATE"
@@ -63,7 +65,7 @@ const (
 
 const (
 	// language
-	flagLanguage string = "language"
+	flagSourceLang string = "source-language"
 
 	// log level
 	flagLogLevel string = "log-level"
@@ -99,9 +101,248 @@ const (
 	flagCacheWriteTimeout string = "cache-timeout-write"
 )
 
-// envOverride applies environment variables to override any Config fields,
+// fieldMeta separates CLI flags, environement keys, environment overrides, defaults
+// to apply, and validator. It allows to create a field that knows how to configure,
+// and validate it self. This is a single-source of thruth and it's a cleaner design.
+type fieldMeta struct {
+	cliFlag          cli.Flag
+	envKey           string
+	overrideEnvFunc  overrideEnvFunc
+	applyDefaultFunc applyDefaultFunc
+	validateFunc     validateFunc
+}
+
+type overrideEnvFunc func(envVal string) error
+type applyDefaultFunc func(c *Config)
+type validateFunc func(c *Config) error
+
+func fields(c *Config) []fieldMeta {
+	return []fieldMeta{
+		// ----------------------------------------------------------------------------
+		// ENV ONLY -------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
+		{
+			// no flag: api key
+			envKey: envAPIKeyOpenAI,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal == "" {
+					return fmt.Errorf("parsing env var %s: api key required", envAPIKeyOpenAI)
+				}
+				c.AI.APIKey.OpenAI = envVal
+				return nil
+			},
+			// no default: required and specific
+			// no validation: fail early on env var
+		},
+		{
+			// no flag: api key
+			envKey: envAPIKeyAnthropic,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal == "" {
+					return fmt.Errorf("parsing env var %s: api key required", envAPIKeyAnthropic)
+				}
+				c.AI.APIKey.Anthropic = envVal
+				return nil
+			},
+			// no default: required and specific
+			// no validation: fail early on env var
+		},
+		{
+			// no flag: api key
+			envKey: envAPIKeyElevenLabs,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal == "" {
+					return fmt.Errorf("parsing env var %s: api key required", envAPIKeyElevenLabs)
+				}
+				c.AI.APIKey.ElevenLabs = envVal
+				return nil
+			},
+			// no default: required and specific
+			// no validation: fail early on env var
+		},
+		{
+			// no flag:
+		},
+		// ----------------------------------------------------------------------------
+		// FLAG ONLY ------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
+		{},
+		// ----------------------------------------------------------------------------
+		// BOTH -----------------------------------------------------------------------
+		// ----------------------------------------------------------------------------
+		{
+			cliFlag: &cli.StringFlag{
+				Name:    flagLogLevel,
+				Usage:   "log level (debug|info|warn|error)",
+				Aliases: []string{"ll"},
+				Action: func(ctx context.Context, cli *cli.Command, flagVal string) error {
+					if flagVal != "" {
+						logLevel, err := logger.ParseLogLevel(flagVal)
+						if err != nil {
+							return fmt.Errorf("parsing flag %s: %w", flagLogLevel, err)
+						}
+						c.LogLevel = logLevel
+					}
+					return nil
+				},
+			},
+			envKey: envLogLevel,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal != "" {
+					logLevel, err := logger.ParseLogLevel(envVal)
+					if err != nil {
+						return fmt.Errorf("parsing env var: %s", envLogLevel, err)
+					}
+					c.LogLevel = logLevel
+				}
+				return nil
+			},
+			applyDefaultFunc: func(c *Config) {
+				if c.LogLevel == 0 {
+					c.LogLevel = logger.LevelError
+				}
+			},
+			validateFunc: func(*Config) error { return c.LogLevel.Validate() },
+		},
+		{
+			cliFlag: &cli.StringFlag{
+				Name:    flagSourceLang,
+				Usage:   "source language (fr-FR|pt-BR|en-US)",
+				Aliases: []string{"sl"},
+				Action: func(ctx context.Context, cli *cli.Command, flagVal string) error {
+					if flagVal != "" {
+						sourceLang, err := locale.ParseLang(flagVal)
+						if err != nil {
+							return fmt.Errorf("parsing flag %s: %w", flagSourceLang, err)
+						}
+						c.Lang = sourceLang
+					}
+					return nil
+				},
+			},
+			envKey: envSourceLang,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal != "" {
+					sourceLang, err := locale.ParseLang(envVal)
+					if err != nil {
+						return fmt.Errorf("parsing env var %s: %w", envSourceLang, err)
+					}
+					c.Lang = sourceLang
+				}
+				return nil
+
+			},
+			applyDefaultFunc: func(c *Config) {
+				if c.Lang == "" {
+					c.Lang = locale.LangFrFR
+				}
+			},
+			validateFunc: func(c *Config) error { return c.Lang.Validate() },
+		},
+		{
+			cliFlag: &cli.BoolFlag{
+				Name:    flagFilenameDate,
+				Usage:   "prepend date to filenames",
+				Aliases: []string{"fd"},
+				Action: func(ctx context.Context, cli *cli.Command, flagVal bool) error {
+					c.Filename.Date = flagVal
+					return nil
+				},
+			},
+			envKey: envFilenameDate,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal != "" {
+					parsed, err := strconv.ParseBool(envVal)
+					if err != nil {
+						return fmt.Errorf("parsing env var %s: %w", envFilenameDate, err)
+					}
+					c.Filename.Date = parsed
+				}
+				return nil
+			},
+			applyDefaultFunc: func(c *Config) { c.Filename.Date = true },
+			// no validation: any bool is valid
+		},
+		{
+			cliFlag: &cli.BoolFlag{
+				Name:    flagFilenameLevel,
+				Usage:   "append CEFR level to filenames",
+				Aliases: []string{"fl"},
+				Action: func(ctx context.Context, cli *cli.Command, flagVal bool) error {
+					c.Filename.Level = flagVal
+					return nil
+				},
+			},
+			envKey: envFilenameLevel,
+			overrideEnvFunc: func(envVal string) error {
+				if envVal != "" {
+					parsed, err := strconv.ParseBool(envVal)
+					if err != nil {
+						return fmt.Errorf("parsing env var %s: %w", envFilenameLevel, err)
+					}
+					c.Filename.Level = parsed
+				}
+				return nil
+			},
+			applyDefaultFunc: func(c *Config) { c.Filename.Level = true },
+			// no validation: any bool is valid
+		},
+	}
+}
+
+func (m *Manager) OverrideEnvVars() error {
+	var accErr []error
+
+	for _, fm := range m.fieldsMeta {
+		if envVal, ok := m.env.LookupEnv(fm.envKey); ok {
+			if fm.overrideEnvFunc != nil {
+				if err := fm.overrideEnvFunc(envVal); err != nil {
+					accErr = append(accErr, err)
+				}
+			}
+		}
+	}
+
+	return errors.Join(accErr...)
+}
+
+func (m *Manager) OverrideCLIFlags() []cli.Flag {
+	var cliFlags []cli.Flag
+
+	for _, fm := range m.fieldsMeta {
+		if fm.cliFlag != nil {
+			cliFlags = append(cliFlags, fm.cliFlag)
+		}
+	}
+
+	return cliFlags
+}
+
+func (m *Manager) Defaults() {
+	for _, fm := range m.fieldsMeta {
+		if fm.applyDefaultFunc != nil {
+			fm.applyDefaultFunc(m.Config)
+		}
+	}
+}
+
+func (m *Manager) Validate() error {
+	var accErr []error
+
+	for _, fm := range m.fieldsMeta {
+		if fm.validateFunc != nil {
+			if err := fm.validateFunc(m.Config); err != nil {
+				accErr = append(accErr, err)
+			}
+		}
+	}
+
+	return errors.Join(accErr...)
+}
+
+// OverrideEnv applies environment variables to override any Config fields,
 // but only when the variable is actually present.
-func (l *Manager) envOverride(cfg *Config) error {
+func (l *Manager) OverrideEnvBak(cfg *Config) error {
 	type overrider struct {
 		key   string
 		apply func(string) error
@@ -110,72 +351,12 @@ func (l *Manager) envOverride(cfg *Config) error {
 	overrides := []overrider{
 		// secrets only overriden in env vars -----------------------------------------
 		{
-			key:   envAPIKeyOpenAI,
-			apply: func(s string) error { cfg.AI.APIKey.OpenAI = s; return nil },
-		},
-		{
-			key:   envAPIKeyAnthropic,
-			apply: func(s string) error { cfg.AI.APIKey.Anthropic = s; return nil },
-		},
-		{
-			key:   envAPIKeyElevenLabs,
-			apply: func(s string) error { cfg.AI.APIKey.ElevenLabs = s; return nil },
-		},
-		{
 			key:   envCacheAddr,
 			apply: func(s string) error { cfg.Cache.Address = s; return nil },
 		},
 		{
 			key:   envCachePassword,
 			apply: func(s string) error { cfg.Cache.Password = s; return nil },
-		},
-		// overrides common between env vars and flags --------------------------------
-		// log level
-		{
-			key: envLogLevel,
-			apply: func(s string) error {
-				var lvl slog.Level
-				if err := lvl.UnmarshalText([]byte(s)); err != nil {
-					return fmt.Errorf("parsing %s: %w", envLogLevel, err)
-				}
-				cfg.LogLevel = &lvl
-				return nil
-			},
-		},
-		// language tag
-		{
-			key: envLanguage,
-			apply: func(s string) error {
-				var langVal locale.Lang
-				if err := langVal.Set(s); err != nil {
-					return fmt.Errorf("parsing %s: %w", envLanguage, err)
-				}
-				cfg.Lang = &langVal
-				return nil
-			},
-		},
-		// filename boolean flags
-		{
-			key: envFilenameDate,
-			apply: func(s string) error {
-				b, err := strconv.ParseBool(s)
-				if err != nil {
-					return fmt.Errorf("parsing %s: %w", envFilenameDate, err)
-				}
-				cfg.Filename.Date = b
-				return nil
-			},
-		},
-		{
-			key: envFilenameLevel,
-			apply: func(s string) error {
-				b, err := strconv.ParseBool(s)
-				if err != nil {
-					return fmt.Errorf("parsing %s: %w", envFilenameLevel, err)
-				}
-				cfg.Filename.Level = b
-				return nil
-			},
 		},
 		// filename string tags
 		{
