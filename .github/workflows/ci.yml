@@ -1,0 +1,69 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache: true
+
+      - name: Install deps
+        run: make install
+
+      - name: Run tests with coverage
+        run: go test ./... -coverprofile=coverage.txt
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+
+      - name: Check formatting
+        run: test -z $(go fmt ./...)
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: "latest"
+          args: --timeout=5m
+
+      - name: Race detector
+        run: go test -race ./...
+
+      - name: Benchmarks
+        run: go test -bench=. -benchmem ./...
+
+  security:
+    name: Security Scan
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache: true
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Gosec Scan
+        run: gosec ./...
