@@ -6,14 +6,41 @@ on:
   pull_request:
     branches: [ main, dev, dev/blog ]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
-    name: Test & Lint
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.6
+          args: --timeout=5m
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,20 +54,16 @@ jobs:
       - name: Install deps
         run: make install
 
+      - name: Check formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files are not formatted:"
+            gofmt -s -l .
+            exit 1
+          fi
+
       - name: Run tests with coverage
         run: go test ./... -coverprofile=coverage.txt
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
-
-      - name: Check formatting
-        run: test -z $(go fmt ./...)
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: "latest"
-          args: --timeout=5m
 
       - name: Race detector
         run: go test -race ./...
@@ -48,10 +71,17 @@ jobs:
       - name: Benchmarks
         run: go test -bench=. -benchmem ./...
 
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: false
+
   security:
     name: Security Scan
-    needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,8 +92,7 @@ jobs:
           go-version: 1.23.x
           cache: true
 
-      - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
-
-      - name: Gosec Scan
-        run: gosec ./...
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: './...'

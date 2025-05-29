@@ -1,11 +1,6 @@
 # Configuration for golangci-lint - Go language linter aggregator
 # Full documentation: https://golangci-lint.run/usage/configuration/
 
-# Activate integration tag
-run:
-  build-tags:
-    - integration
-
 # List of enabled linters with brief descriptions
 enable:
   - bodyclose # Checks whether HTTP response body is closed successfully
@@ -96,20 +91,12 @@ linters-settings:
 
 # Configuration for issue management and filtering
 issues:
-  exclude-files:
-    - _integration_test\.go$
-
   exclude-use-default: false # Don't use default excludes
   exclude:
     - parameter .* always receives # Ignore unused parameter warnings
 
   # Rules for excluding specific linter messages
   exclude-rules:
-    - path: _integration_test\.go$
-      linters:
-        - errcheck
-        - gocritic
-        
     - text: "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
       linters:
         - revive # Allow test function naming conventions
