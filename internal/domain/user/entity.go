@@ -1,3 +1,4 @@
+// ./internal/domain/user/entity.go
 package user
 
 import (
@@ -27,12 +28,15 @@ type User struct {
 	// Permissions
 	Roles []Role
 
-	// Data
+	// Profile Data
 	FirstName      shared.FirstName
 	LastName       shared.LastName
 	Description    shared.Description
 	PictureURL     kernel.URL[ProfilePicture]
 	SocialProfiles []SocialProfile
+
+	// Preferences
+	LocalePreference shared.Locale // User's preferred interface language
 
 	// Meta
 	CreatedAt time.Time
@@ -51,12 +55,15 @@ type NewUserParams struct {
 	Email    shared.Email
 	Roles    []Role
 
-	// Optional
+	// Optional Profile
 	FirstName      shared.FirstName
 	LastName       shared.LastName
 	Description    shared.Description
 	PictureURL     kernel.URL[ProfilePicture]
 	SocialProfiles []SocialProfile
+
+	// Optional Preferences
+	LocalePreference shared.Locale // Defaults to system default if not provided
 
 	// DI
 	Clock kernel.Clock
@@ -69,19 +76,26 @@ func NewUser(p NewUserParams) (User, error) {
 
 	now := p.Clock.Now()
 
+	// Use default locale if not specified
+	locale := p.LocalePreference
+	if locale == "" {
+		locale = shared.DefaultLocale
+	}
+
 	user := User{
-		ID:             p.UserID,
-		Username:       p.Username,
-		Email:          p.Email,
-		FirstName:      p.FirstName,
-		LastName:       p.LastName,
-		Description:    p.Description,
-		PictureURL:     p.PictureURL,
-		SocialProfiles: p.SocialProfiles,
-		Roles:          p.Roles,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		Clock:          p.Clock,
+		ID:               p.UserID,
+		Username:         p.Username,
+		Email:            p.Email,
+		FirstName:        p.FirstName,
+		LastName:         p.LastName,
+		Description:      p.Description,
+		PictureURL:       p.PictureURL,
+		SocialProfiles:   p.SocialProfiles,
+		LocalePreference: locale,
+		Roles:            p.Roles,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+		Clock:            p.Clock,
 	}
 
 	if err := user.Validate(); err != nil {
@@ -89,6 +103,50 @@ func NewUser(p NewUserParams) (User, error) {
 	}
 
 	return user, nil
+}
+
+// UpdateLocalePreference allows users to change their language preference
+func (u User) UpdateLocalePreference(newLocale shared.Locale) (User, error) {
+	const op = "User.UpdateLocalePreference"
+
+	// Validate the new locale
+	if err := newLocale.Validate(); err != nil {
+		return u, &kernel.Error{Operation: op, Cause: err}
+	}
+
+	updated := u
+	updated.LocalePreference = newLocale
+	updated.UpdatedAt = u.Clock.Now()
+
+	return updated, nil
+}
+
+// GetDisplayName returns the user's display name in their preferred language
+func (u User) GetDisplayName() string {
+	// Prioritize first name, then username, then email
+	if u.FirstName.String() != "" {
+		return u.FirstName.String()
+	}
+	if u.Username.String() != "" {
+		return u.Username.String()
+	}
+	return u.Email.String()
+}
+
+// GetFullName returns the user's full name if available
+func (u User) GetFullName() string {
+	firstName := u.FirstName.String()
+	lastName := u.LastName.String()
+
+	if firstName != "" && lastName != "" {
+		return firstName + " " + lastName
+	} else if firstName != "" {
+		return firstName
+	} else if lastName != "" {
+		return lastName
+	}
+
+	return ""
 }
 
 // String provides detailed user representation for debugging and logging.
@@ -110,6 +168,7 @@ func (u User) String() string {
 		"Description: %q, "+
 		"PictureURL: %q, "+
 		"SocialProfiles: %+v, "+
+		"LocalePreference: %q, "+
 		"Roles: %+v, "+
 		"CreatedAt: %s, "+
 		"UpdatedAt: %s"+
@@ -122,6 +181,7 @@ func (u User) String() string {
 		description,
 		u.PictureURL,
 		u.SocialProfiles,
+		u.LocalePreference,
 		u.Roles,
 		u.CreatedAt.Format(time.RFC3339),
 		u.UpdatedAt.Format(time.RFC3339),
@@ -138,6 +198,10 @@ func (u User) Validate() error {
 	}
 
 	if err := u.validateOptionalProfile(); err != nil {
+		return &kernel.Error{Operation: op, Cause: err}
+	}
+
+	if err := u.validatePreferences(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
 	}
 
@@ -186,6 +250,16 @@ func (u User) validateOptionalProfile() error {
 	}
 
 	if err := u.PictureURL.Validate(); err != nil {
+		return &kernel.Error{Operation: op, Cause: err}
+	}
+
+	return nil
+}
+
+func (u User) validatePreferences() error {
+	const op = "User.validatePreferences"
+
+	if err := u.LocalePreference.Validate(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
 	}
 

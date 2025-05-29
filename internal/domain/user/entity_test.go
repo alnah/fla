@@ -1,3 +1,4 @@
+// ./entity_test.go
 package user_test
 
 import (
@@ -28,6 +29,7 @@ func TestNewUser(t *testing.T) {
 	validDescription, _ := shared.NewDescription("Software developer")
 	validPictureURL, _ := kernel.NewURL[user.ProfilePicture]("https://example.com/pic.jpg")
 	validSocialProfile, _ := user.NewSocialProfile(user.SocialMediaGitHub, "https://github.com/johndoe")
+	validLocale, _ := shared.NewLocale("fr-FR")
 
 	t.Run("creates user with minimal required fields", func(t *testing.T) {
 		params := user.NewUserParams{
@@ -54,6 +56,10 @@ func TestNewUser(t *testing.T) {
 		if len(got.Roles) != 1 || got.Roles[0] != user.RoleAuthor {
 			t.Errorf("Roles: got %v, want [%v]", got.Roles, user.RoleAuthor)
 		}
+		// Should default to English locale
+		if got.LocalePreference != shared.DefaultLocale {
+			t.Errorf("LocalePreference: got %v, want %v", got.LocalePreference, shared.DefaultLocale)
+		}
 		if !got.CreatedAt.Equal(fixedTime) {
 			t.Errorf("CreatedAt: got %v, want %v", got.CreatedAt, fixedTime)
 		}
@@ -64,16 +70,17 @@ func TestNewUser(t *testing.T) {
 
 	t.Run("creates user with all fields", func(t *testing.T) {
 		params := user.NewUserParams{
-			UserID:         validUserID,
-			Username:       validUsername,
-			Email:          validEmail,
-			Roles:          []user.Role{user.RoleAdmin, user.RoleEditor},
-			FirstName:      validFirstName,
-			LastName:       validLastName,
-			Description:    validDescription,
-			PictureURL:     validPictureURL,
-			SocialProfiles: []user.SocialProfile{validSocialProfile},
-			Clock:          clock,
+			UserID:           validUserID,
+			Username:         validUsername,
+			Email:            validEmail,
+			Roles:            []user.Role{user.RoleAdmin, user.RoleEditor},
+			FirstName:        validFirstName,
+			LastName:         validLastName,
+			Description:      validDescription,
+			PictureURL:       validPictureURL,
+			SocialProfiles:   []user.SocialProfile{validSocialProfile},
+			LocalePreference: validLocale,
+			Clock:            clock,
 		}
 
 		got, err := user.NewUser(params)
@@ -92,12 +99,33 @@ func TestNewUser(t *testing.T) {
 		if got.PictureURL != validPictureURL {
 			t.Errorf("PictureURL: got %v, want %v", got.PictureURL, validPictureURL)
 		}
+		if got.LocalePreference != validLocale {
+			t.Errorf("LocalePreference: got %v, want %v", got.LocalePreference, validLocale)
+		}
 		if len(got.SocialProfiles) != 1 {
 			t.Fatalf("SocialProfiles: got %d profiles, want 1", len(got.SocialProfiles))
 		}
 		if got.SocialProfiles[0].Platform != user.SocialMediaGitHub {
 			t.Errorf("SocialProfile platform: got %v, want %v",
 				got.SocialProfiles[0].Platform, user.SocialMediaGitHub)
+		}
+	})
+
+	t.Run("uses default locale when empty", func(t *testing.T) {
+		params := user.NewUserParams{
+			UserID:           validUserID,
+			Username:         validUsername,
+			Email:            validEmail,
+			Roles:            []user.Role{user.RoleAuthor},
+			LocalePreference: "", // Empty locale
+			Clock:            clock,
+		}
+
+		got, err := user.NewUser(params)
+
+		assertNoError(t, err)
+		if got.LocalePreference != shared.DefaultLocale {
+			t.Errorf("LocalePreference: got %v, want %v", got.LocalePreference, shared.DefaultLocale)
 		}
 	})
 
@@ -154,6 +182,17 @@ func TestNewUser(t *testing.T) {
 					Email:    validEmail,
 					Roles:    []user.Role{"invalid-role"},
 					Clock:    clock,
+				},
+			},
+			{
+				name: "invalid locale",
+				params: user.NewUserParams{
+					UserID:           validUserID,
+					Username:         validUsername,
+					Email:            validEmail,
+					Roles:            []user.Role{user.RoleAuthor},
+					LocalePreference: "invalid-locale",
+					Clock:            clock,
 				},
 			},
 			{
@@ -222,6 +261,184 @@ func TestNewUser(t *testing.T) {
 	})
 }
 
+func TestUser_UpdateLocalePreference(t *testing.T) {
+	clock := &stubClock{t: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)}
+
+	userID, _ := kernel.NewID[user.User]("user-123")
+	username, _ := shared.NewUsername("johndoe")
+	email, _ := shared.NewEmail("john@example.com")
+
+	u, _ := user.NewUser(user.NewUserParams{
+		UserID:   userID,
+		Username: username,
+		Email:    email,
+		Roles:    []user.Role{user.RoleAuthor},
+		Clock:    clock,
+	})
+
+	t.Run("updates locale preference successfully", func(t *testing.T) {
+		newLocale, _ := shared.NewLocale("fr-FR")
+		laterTime := time.Date(2024, 1, 15, 11, 0, 0, 0, time.UTC)
+		clock.t = laterTime
+
+		updated, err := u.UpdateLocalePreference(newLocale)
+
+		assertNoError(t, err)
+		if updated.LocalePreference != newLocale {
+			t.Errorf("LocalePreference: got %v, want %v", updated.LocalePreference, newLocale)
+		}
+		if !updated.UpdatedAt.Equal(laterTime) {
+			t.Errorf("UpdatedAt: got %v, want %v", updated.UpdatedAt, laterTime)
+		}
+		// Original user should be unchanged
+		if u.LocalePreference == newLocale {
+			t.Error("Original user was modified")
+		}
+	})
+
+	t.Run("rejects invalid locale", func(t *testing.T) {
+		invalidLocale := shared.Locale("invalid-locale")
+
+		_, err := u.UpdateLocalePreference(invalidLocale)
+
+		assertError(t, err)
+		assertErrorCode(t, err, kernel.EInvalid)
+	})
+}
+
+func TestUser_GetDisplayName(t *testing.T) {
+	clock := &stubClock{t: time.Now()}
+
+	userID, _ := kernel.NewID[user.User]("user-123")
+	email, _ := shared.NewEmail("john@example.com")
+
+	tests := []struct {
+		name      string
+		firstName shared.FirstName
+		username  shared.Username
+		want      string
+	}{
+		{
+			name:      "returns first name when available",
+			firstName: shared.FirstName("John"),
+			username:  shared.Username("johndoe"),
+			want:      "John",
+		},
+		{
+			name:      "returns username when no first name",
+			firstName: shared.FirstName(""),
+			username:  shared.Username("johndoe"),
+			want:      "johndoe",
+		},
+		{
+			name:      "returns email when no first name or username",
+			firstName: shared.FirstName(""),
+			username:  shared.Username(""), // This would fail validation, but testing the method logic
+			want:      "john@example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// For the test case where username is empty, we need to create a minimal valid user first
+			// then modify it for testing (since NewUser would fail validation)
+			if tt.username == "" {
+				// Create a valid user first
+				username, _ := shared.NewUsername("temp")
+				u, _ := user.NewUser(user.NewUserParams{
+					UserID:    userID,
+					Username:  username,
+					Email:     email,
+					FirstName: tt.firstName,
+					Roles:     []user.Role{user.RoleAuthor},
+					Clock:     clock,
+				})
+				// Override for testing (this bypasses validation for test purposes)
+				u.Username = tt.username
+
+				got := u.GetDisplayName()
+				if got != tt.want {
+					t.Errorf("got %v, want %v", got, tt.want)
+				}
+			} else {
+				u, _ := user.NewUser(user.NewUserParams{
+					UserID:    userID,
+					Username:  tt.username,
+					Email:     email,
+					FirstName: tt.firstName,
+					Roles:     []user.Role{user.RoleAuthor},
+					Clock:     clock,
+				})
+
+				got := u.GetDisplayName()
+				if got != tt.want {
+					t.Errorf("got %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestUser_GetFullName(t *testing.T) {
+	clock := &stubClock{t: time.Now()}
+
+	userID, _ := kernel.NewID[user.User]("user-123")
+	username, _ := shared.NewUsername("johndoe")
+	email, _ := shared.NewEmail("john@example.com")
+
+	tests := []struct {
+		name      string
+		firstName shared.FirstName
+		lastName  shared.LastName
+		want      string
+	}{
+		{
+			name:      "returns first and last name",
+			firstName: shared.FirstName("John"),
+			lastName:  shared.LastName("Doe"),
+			want:      "John Doe",
+		},
+		{
+			name:      "returns first name only",
+			firstName: shared.FirstName("John"),
+			lastName:  shared.LastName(""),
+			want:      "John",
+		},
+		{
+			name:      "returns last name only",
+			firstName: shared.FirstName(""),
+			lastName:  shared.LastName("Doe"),
+			want:      "Doe",
+		},
+		{
+			name:      "returns empty string when both empty",
+			firstName: shared.FirstName(""),
+			lastName:  shared.LastName(""),
+			want:      "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, _ := user.NewUser(user.NewUserParams{
+				UserID:    userID,
+				Username:  username,
+				Email:     email,
+				FirstName: tt.firstName,
+				LastName:  tt.lastName,
+				Roles:     []user.Role{user.RoleAuthor},
+				Clock:     clock,
+			})
+
+			got := u.GetFullName()
+
+			if got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUser_String(t *testing.T) {
 	clock := &stubClock{t: time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)}
 
@@ -233,18 +450,20 @@ func TestUser_String(t *testing.T) {
 	description, _ := shared.NewDescription("A very long description that should be truncated in the string representation")
 	pictureURL, _ := kernel.NewURL[user.ProfilePicture]("https://example.com/pic.jpg")
 	socialProfile, _ := user.NewSocialProfile(user.SocialMediaGitHub, "https://github.com/johndoe")
+	locale, _ := shared.NewLocale("fr-FR")
 
 	params := user.NewUserParams{
-		UserID:         userID,
-		Username:       username,
-		Email:          email,
-		Roles:          []user.Role{user.RoleAdmin},
-		FirstName:      firstName,
-		LastName:       lastName,
-		Description:    description,
-		PictureURL:     pictureURL,
-		SocialProfiles: []user.SocialProfile{socialProfile},
-		Clock:          clock,
+		UserID:           userID,
+		Username:         username,
+		Email:            email,
+		Roles:            []user.Role{user.RoleAdmin},
+		FirstName:        firstName,
+		LastName:         lastName,
+		Description:      description,
+		PictureURL:       pictureURL,
+		SocialProfiles:   []user.SocialProfile{socialProfile},
+		LocalePreference: locale,
+		Clock:            clock,
 	}
 
 	u, _ := user.NewUser(params)
@@ -260,6 +479,7 @@ func TestUser_String(t *testing.T) {
 		`LastName: "Doe"`,
 		`Description: "A very long description that should be truncated i..."`, // truncated
 		`PictureURL: "https://example.com/pic.jpg"`,
+		`LocalePreference: "fr-FR"`,
 		`Roles: [admin]`,
 		"2024-01-15T10:00:00Z",
 	}
@@ -325,6 +545,12 @@ func TestUser_Validate(t *testing.T) {
 				name: "invalid role",
 				modifier: func(u *user.User) {
 					u.Roles = []user.Role{"invalid"}
+				},
+			},
+			{
+				name: "invalid locale",
+				modifier: func(u *user.User) {
+					u.LocalePreference = shared.Locale("invalid-locale")
 				},
 			},
 			{
