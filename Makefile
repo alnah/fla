@@ -3,7 +3,7 @@
 # Directories / files
 BIN        := bin
 DIST       := dist
-TARGET     := $(BIN)/blog
+TARGET     := $(BIN)/fla
 COVER_OUT  := coverage.out
 COVER_HTML := coverage.html
 
