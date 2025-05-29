@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, dev/blog ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, dev, dev/blog ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
