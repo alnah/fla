@@ -82,6 +82,10 @@ type (
 	// Pagination handles content listing with page-based navigation for improved user experience.
 	// Provides offset calculations and navigation state for repository queries.
 	Pagination = shared.Pagination
+
+	// Locale represents a language/region combination for interface localization.
+	// Enables multilingual user interfaces while ensuring only supported languages are used.
+	Locale = shared.Locale
 )
 
 // Re-export shared constructors
@@ -124,6 +128,18 @@ var (
 
 	// NewPagination creates a new pagination with validation
 	NewPagination = shared.NewPagination
+
+	// NewLocale creates a validated locale with support checking.
+	// Ensures only supported languages are used in the application.
+	NewLocale = shared.NewLocale
+)
+
+// Re-export locale constants for convenience
+const (
+	LocaleFrenchFR     = shared.LocaleFrenchFR     // French (France) interface language
+	LocaleEnglishUS    = shared.LocaleEnglishUS    // English (United States) interface language
+	LocalePortugueseBR = shared.LocalePortugueseBR // Portuguese (Brazil) interface language
+	DefaultLocale      = shared.DefaultLocale      // Default interface language fallback
 )
 
 // Re-export post types
