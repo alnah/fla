@@ -35,7 +35,13 @@ func (d Description) String() string { return string(d) }
 func (d Description) Validate() error {
 	const op = "Description.Validate"
 
-	if err := kernel.ValidateLength("description", d.String(), MinDescriptionLength, MaxDescriptionLength, op); err != nil {
+	if err := kernel.ValidateLength(
+		"description",
+		d.String(),
+		MinDescriptionLength,
+		MaxDescriptionLength,
+		op,
+	); err != nil {
 		return err
 	}
 

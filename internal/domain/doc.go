@@ -128,7 +128,7 @@
 //	// Get posts from repository
 //	posts := repository.GetPostsByCategory(categoryID, pagination)
 //
-//	// Create paginated result
+//	// Create result paginated
 //	result := domain.NewPostsList(posts, pagination)
 //
 // # Business Rules

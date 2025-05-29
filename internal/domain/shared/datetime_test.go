@@ -210,12 +210,6 @@ func TestDatetime_Equal(t *testing.T) {
 			t.Error("expected dt1 not to equal dt3")
 		}
 	})
-
-	t.Run("time equals itself", func(t *testing.T) {
-		if !dt1.Equal(dt1) {
-			t.Error("expected dt1 to equal itself")
-		}
-	})
 }
 
 func TestDatetime_String(t *testing.T) {

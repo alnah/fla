@@ -261,7 +261,7 @@ type (
 	// Used to ensure all required fields are provided during category creation.
 	NewCategoryParams = category.NewCategoryParams
 
-	// PathService handles URL generation and parsing for hierarchical navigation.
+	// CategoryPathService handles URL generation and parsing for hierarchical navigation.
 	// Enables clean URLs and breadcrumb navigation for educational content structure.
 	CategoryPathService = category.PathService
 )
@@ -329,7 +329,7 @@ type (
 	// Supports subscription lifecycle with unsubscribe/resubscribe and bounce handling.
 	Subscription = subscription.Subscription
 
-	// Status represents the status of a subscription
+	// SubscriptionStatus represents the status of a subscription
 	SubscriptionStatus = subscription.Status
 
 	// NewSubscriptionParams holds the parameters needed to create a new subscription
@@ -346,7 +346,6 @@ var NewSubscriptionID = func(id string) (SubscriptionID, error) {
 	return kernel.NewID[subscription.Subscription](id)
 }
 
-// Re-export subscription constructors and constants
 // NewSubscription creates an active email subscription with immediate notification enrollment.
 // Validates email format and subscriber information for reliable delivery.
 var NewSubscription = subscription.NewSubscription

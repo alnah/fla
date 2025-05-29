@@ -1,6 +1,10 @@
 package post
 
-import "github.com/alnah/fla/internal/domain/kernel"
+import (
+	"slices"
+
+	"github.com/alnah/fla/internal/domain/kernel"
+)
 
 const (
 	MPostContentInvalid string = "Invalid post content."
@@ -61,11 +65,5 @@ func (s Status) CanTransitionTo(target Status) bool {
 		return false
 	}
 
-	for _, status := range allowed {
-		if status == target {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(allowed, target)
 }

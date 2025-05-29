@@ -106,7 +106,7 @@ func TestCategoryPath_Depth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := make(category.CategoryPath, tt.pathLen)
-			for i := 0; i < tt.pathLen; i++ {
+			for i := range tt.pathLen {
 				path[i] = createTestCategory("cat", "Category", nil)
 			}
 
@@ -136,7 +136,7 @@ func TestCategoryPath_IsValidDepth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			path := make(category.CategoryPath, tt.pathLen)
-			for i := 0; i < tt.pathLen; i++ {
+			for i := range tt.pathLen {
 				path[i] = createTestCategory("cat", "Category", nil)
 			}
 
@@ -239,6 +239,9 @@ func TestCategoryBreadcrumb(t *testing.T) {
 		}
 		if breadcrumb.Level != 2 {
 			t.Errorf("Level: got %d, want %d", breadcrumb.Level, 2)
+		}
+		if breadcrumb.Category.Slug.String() != "sports" {
+			t.Errorf("expected category slug to be 'sports', got %q", breadcrumb.Category.Slug.String())
 		}
 	})
 }

@@ -45,11 +45,11 @@ type Post struct {
 	Slug          shared.Slug
 
 	// SEO & Social Media
-	SEOTitle             shared.Title               // Optional: SEO-optimized title (defaults to Title if empty)
+	SEOTitle             shared.Title               // Optional: SEO-optimized title (defaults Title)
 	SEODescription       shared.Description         // Optional: Meta description for search results
-	OpenGraphTitle       shared.Title               // Optional: Social media title (defaults to SEOTitle if empty)
-	OpenGraphDescription shared.Description         // Optional: Social media description (defaults to SEODescription if empty)
-	OpenGraphImage       kernel.URL[OpenGraphImage] // Optional: Social media image (defaults to FeaturedImage if empty)
+	OpenGraphTitle       shared.Title               // Optional: Social media title (defaults SEOTitle)
+	OpenGraphDescription shared.Description         // Optional: Social media description (defaults SEODescription)
+	OpenGraphImage       kernel.URL[OpenGraphImage] // Optional: Social media image (defaults FeaturedImage )
 
 	// Advanced SEO
 	CanonicalURL kernel.URL[Canonical] // Optional: Canonical URL for duplicate content prevention
@@ -179,74 +179,94 @@ func (p Post) String() string {
 func (p Post) Validate() error {
 	const op = "Post.Validate"
 
-	if err := p.PostID.Validate(); err != nil {
+	// Validate core fields
+	if err := p.validateCoreFields(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
 	}
 
-	if err := p.Owner.Validate(); err != nil {
+	// Validate SEO and OpenGraph fields
+	if err := p.validateSEOFields(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
 	}
 
-	if err := p.Title.Validate(); err != nil {
+	// Validate metadata fields
+	if err := p.validateMetadataFields(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
 	}
 
-	if err := p.Content.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.FeaturedImage.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	// Fix: Only validate non-empty SEO titles
-	if p.SEOTitle.String() != "" {
-		if err := p.SEOTitle.Validate(); err != nil {
-			return &kernel.Error{Operation: op, Cause: err}
-		}
-	}
-
-	if err := p.SEODescription.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	// Fix: Only validate non-empty OpenGraph titles
-	if p.OpenGraphTitle.String() != "" {
-		if err := p.OpenGraphTitle.Validate(); err != nil {
-			return &kernel.Error{Operation: op, Cause: err}
-		}
-	}
-
-	if err := p.OpenGraphDescription.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.OpenGraphImage.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.CanonicalURL.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.SchemaType.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.Status.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.Slug.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
-	if err := p.Category.Validate(); err != nil {
-		return &kernel.Error{Operation: op, Cause: err}
-	}
-
+	// Validate workflow fields
 	if err := p.validateWorkflowFields(); err != nil {
 		return &kernel.Error{Operation: op, Cause: err}
+	}
+
+	return nil
+}
+
+// validateCoreFields validates the essential post fields.
+func (p Post) validateCoreFields() error {
+	validators := []func() error{
+		p.PostID.Validate,
+		p.Owner.Validate,
+		p.Title.Validate,
+		p.Content.Validate,
+		p.FeaturedImage.Validate,
+		p.Status.Validate,
+		p.Slug.Validate,
+		p.Category.Validate,
+	}
+
+	for _, validate := range validators {
+		if err := validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateSEOFields validates SEO and OpenGraph related fields.
+func (p Post) validateSEOFields() error {
+	// Validate SEO Title if present
+	if p.SEOTitle.String() != "" {
+		if err := p.SEOTitle.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Validate OpenGraph Title if present
+	if p.OpenGraphTitle.String() != "" {
+		if err := p.OpenGraphTitle.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Always validate descriptions and images (they handle empty values internally)
+	validators := []func() error{
+		p.SEODescription.Validate,
+		p.OpenGraphDescription.Validate,
+		p.OpenGraphImage.Validate,
+	}
+
+	for _, validate := range validators {
+		if err := validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateMetadataFields validates metadata and advanced SEO fields.
+func (p Post) validateMetadataFields() error {
+	validators := []func() error{
+		p.CanonicalURL.Validate,
+		p.SchemaType.Validate,
+	}
+
+	for _, validate := range validators {
+		if err := validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -381,56 +401,82 @@ func (p Post) CanTransitionTo(newStatus Status, u user.PostPermissionChecker) er
 	}
 
 	// Check user permissions for specific transitions
+	return p.validateTransitionPermissions(newStatus, u, op)
+}
+
+// validateTransitionPermissions checks user permissions for specific status transitions.
+func (p Post) validateTransitionPermissions(newStatus Status, u user.PostPermissionChecker, op string) error {
 	switch newStatus {
 	case StatusPublished:
-		// Only approved posts can be published
-		if !p.IsApproved() {
-			return &kernel.Error{
-				Code:      kernel.EInvalid,
-				Message:   MPostCannotPublish,
-				Operation: op,
-			}
-		}
-		// Only admin/editor can publish
-		if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
-			return &kernel.Error{
-				Code:      kernel.EForbidden,
-				Message:   MPostCannotPublish,
-				Operation: op,
-			}
-		}
-
+		return p.validatePublishTransition(u, op)
 	case StatusScheduled:
-		// Only admin/editor can schedule
-		if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
-			return &kernel.Error{
-				Code:      kernel.EForbidden,
-				Message:   MPostCannotSchedule,
-				Operation: op,
-			}
-		}
-
+		return p.validateScheduleTransition(u, op)
 	case StatusArchived:
-		// Only admin/editor can archive
-		if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
-			return &kernel.Error{
-				Code:      kernel.EForbidden,
-				Message:   fmt.Sprintf(MPostInvalidStatusTransition, p.Status, newStatus),
-				Operation: op,
-			}
-		}
-
+		return p.validateArchiveTransition(u, op)
 	case StatusDraft:
-		// Published posts can go back to draft for major edits (admin/editor only)
-		if p.Status == StatusPublished && !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
-			return &kernel.Error{
-				Code:      kernel.EForbidden,
-				Message:   fmt.Sprintf(MPostInvalidStatusTransition, p.Status, newStatus),
-				Operation: op,
-			}
+		return p.validateDraftTransition(u, op)
+	default:
+		return nil // No special permissions needed for other transitions
+	}
+}
+
+// validatePublishTransition validates permission to publish a post.
+func (p Post) validatePublishTransition(u user.PostPermissionChecker, op string) error {
+	// Only approved posts can be published
+	if !p.IsApproved() {
+		return &kernel.Error{
+			Code:      kernel.EInvalid,
+			Message:   MPostCannotPublish,
+			Operation: op,
 		}
 	}
 
+	// Only admin/editor can publish
+	if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
+		return &kernel.Error{
+			Code:      kernel.EForbidden,
+			Message:   MPostCannotPublish,
+			Operation: op,
+		}
+	}
+
+	return nil
+}
+
+// validateScheduleTransition validates permission to schedule a post.
+func (p Post) validateScheduleTransition(u user.PostPermissionChecker, op string) error {
+	if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
+		return &kernel.Error{
+			Code:      kernel.EForbidden,
+			Message:   MPostCannotSchedule,
+			Operation: op,
+		}
+	}
+	return nil
+}
+
+// validateArchiveTransition validates permission to archive a post.
+func (p Post) validateArchiveTransition(u user.PostPermissionChecker, op string) error {
+	if !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
+		return &kernel.Error{
+			Code:      kernel.EForbidden,
+			Message:   fmt.Sprintf(MPostInvalidStatusTransition, p.Status, StatusArchived),
+			Operation: op,
+		}
+	}
+	return nil
+}
+
+// validateDraftTransition validates permission to move post back to draft.
+func (p Post) validateDraftTransition(u user.PostPermissionChecker, op string) error {
+	// Published posts can go back to draft for major edits (admin/editor only)
+	if p.Status == StatusPublished && !u.HasAnyRole(user.RoleAdmin, user.RoleEditor) {
+		return &kernel.Error{
+			Code:      kernel.EForbidden,
+			Message:   fmt.Sprintf(MPostInvalidStatusTransition, p.Status, StatusDraft),
+			Operation: op,
+		}
+	}
 	return nil
 }
 

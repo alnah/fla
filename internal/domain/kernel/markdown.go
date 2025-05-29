@@ -39,7 +39,7 @@ func StripMarkdown(content string) string {
 
 	// Step 6: Process headers
 	lines := strings.Split(content, "\n")
-	var cleanLines []string
+	cleanLines := make([]string, 0)
 
 	for _, line := range lines {
 		// Check if entire line is a header

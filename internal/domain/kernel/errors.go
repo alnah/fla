@@ -14,7 +14,7 @@ const (
 	ENotFound  string = "not_found" // Requested entity does not exist in the system
 )
 
-// Application generic message for internal errors to avoid exposing system details.
+// MInternal is a generic message for internal errors to avoid exposing system details.
 const MInternal string = "An internal error has occurred. Please contact technical support."
 
 // Error provides structured error handling with operation context and error chaining.

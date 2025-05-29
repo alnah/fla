@@ -98,8 +98,8 @@ func (sp SocialProfile) validateURLPresence() error {
 func (sp SocialProfile) validateURLFormat() error {
 	const op = "SocialProfile.validateURLFormat"
 
-	url, err := url.Parse(sp.URL)
-	if err != nil || url.Host == "" {
+	u, err := url.Parse(sp.URL)
+	if err != nil || u.Host == "" {
 		return &kernel.Error{
 			Code:      kernel.EInvalid,
 			Message:   MSocialURLInvalidFormat,

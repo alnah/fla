@@ -53,7 +53,13 @@ func (c CategoryName) Validate() error {
 		return err
 	}
 
-	if err := kernel.ValidateLength("category name", c.String(), MinCategoryNameLength, MaxCategoryNameLength, op); err != nil {
+	if err := kernel.ValidateLength(
+		"category name",
+		c.String(),
+		MinCategoryNameLength,
+		MaxCategoryNameLength,
+		op,
+	); err != nil {
 		return err
 	}
 

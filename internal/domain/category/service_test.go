@@ -17,12 +17,12 @@ type mockRepository struct {
 	findByPathFunc func([]string) (*category.Category, error)
 }
 
-func (m *mockRepository) Create(category category.Category) error {
+func (m *mockRepository) Create(cat category.Category) error {
 	return nil
 }
 
-func (m *mockRepository) GetByID(categoryID kernel.ID[category.Category]) (*category.Category, error) {
-	if cat, ok := m.categories[categoryID.String()]; ok {
+func (m *mockRepository) GetByID(catID kernel.ID[category.Category]) (*category.Category, error) {
+	if cat, ok := m.categories[catID.String()]; ok {
 		return &cat, nil
 	}
 	return nil, &kernel.Error{Code: kernel.ENotFound, Message: "category not found"}
@@ -32,15 +32,15 @@ func (m *mockRepository) GetAll() ([]category.Category, error) {
 	return nil, nil
 }
 
-func (m *mockRepository) Update(category category.Category) error {
+func (m *mockRepository) Update(cat category.Category) error {
 	return nil
 }
 
-func (m *mockRepository) Delete(categoryID kernel.ID[category.Category]) error {
+func (m *mockRepository) Delete(catID kernel.ID[category.Category]) error {
 	return nil
 }
 
-func (m *mockRepository) GetChildren(categoryID kernel.ID[category.Category]) ([]category.Category, error) {
+func (m *mockRepository) GetChildren(catID kernel.ID[category.Category]) ([]category.Category, error) {
 	return nil, nil
 }
 
@@ -48,11 +48,11 @@ func (m *mockRepository) GetRootCategories() ([]category.Category, error) {
 	return nil, nil
 }
 
-func (m *mockRepository) BuildPath(categoryID kernel.ID[category.Category]) (category.CategoryPath, error) {
+func (m *mockRepository) BuildPath(catID kernel.ID[category.Category]) (category.CategoryPath, error) {
 	if m.buildPathFunc != nil {
-		return m.buildPathFunc(categoryID)
+		return m.buildPathFunc(catID)
 	}
-	if path, ok := m.paths[categoryID.String()]; ok {
+	if path, ok := m.paths[catID.String()]; ok {
 		return path, nil
 	}
 	return nil, &kernel.Error{Code: kernel.ENotFound, Message: "category not found"}
@@ -79,8 +79,8 @@ func TestPathService_BuildURL(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("a1")
-		got, err := service.BuildURL(categoryID)
+		catID, _ := kernel.NewID[category.Category]("a1")
+		got, err := service.BuildURL(catID)
 
 		assertNoError(t, err)
 		want := "a1"
@@ -104,8 +104,8 @@ func TestPathService_BuildURL(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("sports")
-		got, err := service.BuildURL(categoryID)
+		catID, _ := kernel.NewID[category.Category]("sports")
+		got, err := service.BuildURL(catID)
 
 		assertNoError(t, err)
 		want := "a1/comprehension-ecrite/sports"
@@ -120,8 +120,8 @@ func TestPathService_BuildURL(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("non-existent")
-		_, err := service.BuildURL(categoryID)
+		catID, _ := kernel.NewID[category.Category]("non-existent")
+		_, err := service.BuildURL(catID)
 
 		assertError(t, err)
 		assertErrorCode(t, err, kernel.ENotFound)
@@ -135,8 +135,8 @@ func TestPathService_BuildURL(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("cat")
-		_, err := service.BuildURL(categoryID)
+		catID, _ := kernel.NewID[category.Category]("cat")
+		_, err := service.BuildURL(catID)
 
 		assertError(t, err)
 		assertErrorCode(t, err, kernel.EInternal)
@@ -290,8 +290,8 @@ func TestPathService_GetBreadcrumbs(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("a1")
-		got, err := service.GetBreadcrumbs(categoryID)
+		catID, _ := kernel.NewID[category.Category]("a1")
+		got, err := service.GetBreadcrumbs(catID)
 
 		assertNoError(t, err)
 		if len(got) != 1 {
@@ -324,8 +324,8 @@ func TestPathService_GetBreadcrumbs(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("sports")
-		got, err := service.GetBreadcrumbs(categoryID)
+		catID, _ := kernel.NewID[category.Category]("sports")
+		got, err := service.GetBreadcrumbs(catID)
 
 		assertNoError(t, err)
 		if len(got) != 3 {
@@ -372,8 +372,8 @@ func TestPathService_GetBreadcrumbs(t *testing.T) {
 		}
 		service := category.NewPathService(repo)
 
-		categoryID, _ := kernel.NewID[category.Category]("non-existent")
-		_, err := service.GetBreadcrumbs(categoryID)
+		catID, _ := kernel.NewID[category.Category]("non-existent")
+		_, err := service.GetBreadcrumbs(catID)
 
 		assertError(t, err)
 		assertErrorCode(t, err, kernel.ENotFound)

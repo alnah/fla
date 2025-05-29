@@ -464,13 +464,16 @@ func (m *mockCategoryRepository) Delete(categoryID domain.CategoryID) error { re
 func (m *mockCategoryRepository) GetChildren(categoryID domain.CategoryID) ([]domain.Category, error) {
 	return nil, nil
 }
+
 func (m *mockCategoryRepository) GetRootCategories() ([]domain.Category, error) { return nil, nil }
 func (m *mockCategoryRepository) BuildPath(categoryID domain.CategoryID) (domain.CategoryPath, error) {
 	return nil, nil
 }
+
 func (m *mockCategoryRepository) FindByPath(pathSegments []string) (*domain.Category, error) {
 	return nil, nil
 }
+
 func (m *mockCategoryRepository) IsSlugUniqueInParent(slug domain.Slug, parentID *domain.CategoryID) (bool, error) {
 	return true, nil
 }

@@ -1,6 +1,7 @@
 package category
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -38,7 +39,7 @@ func (s *PathService) BuildURL(categoryID kernel.ID[Category]) (string, error) {
 func (s *PathService) ParseURL(urlPath string) (*Category, error) {
 	urlPath = strings.Trim(urlPath, "/")
 	if urlPath == "" {
-		return nil, fmt.Errorf("empty path not supported")
+		return nil, errors.New("empty path not supported")
 	}
 
 	segments := strings.Split(urlPath, "/")

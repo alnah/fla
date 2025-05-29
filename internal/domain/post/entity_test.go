@@ -1,6 +1,7 @@
 package post_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/alnah/fla/internal/domain/post"
 	"github.com/alnah/fla/internal/domain/shared"
 	"github.com/alnah/fla/internal/domain/user"
-	"slices"
 )
 
 // Mock clock for testing
@@ -121,7 +121,6 @@ func TestNewPost(t *testing.T) {
 			Category:      cat,
 			Clock:         clock,
 		})
-
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
 			return
@@ -240,7 +239,6 @@ func TestNewPost(t *testing.T) {
 					Category:      cat,
 					Clock:         clock,
 				})
-
 				if err != nil {
 					t.Errorf("expected no error, got %v", err)
 					return
@@ -447,7 +445,6 @@ func TestPost_String(t *testing.T) {
 		Category:      cat,
 		Clock:         clock,
 	})
-
 	if err != nil {
 		t.Fatalf("failed to create post: %v", err)
 	}
@@ -523,7 +520,7 @@ func TestPost_WordCount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Ensure content is long enough (300+ chars)
 			if len(tc.content) < 300 {
-				tc.content = tc.content + strings.Repeat(" padding ", 50)
+				tc.content += strings.Repeat(" padding ", 50)
 			}
 
 			postID, _ := kernel.NewID[post.Post]("post-123")
@@ -549,7 +546,6 @@ func TestPost_WordCount(t *testing.T) {
 				Category:      cat,
 				Clock:         clock,
 			})
-
 			if err != nil {
 				t.Fatalf("failed to create post: %v", err)
 			}
@@ -586,7 +582,7 @@ func TestPost_EstimatedReadingTime(t *testing.T) {
 			content := strings.Repeat("word ", tc.wordCount)
 			// Ensure minimum length requirement is met
 			if len(content) < 300 {
-				content = content + strings.Repeat(" padding ", 50)
+				content += strings.Repeat(" padding ", 50)
 			}
 
 			postID, _ := kernel.NewID[post.Post]("post-123")
@@ -766,7 +762,7 @@ func TestPost_GetExcerpt(t *testing.T) {
 
 		// Ensure content meets minimum length
 		if len(content) < 300 {
-			content = content + strings.Repeat(" padding ", 50)
+			content += strings.Repeat(" padding ", 50)
 		}
 
 		postContent, _ := post.NewPostContent(content)
@@ -867,7 +863,6 @@ func TestPost_IsReadyToPublish(t *testing.T) {
 			Category:      cat,
 			Clock:         createClock, // Use clock where scheduled time is future
 		})
-
 		if err != nil {
 			t.Fatalf("failed to create post: %v", err)
 		}
