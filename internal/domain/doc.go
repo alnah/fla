@@ -9,7 +9,7 @@
 //
 //	domain/
 //	├── kernel/        # Core types and utilities (Clock, Error, ID[T], URL[T], validators)
-//	├── shared/        # Shared value objects (Email, Title, Pagination, etc.)
+//	├── shared/        # Shared value objects (Email, Title, Pagination, Locale, etc.)
 //	├── post/          # Post aggregate (Post, Status, SEO types)
 //	├── user/          # User aggregate (User, Role, permissions)
 //	├── category/      # Category aggregate (Category, path services)
@@ -30,6 +30,8 @@
 //   - Role-based permissions (Admin, Editor, Author)
 //   - Profile management with social media links
 //   - Content ownership and editing rules
+//   - Multilingual interface preferences (French, English, Portuguese)
+//   - Locale-aware user experience customization
 //
 // Email Subscriptions:
 //   - Anonymous subscriptions with first name and email
@@ -103,6 +105,26 @@
 //	// User resubscribes later
 //	resubscribed, err := unsubscribed.Resubscribe()
 //
+// Managing user locale preferences:
+//
+//	// Create user with French interface preference
+//	user, err := domain.NewUser(domain.NewUserParams{
+//	    UserID:           domain.NewUserID("user-123"),
+//	    Username:         domain.NewUsername("marie"),
+//	    Email:            domain.NewEmail("marie@example.com"),
+//	    LocalePreference: domain.LocaleFrenchFR,
+//	    Roles:            []domain.Role{domain.RoleAuthor},
+//	    Clock:            clock,
+//	})
+//
+//	// Update user's language preference
+//	updatedUser, err := user.UpdateLocalePreference(domain.LocalePortugueseBR)
+//
+//	// Use locale for interface customization
+//	effectiveLocale := user.LocalePreference.GetEffectiveLocale()
+//	languageCode := user.LocalePreference.ToISO639Language() // "fr", "en", "pt"
+//	displayName := user.LocalePreference.GetSelfDisplayName() // "français (France)"
+//
 // URL generation and breadcrumbs:
 //
 //	// Build category URL: "a1/comprehension-ecrite/sports"
@@ -154,6 +176,13 @@
 //   - Visitor: Can view published content
 //   - Permissions are checked through methods like CanEditPost, CanPublish, etc.
 //
+// Locale Support:
+//   - Supported languages: French (France), English (US), Portuguese (Brazil)
+//   - Default interface language is English (US)
+//   - Users can set and update their preferred interface language
+//   - Locale affects UI presentation, error messages, and date formatting
+//   - Content language remains French regardless of interface locale
+//
 // Email Subscriptions:
 //   - One subscription per email address
 //   - Subscribers can unsubscribe and resubscribe
@@ -188,6 +217,7 @@
 //   - Static site generators: Export content for JAMstack deployment
 //   - Search engines: Full-text search integration
 //   - Event system: Can be extended with domain events for async processing
+//   - i18n systems: Locale preferences for multilingual user interfaces
 //
 // # Performance Optimizations
 //
