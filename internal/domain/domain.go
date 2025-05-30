@@ -198,6 +198,48 @@ const (
 	StatusScheduled = post.StatusScheduled // Content queued for future publication
 )
 
+// Post read-only operations
+type (
+	// PostReader defines read-only operations for content consumption.
+	// Used by public website pages and content display systems.
+	PostReader = post.PostReader
+
+	// PostWriter defines write operations for content management.
+	// Used by content creation and editing workflows.
+	PostWriter = post.PostWriter
+
+	// PostLister provides paginated content browsing for public consumption.
+	// Used by website pages that show multiple posts to visitors.
+	PostLister = post.PostLister
+
+	// PostSearcher handles content discovery through queries.
+	// Used by search functionality and content recommendation systems.
+	PostSearcher = post.PostSearcher
+
+	// PostScheduler manages time-based publishing workflows.
+	// Used by background jobs and automated publishing systems.
+	PostScheduler = post.PostScheduler
+
+	// PostValidator provides data integrity checks for content creation.
+	// Used by forms and APIs to prevent duplicate or invalid content.
+	PostValidator = post.PostValidator
+)
+
+// Post composed interfaces
+type (
+	// PostManager combines read/write operations for content management systems.
+	// Used by admin dashboards and CMS interfaces that need full post control.
+	PostManager = post.PostManager
+
+	// PostBrowser combines listing and search for public content discovery.
+	// Used by public website features that help visitors find and browse content.
+	PostBrowser = post.PostBrowser
+
+	// PostPublisher handles the complete publishing workflow.
+	// Used by editorial systems and automated publishing processes.
+	PostPublisher = post.PostPublisher
+)
+
 // PostRepository defines essential data operations for post management.
 // Provides clean interface between domain logic and data persistence layer.
 type PostRepository = post.Repository
@@ -307,6 +349,54 @@ var (
 	NewCategoryPathService = category.NewPathService
 )
 
+// Re-export CATEGORY REPOSITORY INTERFACES (NEW)
+
+// Category basic operations
+type (
+	// CategoryReader defines read-only operations for category access.
+	// Used by public navigation menus and content display systems.
+	CategoryReader = category.CategoryReader
+
+	// CategoryWriter defines modification operations for category management.
+	// Used by content management systems and category administration tools.
+	CategoryWriter = category.CategoryWriter
+
+	// CategoryHierarchy manages parent-child relationships for educational content structure.
+	// Used by navigation systems and content organization features.
+	CategoryHierarchy = category.CategoryHierarchy
+
+	// CategoryPathBuilder creates URL paths for hierarchical navigation.
+	// Used by URL routing and breadcrumb generation systems.
+	CategoryPathBuilder = category.CategoryPathBuilder
+
+	// CategoryValidator provides data integrity checks for category creation.
+	// Used by forms and APIs to prevent duplicate or invalid category structures.
+	CategoryValidator = category.CategoryValidator
+)
+
+// Category composed interfaces
+type (
+	// CategoryBrowser combines reading and hierarchy for public navigation.
+	// Used by public website features that display category structure to visitors.
+	CategoryBrowser = category.CategoryBrowser
+
+	// CategoryManager combines CRUD and validation for administrative control.
+	// Used by admin panels and CMS interfaces that manage category structure.
+	CategoryManager = category.CategoryManager
+
+	// CategoryNavigator handles complete navigation and URL management.
+	// Used by web routing systems and navigation menu generators.
+	CategoryNavigator = category.CategoryNavigator
+
+	// CategoryOrganizer provides full category structure management.
+	// Used by content management systems that need complete category control.
+	CategoryOrganizer = category.CategoryOrganizer
+)
+
+// CategoryRepository defines essential data operations for category management.
+// Provides clean interface between domain logic and data persistence layer.
+type CategoryRepository = category.Repository
+
 // Re-export tag types
 type (
 	// Tag represents a descriptive label for categorizing and discovering blog content.
@@ -373,16 +463,51 @@ const (
 	SubscriptionStatusComplained   = subscription.StatusComplained   // Spam complaint
 )
 
-// Re-export repository interfaces
+// Subscription basic operations
 type (
-	// CategoryRepository defines essential data operations for category management.
-	// Provides clean interface between domain logic and data persistence layer.
-	CategoryRepository = category.Repository
+	// SubscriptionReader defines read-only operations for subscription access.
+	// Used by subscription status pages and customer service tools.
+	SubscriptionReader = subscription.SubscriptionReader
 
-	// SubscriptionRepository defines email subscription data operations.
-	// Manages subscriber lifecycle and campaign targeting for content notifications.
-	SubscriptionRepository = subscription.Repository
+	// SubscriptionWriter defines modification operations for subscription lifecycle.
+	// Used by signup forms and subscription management workflows.
+	SubscriptionWriter = subscription.SubscriptionWriter
+
+	// SubscriptionLister provides bulk access to subscriber collections.
+	// Used by newsletter analytics and subscriber management dashboards.
+	SubscriptionLister = subscription.SubscriptionLister
+
+	// SubscriptionValidator provides data integrity checks for email management.
+	// Used by signup forms and APIs to prevent duplicate subscriptions.
+	SubscriptionValidator = subscription.SubscriptionValidator
+
+	// CampaignTargeter identifies subscribers for content distribution.
+	// Used by email marketing automation and newsletter delivery systems.
+	CampaignTargeter = subscription.CampaignTargeter
 )
+
+// Subscription composed interfaces
+type (
+	// SubscriptionService combines core operations for public subscription management.
+	// Used by public-facing subscription forms and user preference pages.
+	SubscriptionService = subscription.SubscriptionService
+
+	// NewsletterManager handles subscriber audience management for email campaigns.
+	// Used by marketing tools and email automation systems.
+	NewsletterManager = subscription.NewsletterManager
+
+	// SubscriptionAdmin provides complete subscriber database control.
+	// Used by admin dashboards and customer service management tools.
+	SubscriptionAdmin = subscription.SubscriptionAdmin
+
+	// EmailMarketer combines targeting and management for campaign operations.
+	// Used by email marketing platforms and automated notification systems.
+	EmailMarketer = subscription.EmailMarketer
+)
+
+// SubscriptionRepository defines email subscription data operations.
+// Manages subscriber lifecycle and campaign targeting for content notifications.
+type SubscriptionRepository = subscription.Repository
 
 // URL type aliases for backward compatibility
 // URL represents validated URLs for resources with security validation.
